@@ -139,4 +139,4 @@
 
 (defn new-reserves
   []
-  (vector 5 5))
+  (vector 15 15))

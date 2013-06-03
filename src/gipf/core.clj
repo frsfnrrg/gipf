@@ -14,7 +14,6 @@
 (def board-center (xy 400 400)) ; px
 (def color-bg (new java.awt.Color 255 255 255))
 
-
 ;; "things"
 
 ;; logical stuff needs thread-independence
@@ -267,6 +266,22 @@
     (when-not (= (first input) :hover)
       (println (first input) game-phase (rest input) @reserve-pieces))
     (case (first input)
+      :state
+      (do
+        (println input)
+        (cond (= (second input) :new)
+          (let [nb (new-board)
+                nr (new-reserves)
+                np (- @current-player)]
+            (dosync (ref-set board nb)
+              (ref-set reserve-pieces nr)
+              (ref-set current-player np))
+            (def selected nil)
+            (def lines (list))
+            (def game-phase :placing)
+            (redraw-all!))
+        ))
+      
       :aimove
       (let [place (second input)
             shove (third input)
@@ -349,20 +364,7 @@
                           (list (cons :aimove action))))))))))
           (repaint!)))
 
-      
-      :state
-      (do
-        (println input)
-        (if (= (second input) :new)
-          (let [nb (new-board)
-                nr (new-reserves)
-                np 0]
-            (dosync (ref-set board nb)
-              (ref-set reserve-pieces nr)
-              (ref-set current-player np))
-            (def game-phase :placing)
-            (redraw-all!))
-        ))
+
       :click
       (cond (= (nth input 3) 1)
         (let [clickpt (screenpx-to-loc (xy (second input) (third input)))]
