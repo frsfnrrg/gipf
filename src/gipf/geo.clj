@@ -1,6 +1,9 @@
 (ns gipf.core)
 ;; tools for hex geometry
 
+;; see ?redblobgames; hex coordinate grids.
+;; the best normalize is (= 0 (+ u v w)). distance is (reduce sum map abs map -)
+
 (defn xy
   [x y]
   "Create a cartesian coordinate pont.
