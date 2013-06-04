@@ -26,6 +26,19 @@
   ;; "Changing " pos "from" (get-hex-array board pos) "to" val)
   (map-hex-array (fn [p v] (if (pt= p pos) val v)) board))
   
+(defn get-open-moves
+  "Returns a list of the available moves..."
+  [board]
+  ;; does it work
+  (filter #( not (row-full? board (first %)))  
+    (reduce concat
+      ;; loc -> list of 2 lines
+      (map #(let [inside-neighbors (filter (fn [p] (= (pt-radius p) 3)) (map (fn [q] (pt+ q %)) (get-ring-of-hex-uv-points 1)))]
+              ;; pt, neighbor ->  
+              (map (fn [ne] (list % (pt- % ne)))
+                inside-neighbors))
+        (get-ring-of-hex-uv-points 4)))))
+
 (defn place-point-open?
   "Can a point be placed here?"
   [board loc]
@@ -64,6 +77,10 @@
   "Returns place & shove vector."
   [board player reserves]
   (busy-doing-important-stuff 0.6)
+  
+  (let [open-entries (get-open-moves board)]
+    
+    )
   
   (if (place-point-open? board (pt 4 0 0))
     (list (pt 4 0 0) (pt -1 0 0))
