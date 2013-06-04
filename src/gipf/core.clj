@@ -247,6 +247,21 @@
       (.setColor wincolor)
       (.fillRect 0 0 800 800))))
 
+(def ai-action-thread nil)
+(defn start-ai-clear!
+  [found]
+  (def ai-action-thread (start-thread
+    (let [action (ai-clear @board removing-player found)]
+      (on-swing-thread
+        (update-game 
+          (list (cons :aiclear action))))))))
+(defn start-ai-move!
+  []
+  (def ai-action-thread (start-thread
+    (let [action (ai-move @board @current-player @reserve-pieces)]
+      (on-swing-thread
+        (update-game (list (cons :aimove action))))))))
+
 (defn update-game
   "Updates the game given list of inputs.
  Input is of the form [:mouse x y b] 
@@ -264,6 +279,8 @@
           (let [nb (new-board)
                 nr (new-reserves)
                 np (- @current-player)]
+            (when-not (nil? ai-action-thread)
+              (.interrupt ai-action-thread))
             (dosync (ref-set board nb)
               (ref-set reserve-pieces nr)
               (ref-set current-player np))
@@ -287,11 +304,7 @@
             (if (some #(= (first %) @current-player) found)
               (do
                 (def removing-player @current-player)
-                (start-thread
-                  (let [action (ai-clear @board removing-player found)]
-                    (on-swing-thread
-                      (update-game 
-                        (list (cons :aiclear action)))))))
+                (start-ai-clear! found))
               (do
                 ; this is still the ai players turn; but none belong to it
                 (def removing-player (- @current-player))
@@ -302,9 +315,7 @@
               (dosync (ref-set current-player (- @current-player)))
               (if (= (get-pieces-left @current-player) 0)
                   (do (def game-phase :gameover)
-                    (draw-game-over! (- @current-player))
-                    
-                    )
+                    (draw-game-over! (- @current-player)))
                   (def game-phase :placing)))))
         (repaint!))
       
@@ -323,11 +334,7 @@
             (if (some #(= (first %) removing-player) found)
               (do ;; AI continues
                 (println lines "should be empty")
-                (start-thread
-                  (let [action (ai-clear @board @current-player found)]
-                    (on-swing-thread
-                      (update-game 
-                        (list (cons :aiclear action)))))))
+                (start-ai-clear! found))
               (do ;; nothing left for the ai; player is next
                 (def game-phase :removing-rows)
                 (def removing-player (- @current-player))
@@ -348,11 +355,7 @@
                 (do ; player had finished; ai is done clearing; on to its turn
                   (def game-phase :waiting-for-ai)
                   (dosync (ref-set current-player (- @current-player)))
-                  (start-thread
-                    (let [action (ai-move @board @current-player @reserve-pieces)]
-                      (on-swing-thread
-                        (update-game 
-                          (list (cons :aimove action))))))))))
+                  (start-ai-move!)))))
           (repaint!)))
 
 
@@ -398,11 +401,7 @@
                               (def game-phase :waiting-for-ai)
                               (println "only ai lines to clear" found)
                               (def removing-player (- @current-player))
-                              (start-thread
-                                (let [action (ai-clear @board removing-player found)]
-                                  (on-swing-thread
-                                    (update-game 
-                                      (list (cons :aiclear action))))))))
+                              (start-ai-clear! found)))
                           
                           (do 
                             (dosync (ref-set current-player (- @current-player)))
@@ -411,11 +410,7 @@
                                 (draw-game-over! (- @current-player)))
                               (do
                                 (def game-phase :waiting-for-ai)
-                                (start-thread
-                                  (let [action (ai-move @board @current-player @reserve-pieces)]
-                                    (on-swing-thread
-                                      (update-game 
-                                        (list (cons :aimove action)))))))))))
+                                (start-ai-move!))))))
                       (when (not= game-phase :gameover)
                         (draw-highlight! clickpt))
                       (repaint!))))
@@ -439,11 +434,7 @@
                           (def game-phase :waiting-for-ai)
                           (println "only ai lines to clear" found)
                           (def removing-player (- @current-player))
-                          (start-thread
-                            (let [action (ai-clear @board removing-player found)]
-                              (on-swing-thread
-                                (update-game 
-                                  (list (cons :aiclear action))))))))
+                          (start-ai-clear! found)))
                       (if (= @current-player removing-player)
                         ;; human player cleaned rest; ai turn
                         (do 
@@ -455,10 +446,7 @@
                               (draw-game-over! (- @current-player)))
                             (do
                               (def game-phase :waiting-for-ai)
-                              (start-thread
-                                (let [action (ai-move @board @current-player @reserve-pieces)]
-                                  (on-swing-thread
-                                    (update-game (list (cons :aimove action)))))))))
+                              (start-ai-move!))))
                         (do ;; ai turn is over now; human player cleaned up
                           (dosync (ref-set current-player (- @current-player)))
                           (def game-phase :placing))))
@@ -468,11 +456,7 @@
                 
                 :waiting-for-ai
                 (do
-
-                  
-                  (println "Waiting for AI" (get-hex-array @board clickpt))
-                  
-                  )
+                  (println "Waiting for AI" (get-hex-array @board clickpt)))
                 
                 :gameover
                 (println "Game is over; can't interact.")
@@ -480,7 +464,7 @@
             )))))
       :hover
       (let [hoverpt (screenpx-to-loc (xy (second input) (third input)))]
-        (if (and (<= (pt-radius hoverpt) 4) (not= game-phase :gameover))
+        (when (and (<= (pt-radius hoverpt) 4) (not= game-phase :gameover))
           (cond (nil? hovered)
                 (do
                   (draw-highlight! hoverpt)
@@ -497,14 +481,10 @@
 
                   (draw-highlight! hoverpt)
                   (repaint!)
-                  (def hovered hoverpt)))
-          ;; highlight is tracked)
-          :nothing-to-do-here)) 
+                  (def hovered hoverpt))))) 
       ))
         
       true)
-
-;; I really, really like the button approach of quad2.
 
 (defn -main
   "See \"GIPF: I play the game\" for details."

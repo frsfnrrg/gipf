@@ -1,5 +1,6 @@
 (ns gipf.core)
 
+(def order-distinguishing-pause 0.6) ; sec 
 
 (defn row-full?
   [board start delta]
@@ -76,17 +77,14 @@
 (defn ai-move
   "Returns place & shove vector."
   [board player reserves]
-  (busy-doing-important-stuff 0.6)
+  (busy-doing-important-stuff order-distinguishing-pause)
   
-  (let [open-entries (get-open-moves board)]
-    (println open-entries)
-    (rand-nth open-entries))
-  )
+  (rand-nth (get-open-moves board)))
 
 (defn ai-clear
   "Returns a set of lines to be cleared. lines must have content."
   [board player lines]
-  (busy-doing-important-stuff 0.6)
+  (busy-doing-important-stuff order-distinguishing-pause)
   (first (filter #(= (first %) player) lines)))
 
 (defn get-line-limit-point
@@ -153,4 +151,4 @@
 
 (defn new-reserves
   []
-  (vector 5 5))
+  (vector 15 15))

@@ -116,14 +116,21 @@
     '()))
 
 
+(defn sleep
+  [ms]
+  (try
+    (java.lang.Thread/sleep ms)
+    (catch java.lang.InterruptedException bobby
+      :ignore-bobby)))
+
 (defn busy-doing-important-stuff
   "Feign activity"
   [sec]
   (println "Commencing...")
   (dotimes [k (int sec)]
     (println "Calculating...")
-    (Thread/sleep 1000))
-  (Thread/sleep (int (* 1000 (mod sec 1.0))))
+    (sleep 1000))
+  (sleep (int (* 1000 (mod sec 1.0))))
   (println "Done!"))
 
 (defn fill-vector [thunk size]
