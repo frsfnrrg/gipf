@@ -30,12 +30,12 @@
   "Returns a list of the available moves..."
   [board]
   ;; does it work
-  (filter #( not (row-full? board (first %)))  
+  (filter #(not (row-full? board (pt+ (first %) (second %)) (second %)))  
     (reduce concat
       ;; loc -> list of 2 lines
       (map #(let [inside-neighbors (filter (fn [p] (= (pt-radius p) 3)) (map (fn [q] (pt+ q %)) (get-ring-of-hex-uv-points 1)))]
               ;; pt, neighbor ->  
-              (map (fn [ne] (list % (pt- % ne)))
+              (map (fn [ne] (list % (pt- ne %)))
                 inside-neighbors))
         (get-ring-of-hex-uv-points 4)))))
 
@@ -55,17 +55,17 @@
 (defn do-move
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
   [board player loc shove]
+  (println "Game board reacts to move:" player loc shove)
   (let [del (pt- loc shove)
-        pboard (applyto-repeatedly
-                 change-board-cell
-                 board
-                 [del 0])
+        pboard (change-board-cell board del 0)
         [slidboard shifteds]
         (loop [b pboard cur loc last player shift (list)]
           (let [next (get-hex-array b cur)]
             (cond
               (= (pt-radius cur) 4)
-              :should-never-happen
+              (do
+                (println "pushed until radius was 4. ??")
+                :should-never-happen)
               (= 0 next)
               (list (change-board-cell b cur last) (cons cur shift))
               :else
@@ -79,12 +79,9 @@
   (busy-doing-important-stuff 0.6)
   
   (let [open-entries (get-open-moves board)]
-    
-    )
-  
-  (if (place-point-open? board (pt 4 0 0))
-    (list (pt 4 0 0) (pt -1 0 0))
-    (list (pt 3 1 0) (pt -1 0 0))))
+    (println open-entries)
+    (rand-nth open-entries))
+  )
 
 (defn ai-clear
   "Returns a set of lines to be cleared. lines must have content."
@@ -156,4 +153,4 @@
 
 (defn new-reserves
   []
-  (vector 15 15))
+  (vector 5 5))

@@ -247,15 +247,6 @@
       (.setColor wincolor)
       (.fillRect 0 0 800 800))))
 
-;; the selector:
-;;
-;;  -ring on edge of piece. Arrows pointing in various directions.
-;;  -redraw if on selector arrow, or dist <= 1
-;;
-;;
-;;
-
-
 (defn update-game
   "Updates the game given list of inputs.
  Input is of the form [:mouse x y b] 
@@ -425,7 +416,8 @@
                                     (on-swing-thread
                                       (update-game 
                                         (list (cons :aimove action)))))))))))
-                      (draw-highlight! clickpt)
+                      (when (not= game-phase :gameover)
+                        (draw-highlight! clickpt))
                       (repaint!))))
                 
                 :removing-rows
