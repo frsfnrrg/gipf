@@ -75,16 +75,41 @@
 (defn get-pieces-left
   [player]
   (get @reserve-pieces (if (= player -1) 0 1)))
-  
+
+(defn draw-text-centered-at!
+  [xy text color]
+  (let [[x y] xy
+        fmetric (.getFontMetrics game-graphics)
+        b (.getStringBounds fmetric text game-graphics)
+        [hx hy] (map #(int (/ % 2)) [(.getWidth b) (.getHeight b)])]
+    (doto game-graphics
+      (.setColor color-bg)
+      (.fillRect (- x 100) (- y 100) 200 200)
+      (.setColor color)
+      (.drawString text (- x hx) (- y hy)))))
+
+(defn draw-pieces-left!
+  [player]
+  (let [i (if (= player -1) 0 1)
+        c (get piece-colors (- 1 i))
+        v (get @reserve-pieces i)]
+    (if (= i 0)
+      (draw-text-centered-at! (xy 100 725) (str v) c)
+      (draw-text-centered-at! (xy 700 725) (str v) c))))
+
 (defn dec-pieces-left!
+  "Decreases the number of pieces left for the player by 1."
   [player]
   (let [n (atv @reserve-pieces (if (= player -1) 0 1) dec)]
-    (dosync (ref-set reserve-pieces n))))
+    (dosync (ref-set reserve-pieces n)))
+  (draw-pieces-left! player))
 
 (defn inc-pieces-left!
   [player]
+  "Increases the number of pieces left for the player by 1"
   (let [n (atv @reserve-pieces (if (= player -1) 0 1) inc)]
-    (dosync (ref-set reserve-pieces n))))
+    (dosync (ref-set reserve-pieces n)))
+  (draw-pieces-left! player))
 
 (defn draw-highlight!
   [loc]
@@ -168,7 +193,11 @@
   (.setColor game-graphics java.awt.Color/BLACK)
   
   (doseq [p (apply concat (map get-ring-of-hex-uv-points (range 5)))]
-    (redraw-loc! p)))
+    (redraw-loc! p))
+  ;; TODO load locally
+  (.setFont game-graphics (java.awt.Font. "Blackout" java.awt.Font/PLAIN 70))
+  (draw-pieces-left! -1)
+  (draw-pieces-left! 1))
 
 (defn redraw-all!
   []
@@ -197,10 +226,9 @@
           (dosync (ref-set board (change-board-cell @board cur 0))))
         (redraw-loc! cur)
         (when (pt= cur hovered)
-        (draw-highlight! cur))
+          (draw-highlight! cur))
         (when-not (pt= cur e2p)
           (recur (pt+ cur (third line))))))))
-
   
 (defn undraw-line!
   [line]
@@ -246,6 +274,8 @@
     (doto game-graphics
       (.setColor wincolor)
       (.fillRect 0 0 800 800))))
+
+(def update-game) ; declare
 
 (def ai-action-thread nil)
 (defn start-ai-clear!
@@ -325,7 +355,6 @@
       ;; otherwise, it is a reaction
       :aiclear
       (do
-        (println "AI CLEAR" input)
         (empty-line! (rest input))
         (let [found (get-lines-of-four @board)]
           ;; 
@@ -333,7 +362,6 @@
             
             (if (some #(= (first %) removing-player) found)
               (do ;; AI continues
-                (println lines "should be empty")
                 (start-ai-clear! found))
               (do ;; nothing left for the ai; player is next
                 (def game-phase :removing-rows)
@@ -343,8 +371,6 @@
             
             ;; nothing left at all:
             (do
-              (println "AI is done clearing;" @current-player removing-player)
-              
               (if (= removing-player @current-player)
                 (do ; ai is done; player has nothing to clear
                   (dosync (ref-set current-player (- @current-player)))
@@ -370,7 +396,6 @@
                 (when (and (= rad 4)
                       (> (get-pieces-left @current-player) 0)
                       (place-point-open? @board clickpt))
-                  (println "placing piece") 
                   (place-piece! clickpt @current-player)
                   (dec-pieces-left! @current-player)
                   (def selected clickpt)
@@ -393,13 +418,11 @@
                           (if (some #(= (first %) @current-player) found)
                             (do ; self has stuff to remove first
                               (def game-phase :removing-rows)
-                              (println "clearing own lines" found)
                               (def removing-player @current-player)
                               (def lines (filter #(= (first %) removing-player) found))
                               (draw-lines!))
                             (do ; only the ai is clearing
                               (def game-phase :waiting-for-ai)
-                              (println "only ai lines to clear" found)
                               (def removing-player (- @current-player))
                               (start-ai-clear! found)))
                           
@@ -423,7 +446,6 @@
                       (undraw-line! line)))
                       
                   (let [found (get-lines-of-four @board)]
-                    (println 'f found removing-player)
                     (def lines (filter #(= (first %) removing-player) found))
                     (if (seq found)
                       (if (seq lines)
@@ -432,14 +454,11 @@
                         ;; was human turn; it cleaned; now ai cleans
                         (do ;; switch to ai removal
                           (def game-phase :waiting-for-ai)
-                          (println "only ai lines to clear" found)
                           (def removing-player (- @current-player))
                           (start-ai-clear! found)))
                       (if (= @current-player removing-player)
                         ;; human player cleaned rest; ai turn
                         (do 
-
-                          (println "nothing left: see" found)
                           (dosync (ref-set current-player (- @current-player)))
                           (if (= (get-pieces-left @current-player) 0)
                             (do (def game-phase :gameover)

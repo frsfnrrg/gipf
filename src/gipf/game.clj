@@ -56,7 +56,6 @@
 (defn do-move
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
   [board player loc shove]
-  (println "Game board reacts to move:" player loc shove)
   (let [del (pt- loc shove)
         pboard (change-board-cell board del 0)
         [slidboard shifteds]
