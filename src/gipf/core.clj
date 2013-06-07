@@ -1,8 +1,9 @@
 (ns gipf.core
   (:gen-class))
 
-(load "math")
+;; use load, or use namespaces??
 
+(load "math")
 (load "util")
 (load "geo")
 (load "game")
@@ -16,25 +17,27 @@
 
 ;; "things"
 
-;; logical stuff needs thread-independence
-(def mode (ref :basic))
-(def board (ref (new-board)))
-(def reserve-pieces (ref (new-reserves)))
-(def current-player (ref (- (* 2 (rand-int 2)) 1))) ; -1 or 1
-(def removing-player nil)
+; these will be re-deffed
+(def mode* :basic)
+(def board* (new-board))
+(def reserve-pieces* (new-reserves))
+(def current-player* (- (* 2 (rand-int 2)) 1)) ; -1 or 1
+(def removing-player* nil)
+(def selected* nil)
+(def hovered* nil)
+(def lines* (list))
+(def game-phase* :placing)
 
-;; but this is all swing-thread reactive
+;; constant.  blah
 (def game-img (make-img 800 800))
 (def game-graphics (.getGraphics game-img))
-(def selected nil)
-(def hovered nil)
-(def lines (list))
-(def panel nil)
-(def game-phase :placing)
+(def game-panel (proxy [javax.swing.JPanel] []
+             (paint [^java.awt.Graphics g]
+               (.drawImage g game-img 0 0 game-panel))))
 
 (defn repaint!
   []
-  (.repaint panel))
+  (.repaint game-panel))
 
 
 ;; Drawing stuff
@@ -53,9 +56,7 @@
 
 (defn hex-tile-at
   [p]
-  (let [[cx cy] (xy+ board-center
-                  (xy* segment-length
-                    (pt->xy p)))
+  (let [[cx cy] (loc-to-screenpx p)
         xd (* (sqrt 3) (/ segment-length 4))
         yd (/ segment-length 4)
         ym (/ segment-length 2)]
@@ -74,7 +75,7 @@
 
 (defn get-pieces-left
   [player]
-  (get @reserve-pieces (if (= player -1) 0 1)))
+  (get reserve-pieces* (if (= player -1) 0 1)))
 
 (defn draw-text-centered-at!
   [xy text color]
@@ -92,7 +93,7 @@
   [player]
   (let [i (if (= player -1) 0 1)
         c (get piece-colors (- 1 i))
-        v (get @reserve-pieces i)]
+        v (get reserve-pieces* i)]
     (if (= i 0)
       (draw-text-centered-at! (xy 100 725) (str v) c)
       (draw-text-centered-at! (xy 700 725) (str v) c))))
@@ -100,15 +101,15 @@
 (defn dec-pieces-left!
   "Decreases the number of pieces left for the player by 1."
   [player]
-  (let [n (atv @reserve-pieces (if (= player -1) 0 1) dec)]
-    (dosync (ref-set reserve-pieces n)))
+  (let [n (atv reserve-pieces* (if (= player -1) 0 1) dec)]
+    (def reserve-pieces* n))
   (draw-pieces-left! player))
 
 (defn inc-pieces-left!
   [player]
   "Increases the number of pieces left for the player by 1"
-  (let [n (atv @reserve-pieces (if (= player -1) 0 1) inc)]
-    (dosync (ref-set reserve-pieces n)))
+  (let [n (atv reserve-pieces* (if (= player -1) 0 1) inc)]
+    (def reserve-pieces* n))
   (draw-pieces-left! player))
 
 (defn draw-highlight!
@@ -145,13 +146,13 @@
 
 (defn draw-lines-at-loc!
   [loc]
-  (doseq [line lines]
+  (doseq [line lines*]
     (when (on-line? loc line)
       (draw-line! line))))
   
 (defn draw-lines!
   []
-  (doseq [line lines]
+  (doseq [line lines*]
     (draw-line! line)))
 
 (defn redraw-loc!
@@ -159,7 +160,7 @@
   (.setColor game-graphics java.awt.Color/WHITE)
   (.fill game-graphics (hex-tile-at loc))
   (.setColor game-graphics java.awt.Color/BLACK)
-  (let [f (get-hex-array @board loc)]
+  (let [f (get-hex-array board* loc)]
     (if (= 0 f)
       (if (= 4 (pt-radius loc))
         (.fill game-graphics (circle-at loc 10))
@@ -202,8 +203,8 @@
 (defn redraw-all!
   []
   (draw-base!)
-  (if selected
-      (draw-highlight! selected true))
+  (if selected*
+      (draw-highlight! selected* true))
   (repaint!))
 
 (defn empty-line!
@@ -219,13 +220,13 @@
       (.drawLine e1x e1y e2x e2y)
       (.setStroke (java.awt.BasicStroke. 1)))
     (loop [cur e1p]
-      (let [val (get-hex-array @board cur)]
+      (let [val (get-hex-array board* cur)]
         (when-not (= val 0)
-          (when (= val @current-player)
-            (inc-pieces-left! @current-player))
-          (dosync (ref-set board (change-board-cell @board cur 0))))
+          (when (= val current-player*)
+            (inc-pieces-left! current-player*))
+          (def board* (change-board-cell board* cur 0)))
         (redraw-loc! cur)
-        (when (pt= cur hovered)
+        (when (pt= cur hovered*)
           (draw-highlight! cur))
         (when-not (pt= cur e2p)
           (recur (pt+ cur (third line))))))))
@@ -243,25 +244,25 @@
       (.setStroke (java.awt.BasicStroke. 1)))
     (loop [cur e1p]
       (redraw-loc! cur)
-      (when (pt= cur hovered)
+      (when (pt= cur hovered*)
         (draw-highlight! cur))
       (when-not (pt= cur e2p)
         (recur (pt+ cur (third line)))))))
 
 (defn place-piece!
   [loc player]
-  (let [newboard (map-hex-array (fn [p c] (if (pt= p loc) player c)) @board)]
-    (dosync (ref-set board newboard))))
+  (let [newboard (map-hex-array (fn [p c] (if (pt= p loc) player c)) board*)]
+    (def board* newboard)))
 
 (defn move-piece!
   [loc shove]
-  (let [[newboard updated] (do-move @board @current-player loc shove)]
-    (dosync (ref-set board newboard))
+  (let [[newboard updated] (do-move board* current-player* loc shove)]
+    (def board* newboard)
     (redraw-loc-disk! (pt- loc shove))
     (doseq [p updated]
       (redraw-loc! p)
-      (when (pt= hovered p)
-        (draw-highlight! hovered)))))
+      (when (pt= hovered* p)
+        (draw-highlight! hovered*)))))
 
 (defn color-fade
   [color]
@@ -280,17 +281,26 @@
 (def ai-action-thread nil)
 (defn start-ai-clear!
   [found]
-  (def ai-action-thread (start-thread
-    (let [action (ai-clear @board removing-player found)]
-      (on-swing-thread
-        (update-game 
-          (list (cons :aiclear action))))))))
+  (let [b board*
+        r removing-player*]
+    (def ai-action-thread (start-thread
+                            (let [action (ai-clear b r found)]
+                              (on-swing-thread
+                                (update-game 
+                                  (list (cons :aiclear action)))))))))
 (defn start-ai-move!
   []
-  (def ai-action-thread (start-thread
-    (let [action (ai-move @board @current-player @reserve-pieces)]
-      (on-swing-thread
-        (update-game (list (cons :aimove action))))))))
+  (let [b board*
+        p current-player*
+        rp reserve-pieces*]
+    (def ai-action-thread (start-thread
+                            (let [action (ai-move board* current-player* reserve-pieces*)]
+                              (on-swing-thread
+                                (update-game (list (cons :aimove action)))))))))
+
+(defn switch-players!
+  []
+  (def current-player* (- current-player*)))
 
 (defn update-game
   "Updates the game given list of inputs.
@@ -300,7 +310,7 @@
   [input-list]
   (doseq [input input-list]
     (when-not (= (first input) :hover)
-      (println (first input) game-phase (rest input) @reserve-pieces))
+      (println (first input) game-phase* (rest input) reserve-pieces*))
     (case (first input)
       :state
       (do
@@ -308,15 +318,15 @@
         (cond (= (second input) :new)
           (let [nb (new-board)
                 nr (new-reserves)
-                np (- @current-player)]
+                np (- current-player*)]
             (when-not (nil? ai-action-thread)
               (.interrupt ai-action-thread))
-            (dosync (ref-set board nb)
-              (ref-set reserve-pieces nr)
-              (ref-set current-player np))
-            (def selected nil)
-            (def lines (list))
-            (def game-phase :placing)
+            (def board* (new-board))
+            (def reserve-pieces* (new-reserves))
+            (def current-player* (- current-player*))
+            (def selected* nil)
+            (def lines* (list))
+            (def game-phase* :placing)
             (redraw-all!))
         ))
       
@@ -325,28 +335,31 @@
             shove (third input)
             shoveto (pt+ place shove)]
         ;; ai should call on swing thread
-        (place-piece! place @current-player)
-        (dec-pieces-left! @current-player)
+        
+        (place-piece! place current-player*)
+        (dec-pieces-left! current-player*)
         (move-piece! shoveto shove)
+        (when (pt= place hovered*)
+          (draw-highlight! hovered*))
 
-        (let [found (get-lines-of-four @board)]
+        (let [found (get-lines-of-four board*)]
           (if (seq found)
-            (if (some #(= (first %) @current-player) found)
+            (if (some #(= (first %) current-player*) found)
               (do
-                (def removing-player @current-player)
+                (def removing-player* current-player*)
                 (start-ai-clear! found))
               (do
                 ; this is still the ai players turn; but none belong to it
-                (def removing-player (- @current-player))
-                (def lines (filter #(= (first %) removing-player) found))
+                (def removing-player* (- current-player*))
+                (def lines* (filter #(= (first %) removing-player*) found))
                 (draw-lines!)
-                (def game-phase :removing-rows)))
+                (def game-phase* :removing-rows)))
             (do
-              (dosync (ref-set current-player (- @current-player)))
-              (if (= (get-pieces-left @current-player) 0)
-                  (do (def game-phase :gameover)
-                    (draw-game-over! (- @current-player)))
-                  (def game-phase :placing)))))
+              (def current-player* (- current-player*))
+              (if (= (get-pieces-left current-player*) 0)
+                  (do (def game-phase* :gameover)
+                    (draw-game-over! (- current-player*)))
+                  (def game-phase* :placing)))))
         (repaint!))
       
       
@@ -356,31 +369,31 @@
       :aiclear
       (do
         (empty-line! (rest input))
-        (let [found (get-lines-of-four @board)]
+        (let [found (get-lines-of-four board*)]
           ;; 
           (if (seq found)
             
-            (if (some #(= (first %) removing-player) found)
+            (if (some #(= (first %) removing-player*) found)
               (do ;; AI continues
                 (start-ai-clear! found))
               (do ;; nothing left for the ai; player is next
-                (def game-phase :removing-rows)
-                (def removing-player (- @current-player))
-                (def lines (filter #(= (first %) removing-player)))
+                (def game-phase* :removing-rows)
+                (def removing-player* (- current-player*))
+                (def lines* (filter #(= (first %) removing-player*)))
                 (draw-lines!)))
             
             ;; nothing left at all:
             (do
-              (if (= removing-player @current-player)
+              (if (= removing-player* current-player*)
                 (do ; ai is done; player has nothing to clear
-                  (dosync (ref-set current-player (- @current-player)))
-                  (if (= (get-pieces-left @current-player) 0)
-                    (do (def game-phase :gameover)
-                      (draw-game-over! (- @current-player)))
-                    (def game-phase :placing)))
+                  (switch-players!)
+                  (if (= (get-pieces-left current-player*) 0)
+                    (do (def game-phase* :gameover)
+                      (draw-game-over! (- current-player*)))
+                    (def game-phase* :placing)))
                 (do ; player had finished; ai is done clearing; on to its turn
-                  (def game-phase :waiting-for-ai)
-                  (dosync (ref-set current-player (- @current-player)))
+                  (def game-phase* :waiting-for-ai)
+                  (switch-players!)
                   (start-ai-move!)))))
           (repaint!)))
 
@@ -390,92 +403,92 @@
         (let [clickpt (screenpx-to-loc (xy (second input) (third input)))]
           (let [rad (pt-radius clickpt)]
             (if (<= rad 4)
-              (case game-phase
+              (case game-phase*
                 :placing
                 ; place a piece
                 (when (and (= rad 4)
-                      (> (get-pieces-left @current-player) 0)
-                      (place-point-open? @board clickpt))
-                  (place-piece! clickpt @current-player)
-                  (dec-pieces-left! @current-player)
-                  (def selected clickpt)
+                      (> (get-pieces-left current-player*) 0)
+                      (place-point-open? board* clickpt))
+                  (place-piece! clickpt current-player*)
+                  (dec-pieces-left! current-player*)
+                  (def selected* clickpt)
                   (redraw-loc! clickpt)
                   (draw-highlight! clickpt)
                   (draw-selector! clickpt)
                   (repaint!)
-                  (def game-phase :moving))
+                  (def game-phase* :moving))
                 :moving
-                (when (and (= (pt-dist clickpt selected) 1)
+                (when (and (= (pt-dist clickpt selected*) 1)
                         (= (pt-radius clickpt) 3))
-                  (let [delvec (pt- clickpt selected)]
+                  (let [delvec (pt- clickpt selected*)]
                     ;; we have a valid move - if that row is clear
-                    (when-not (row-full? @board clickpt delvec)
+                    (when-not (row-full? board* clickpt delvec)
                       (move-piece! clickpt delvec)
-                      (def selected nil)
+                      (def selected* nil)
 
-                      (let [found (get-lines-of-four @board)]
+                      (let [found (get-lines-of-four board*)]
                         (if (seq found)
-                          (if (some #(= (first %) @current-player) found)
+                          (if (some #(= (first %) current-player*) found)
                             (do ; self has stuff to remove first
-                              (def game-phase :removing-rows)
-                              (def removing-player @current-player)
-                              (def lines (filter #(= (first %) removing-player) found))
+                              (def game-phase* :removing-rows)
+                              (def removing-player* current-player*)
+                              (def lines* (filter #(= (first %) removing-player*) found))
                               (draw-lines!))
                             (do ; only the ai is clearing
-                              (def game-phase :waiting-for-ai)
-                              (def removing-player (- @current-player))
+                              (def game-phase* :waiting-for-ai)
+                              (def removing-player* (- current-player*))
                               (start-ai-clear! found)))
                           
                           (do 
-                            (dosync (ref-set current-player (- @current-player)))
-                            (if (= (get-pieces-left @current-player) 0)
-                              (do (def game-phase :gameover)
-                                (draw-game-over! (- @current-player)))
+                            (switch-players!)
+                            (if (= (get-pieces-left current-player*) 0)
+                              (do (def game-phase* :gameover)
+                                (draw-game-over! (- current-player*)))
                               (do
-                                (def game-phase :waiting-for-ai)
+                                (def game-phase* :waiting-for-ai)
                                 (start-ai-move!))))))
-                      (when (not= game-phase :gameover)
+                      (when (not= game-phase* :gameover)
                         (draw-highlight! clickpt))
                       (repaint!))))
                 
                 :removing-rows
                 (when (= 4 (pt-radius clickpt))
-                  (doseq [line lines] 
+                  (doseq [line lines*] 
                     (if (on-line? clickpt line)
                       (empty-line! line)
                       (undraw-line! line)))
                       
-                  (let [found (get-lines-of-four @board)]
-                    (def lines (filter #(= (first %) removing-player) found))
+                  (let [found (get-lines-of-four board*)]
+                    (def lines* (filter #(= (first %) removing-player*) found))
                     (if (seq found)
-                      (if (seq lines)
+                      (if (seq lines*)
                         ;; still some lines left
                         (draw-lines!)
                         ;; was human turn; it cleaned; now ai cleans
                         (do ;; switch to ai removal
-                          (def game-phase :waiting-for-ai)
-                          (def removing-player (- @current-player))
+                          (def game-phase* :waiting-for-ai)
+                          (def removing-player* (- current-player*))
                           (start-ai-clear! found)))
-                      (if (= @current-player removing-player)
+                      (if (= current-player* removing-player*)
                         ;; human player cleaned rest; ai turn
                         (do 
-                          (dosync (ref-set current-player (- @current-player)))
-                          (if (= (get-pieces-left @current-player) 0)
-                            (do (def game-phase :gameover)
-                              (draw-game-over! (- @current-player)))
+                          (switch-players!)
+                          (if (= (get-pieces-left current-player*) 0)
+                            (do (def game-phase* :gameover)
+                              (draw-game-over! (- current-player*)))
                             (do
-                              (def game-phase :waiting-for-ai)
+                              (def game-phase* :waiting-for-ai)
                               (start-ai-move!))))
                         (do ;; ai turn is over now; human player cleaned up
-                          (dosync (ref-set current-player (- @current-player)))
-                          (def game-phase :placing))))
+                          (switch-players!)
+                          (def game-phase* :placing))))
                     (repaint!)))
                 
                 ;; once chosen,set a flag, allow the ai to remove
                 
                 :waiting-for-ai
                 (do
-                  (println "Waiting for AI" (get-hex-array @board clickpt)))
+                  (println "Waiting for AI" (get-hex-array board* clickpt)))
                 
                 :gameover
                 (println "Game is over; can't interact.")
@@ -483,24 +496,24 @@
             )))))
       :hover
       (let [hoverpt (screenpx-to-loc (xy (second input) (third input)))]
-        (when (and (<= (pt-radius hoverpt) 4) (not= game-phase :gameover))
-          (cond (nil? hovered)
+        (when (and (<= (pt-radius hoverpt) 4) (not= game-phase* :gameover))
+          (cond (nil? hovered*)
                 (do
                   (draw-highlight! hoverpt)
                   (repaint!)
-                  (def hovered hoverpt))
-                (pt= hoverpt hovered)
+                  (def hovered* hoverpt))
+                (pt= hoverpt hovered*)
                 :nothing-to-do-here
                 :else
                 (do
-                  (redraw-loc! hovered)
-                  (when (and (not (nil? selected)) (<= (pt-dist hovered selected) 1)) 
-                        (draw-selector! selected))
-                  (draw-lines-at-loc! hovered)
+                  (redraw-loc! hovered*)
+                  (when (and (not (nil? selected*)) (<= (pt-dist hovered* selected*) 1)) 
+                        (draw-selector! selected*))
+                  (draw-lines-at-loc! hovered*)
 
                   (draw-highlight! hoverpt)
                   (repaint!)
-                  (def hovered hoverpt))))) 
+                  (def hovered* hoverpt))))) 
       ))
         
       true)
@@ -517,10 +530,7 @@
         button-new (javax.swing.JMenuItem. "New")
         button-quit (javax.swing.JMenuItem. "Quit")
         ]
-    
-    (def panel (proxy [javax.swing.JPanel] []
-                 (paint [^java.awt.Graphics g]
-                   (.drawImage g game-img 0 0 window))))
+
     (redraw-all!)
     
     (.setSelected mode-basic true)
@@ -558,7 +568,7 @@
               (.add button-new)
               (.add button-quit))))
     
-    (doto panel
+    (doto game-panel
       (.setMinimumSize (java.awt.Dimension. 800 800))
       (.setMaximumSize (java.awt.Dimension. 800 800))
       (.setPreferredSize (java.awt.Dimension. 800 800))
@@ -577,7 +587,7 @@
     (doto window
       (.setJMenuBar menubar)
       (.setDefaultCloseOperation javax.swing.WindowConstants/DISPOSE_ON_CLOSE)
-      (.setContentPane panel)
+      (.setContentPane game-panel)
       (.pack)
       (.setResizable false)
       (.setVisible true))

@@ -223,6 +223,25 @@
         v))
     vect))
 
+(defn rand-best
+  "Takes a function returning a number;
+ a default value to return, and a collection
+ to apply the function to. If the function's
+ value is maximized at an element, return that element."
+  [test default-obj default-val coll]
+  (rand-nth
+    (loop [rcoll coll recv default-val reco (list default-obj)]
+      (if (empty? rcoll)
+        reco
+        (let [f (first rcoll)
+              t (test f)]
+          (cond (> t recv)
+            (recur (rest rcoll) t (list f))
+            (= t recv)
+            (recur (rest rcoll) t (cons f reco))
+            :else
+            (recur (rest rcoll) recv reco)))))))
+
 ;;
 ;; Idea
 ;;
