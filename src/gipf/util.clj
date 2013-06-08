@@ -187,7 +187,7 @@
           (recur (rest r)))))
 
 (defn third [coll] (first (rest (rest coll))))
-  
+(defn fourth [coll] (first (rest (rest (rest coll)))))
 
 (defmacro start-thread
   "Starts a thread that does the operations

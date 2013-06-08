@@ -2,7 +2,7 @@
 (ns gipf.repl)
 
 (load "core")
-  
+
 (gipf.core/-main)
 
 "Ola!"

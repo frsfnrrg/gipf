@@ -29,6 +29,7 @@
 (def lines* "List of lines that the human player can remove" (list))
 (def rings* "List of gipf-piece positions that will not be taken" (list))
 (def game-phase* :placing)
+(def adv-phase* [:filling :filling])
 
 ;; constant.  blah
 (def game-img (make-img 800 800))
@@ -79,9 +80,6 @@
   [player]
   (get reserve-pieces* (if (= player -1) 0 1)))
 
-(defn get-gipfs-left
-  [player]
-  (get reserve-pieces* (if (= player -1) 2 3)))
 
 (defn draw-text-centered-at!
   [xy text color]
@@ -119,30 +117,6 @@
   (let [n (atv reserve-pieces* (if (= player -1) 0 1) inc)]
     (def reserve-pieces* n))
   (draw-pieces-left! player))
-
-(defn draw-gipfs-left!
-  [player]
-  (let [i (if (= player -1) 0 1)
-        c (get piece-colors (- 1 i))
-        v (get reserve-pieces* (+ 2 i))]
-    (if (= i 0)
-      (draw-text-centered-at! (xy 100 125) (str v) c)
-      (draw-text-centered-at! (xy 700 125) (str v) c))))
-
-(defn dec-gipfs-left!
-  "Decreases the number of pieces left for the player by 1."
-  [player]
-  (let [n (atv reserve-pieces* (if (= player -1) 2 3) dec)]
-    (def reserve-pieces* n))
-  (draw-gipfs-left! player))
-
-(defn inc-gipfs-left!
-  [player]
-  "Increases the number of pieces left for the player by 1"
-  (let [n (atv reserve-pieces* (if (= player -1) 2 3) inc)]
-    (def reserve-pieces* n))
-  (draw-gipfs-left! player))
-
 
 
 (defn draw-highlight!
@@ -267,11 +241,7 @@
     (redraw-loc! p))
   (.setFont game-graphics numfont)
   (draw-pieces-left! -1)
-  (draw-pieces-left! 1)
-  (when (not= mode* :basic)
-    (println "drawing gipfs...")
-    (draw-gipfs-left! -1)
-    (draw-gipfs-left! 1)))
+  (draw-pieces-left! 1))
 
 (defn redraw-all!
   []
@@ -301,9 +271,9 @@
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
           (when (same-sign? val current-player*)
-            (if (= 1 (abs val))
-              (inc-pieces-left! current-player*)
-              (inc-gipfs-left! current-player*)))
+            (when (= 2 (abs val))
+              (inc-pieces-left! current-player*))
+            (inc-pieces-left! current-player*))
           (def board* (change-board-cell board* cur 0)))
         (redraw-loc! cur)
         (when (pt= cur hovered*)
@@ -334,29 +304,6 @@
   (let [newboard (map-hex-array (fn [p c] (if (pt= p loc) player c)) board*)]
     (def board* newboard)))
 
-(defn toggle-piece!
-  "Toggle the state of the piece as or as not a GIPF-potential.
-   Returns true if operation succeeded (enough pieces were owned)"
-  [loc]
-  (let [v (get-hex-array board* loc)
-        target (if (odd? v) (* v 2) (/ v 2))]
-    (println 'target target (+ -2 (* 2 (abs target)) (if (same-sign? v 1) 1 0)))
-    (if (>  (get reserve-pieces* (+ -2 (* 2 (abs target)) (if (same-sign? v 1) 1 0))) 0)
-      (do
-        (if (= (abs target) 2)
-          (do
-            (inc-pieces-left! (sign v))
-            (dec-gipfs-left! (sign v)))
-          (do
-            (inc-gipfs-left! (sign v))
-            (dec-pieces-left! (sign v))))
-        
-        (def board* (change-board-cell board* loc target))        
-        true)
-      false
-
-      )))
-
 (defn move-piece!
   [loc shove]
   (let [[newboard updated] (do-move board* current-player* loc shove)]
@@ -384,6 +331,27 @@
   [player line]
   (same-sign? (first line) player))
 
+
+(defn toggle-piece!
+  "Toggle the state of the piece as or as not a GIPF-potential."
+  [loc]
+  (let [v (get-hex-array board* loc)
+        target (if (odd? v) (* v 2) (/ v 2))]
+    (println 'target target (+ -2 (* 2 (abs target)) (if (same-sign? v 1) 1 0)))
+    (if (> (get reserve-pieces* (+ -2 (* 2 (abs target)) (if (same-sign? v 1) 1 0))) 0)
+      (do
+        (if (= (abs target) 2)
+          (do
+            (inc-pieces-left! (sign v)))
+          (do
+            (dec-pieces-left! (sign v))))
+        
+        (def board* (change-board-cell board* loc target))
+        true)
+      false
+
+      )))
+
 (def update-game) ; declare
 
 (def ai-action-thread* nil)
@@ -405,13 +373,21 @@
         rp reserve-pieces*]
     (def ai-action-thread*
       (start-thread
-       (let [action (ai-move board* current-player* reserve-pieces*)]
+       (let [action (ai-move board* current-player* reserve-pieces* (get-adv-phase))]
          (on-swing-thread
           (update-game (list (cons :aimove action)))))))))
 
 (defn switch-players!
   []
   (def current-player* (- current-player*)))
+
+(defn get-adv-phase
+  []
+  (get adv-phase* (if (= current-player* 1) 1 0)))
+
+(defn set-adv-phase!
+  [value]
+  (def adv-phase* (atv adv-phase* (if (= current-player* -1) 0 1) (constantly value))))
 
 (defn set-lines!
   "Sets the lines and deals with the rings..."
@@ -447,6 +423,9 @@
                 (def lines* (list))
                 (def rings* (list))
                 (def game-phase* :placing)
+                (if (= mode* :advanced)
+                  (def adv-phase* [:filling :filling])
+                  (def adv-phase* [:playing :playing]))
                 (redraw-all!))
               (= (second input) :basic)
               (def mode* :basic)
@@ -455,14 +434,18 @@
               (= (second input) :advanced)
               (def mode* :advanced)
               ))
-      
+    
       :aimove
       (let [place (second input)
             shove (third input)
+            deg (fourth input)
             shoveto (pt+ place shove)]
         ;; ai should call on swing thread
+
+        (when (and (= (get-adv-phase) :filling) (= deg 1))
+          (set-adv-phase! :playing))
         
-        (place-piece! place current-player*)
+        (place-piece! place (* deg current-player*))
         (dec-pieces-left! current-player*)
         (move-piece! shoveto shove)
         (when (pt= place hovered*)
@@ -482,7 +465,7 @@
                 (def game-phase* :removing-rows)))
             (do
               (def current-player* (- current-player*))
-              (if (lost? board* reserve-pieces* current-player* mode*)
+              (if (lost? board* reserve-pieces* current-player* mode* (get-adv-phase))
                 (do (def game-phase* :gameover)
                     (draw-game-over! (- current-player*)))
                 (def game-phase* :placing)))))
@@ -514,7 +497,7 @@
               (if (= removing-player* current-player*)
                 (do ; ai is done; player has nothing to clear
                   (switch-players!)
-                  (if (lost? board* reserve-pieces* current-player* mode*)
+                  (if (lost? board* reserve-pieces* current-player* mode* adv-phase*)
                     (do (def game-phase* :gameover)
                         (draw-game-over! (- current-player*)))
                     (def game-phase* :placing)))
@@ -532,12 +515,15 @@
                 (if (<= rad 4)
                   (case game-phase*
                     :placing
-                                        ; place a piece
+                    ; place a piece
                     (when (and (= rad 4)
                                (> (get-pieces-left current-player*) 0)
                                (place-point-open? board* clickpt))
-                      (place-piece! clickpt current-player*)
-                      (dec-pieces-left! current-player*)
+                      (if (and (= mode* :advanced) (= (get-adv-phase) :filling))
+                        (do (place-piece! clickpt (* 2 current-player*)))
+                        (do
+                          (place-piece! clickpt current-player*)
+                          (dec-pieces-left! current-player*)))
                       (def selected* clickpt)
                       (redraw-loc! clickpt)
                       (draw-highlight! clickpt)
@@ -550,6 +536,10 @@
                             (let [delvec (pt- clickpt selected*)]
                               ;; we have a valid move - if that row is clear
                               (when-not (row-full? board* clickpt delvec)
+                                (when (and (= mode* :advanced)
+                                           (= (get-adv-phase) :filling)
+                                           (= 1 (abs (get-hex-array board* selected*))))
+                                  (set-adv-phase! :playing))
                                 (move-piece! clickpt delvec)
                                 (def selected* nil)
                                 
@@ -567,7 +557,7 @@
                                     
                                     (do 
                                       (switch-players!)
-                                      (if (lost? board* reserve-pieces* current-player* mode*)
+                                      (if (lost? board* reserve-pieces* current-player* mode* (get-adv-phase))
                                         (do (def game-phase* :gameover)
                                             (draw-game-over! (- current-player*)))
                                         (do
@@ -576,7 +566,9 @@
                                 (when (not= game-phase* :gameover)
                                   (draw-highlight! clickpt))
                                 (repaint!)))
-                            (and (not= mode* :basic) (pt= clickpt selected*))
+                            
+                            (and (= mode* :advanced) (= (get-adv-phase) :filling)
+                                 (pt= clickpt selected*))
                             (do
                               (println "hit it!")
                               (when (toggle-piece! clickpt)
@@ -584,7 +576,9 @@
                                 (draw-highlight! clickpt)
                                 (draw-selector! clickpt)
                                 (repaint!)
-                                ))))
+                                ))
+                            
+                            ))
                     
                     :removing-rows
                     (cond (= 4 rad)
@@ -607,7 +601,7 @@
                                   ;; human player cleaned rest; ai turn
                                   (do 
                                     (switch-players!)
-                                    (if (lost? board* reserve-pieces* current-player* mode*)
+                                    (if (lost? board* reserve-pieces* current-player* mode* (get-adv-phase))
                                       (do (def game-phase* :gameover)
                                           (draw-game-over! (- current-player*)))
                                       (do
@@ -632,8 +626,8 @@
                               )
                             (repaint!))
                           )
-                          
-                          
+                    
+                    
                     
                     ;; once chosen,set a flag, allow the ai to remove
                     
@@ -666,7 +660,7 @@
                   (repaint!)
                   (def hovered* hoverpt))))) 
       ))
-  
+
   true)
 
 (defn -main
@@ -684,7 +678,10 @@
 
     (redraw-all!)
     
-    (.setSelected mode-basic true)
+    (.setSelected (case mode*
+                    :basic  mode-basic
+                    :normal mode-normal
+                    :advanced mode-advanced) true)
     
     (set-on-button-select! mode-basic
                            (fn []

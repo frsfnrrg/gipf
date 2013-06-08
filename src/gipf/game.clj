@@ -169,10 +169,14 @@
 
 (defn ai-move
   "Returns place & shove vector."
-  [board player reserves]
+  [board player reserves adv]
   (busy-doing-important-stuff order-distinguishing-pause)
   
   (let [possible-moves (get-open-moves board)
+        ngipfs (count-over-hex-array
+                #(= %2 (* player 2))
+                board)        
+        degree (if (and (= adv :filling) (< ngipfs 4)) 2 1)
         optimal (rand-best
                   (fn [move]
                     (rank-board
@@ -182,12 +186,9 @@
                       player
                       reserves))
                   nil -100000 possible-moves)]
-    (or optimal (rand-nth (get-open-moves board)))))
+    (conj (into [] (or optimal (rand-nth (get-open-moves board))))
+          degree)))
 
-(defn get-own-gipf-potentials-in-line
-  [board player line]
-  (filter #(same-sign? (get-hex-array board %1) player)
-          (get-gipf-potentials-in-line board line)))
 
 (defn get-gipf-potentials-in-line
   [board line]
@@ -197,6 +198,11 @@
       (if (= (abs (get-hex-array board cur)) 2)
         (recur (pt+ cur (third line)) (cons cur fps))
         (recur (pt+ cur (third line)) fps)))))
+
+(defn get-own-gipf-potentials-in-line
+  [board player line]
+  (filter #(same-sign? (get-hex-array board %1) player)
+          (get-gipf-potentials-in-line board line)))
 
 (defn ai-clear
   "Returns (list line keep)"
@@ -213,32 +219,34 @@
 (defn new-board
   "Return a newly set up board."
   [mode]
-  (let [m (if (= mode :basic) 1 2)]
-    (applyto-repeatedly
-     change-board-cell
-     (make-hex-array (constantly 0) 5)
-     [(pt 3 0 0) m]
-     [(pt 0 3 0) (- m)]
-     [(pt 0 0 3) m]
-     [(pt -3 0 0) (- m)]
-     [(pt 0 -3 0) m]
-     [(pt 0 0 -3) (- m)])))
+  (if (= mode :advanced)
+    (make-hex-array (constantly 0) 5)
+    (let [m (if (= mode :basic) 1 2)]
+      (applyto-repeatedly
+       change-board-cell
+       (make-hex-array (constantly 0) 5)
+       [(pt 3 0 0) m]
+       [(pt 0 3 0) (- m)]
+       [(pt 0 0 3) m]
+       [(pt -3 0 0) (- m)]
+       [(pt 0 -3 0) m]
+       [(pt 0 0 -3) (- m)]))))
 
 
 (defn new-reserves
   "Return a new set of reserves."
   [mode]
-  (if (= mode :basic)
-    (vector 15 15)
-    (vector 15 15 0 0)))
+  (vector 15 15))
+
 
 (defn lost?
-  [board reserves player mode]
-  (println mode)
-  (case mode
-    :basic (= 0 (get reserves (if (= player -1) 0 1)))
-    (:normal :advanced) (or
-             (= 0 (get reserves (if (= player -1) 0 1)))
-             (= 0 (count-over-hex-array
-                   #(= %2 (* player 2))
-                   board)))))
+  [board reserves player mode advm]
+  (println mode advm)
+  (if (= advm :filling) false
+      (if (= mode :basic)
+        (= 0 (get reserves (if (= player -1) 0 1)))
+        (or
+         (= 0 (get reserves (if (= player -1) 0 1)))
+         (= 0 (count-over-hex-array
+               #(= %2 (* player 2))
+               board))))))
