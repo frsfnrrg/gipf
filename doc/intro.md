@@ -10,7 +10,7 @@ That's enough for now.
 
 # Running
 
-* Install [lein](https://leiningen.org/).
+* Install [lein](http://leiningen.org/).
 * Enter the root folder, run `lein uberjar`.
 * Grab the standalone jar file; run that.
 * Play.
