@@ -24,6 +24,13 @@
     (or (pt= delta approx)
       (pt= delta (pt- approx)))))
 
+(defn line=
+  [linea lineb]
+  (and (on-line? (second linea) lineb)
+       (or (pt= (third linea) (third lineb))
+           (pt= (pt- (third linea)) (third lineb)))))
+
+; line=??
 
 (defn get-line-limit-point
   [pos vecback]
@@ -171,7 +178,7 @@
   "Returns place & shove vector."
   [board player reserves adv]
   (busy-doing-important-stuff order-distinguishing-pause)
-  
+  (println "AIK" adv)
   (let [possible-moves (get-open-moves board)
         ngipfs (count-over-hex-array
                 #(= %2 (* player 2))
@@ -192,6 +199,7 @@
 
 (defn get-gipf-potentials-in-line
   [board line]
+  (println 'get-gipf-potentials line)
   (loop [cur (second line) fps (list)]
     (if (= 4 (pt-radius cur))
       fps
@@ -208,7 +216,9 @@
   "Returns (list line keep)"
   [board player lines]
   (busy-doing-important-stuff order-distinguishing-pause)
-  (let [line (rand-nth (doall (filter #(same-sign? (first %) player) lines)))
+                                        ; rand-nth keeps on failing. why??
+  (println "incoming lines" lines player)
+  (let [line (first (doall (filter #(same-sign? (first %) player) lines)))
         gipf-potentials (get-own-gipf-potentials-in-line board player line)]
     (list
      line

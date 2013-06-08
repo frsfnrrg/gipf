@@ -18,7 +18,7 @@
 
 ;; "things"
 
-                                        ; these will be re-deffed
+; these will be re-deffed
 (def mode* :normal)
 (def board* (new-board mode*))
 (def reserve-pieces* (new-reserves mode*))
@@ -27,9 +27,10 @@
 (def selected* nil)
 (def hovered* "Cell over which the mouse is hovering" nil)
 (def lines* "List of lines that the human player can remove" (list))
+(def already-removed-lines* "List of lines that were removed; tournament mode.." (list))
 (def rings* "List of gipf-piece positions that will not be taken" (list))
 (def game-phase* :placing)
-(def adv-phase* [:filling :filling])
+(def adv-phase* [:playing :playing]) ; this may cause problems...
 
 ;; constant.  blah
 (def game-img (make-img 800 800))
@@ -37,6 +38,8 @@
 (def game-panel (proxy [javax.swing.JPanel] []
                   (paint [^java.awt.Graphics g]
                     (.drawImage g game-img 0 0 game-panel))))
+
+
 
 (defn repaint!
   []
@@ -191,6 +194,13 @@
   (when (some #(pt= loc %) rings*)
     (draw-ring! loc)))
 
+(defn filter-out-already-used-lines
+  "Takes a list of lines. ;-)"
+  [lol]
+  (filter (fn [l]
+            (not (some (fn [k] (line= k l)) already-removed-lines*)))
+          lol))
+
 (defn draw-lines!
   []
   (doseq [line lines*]
@@ -337,20 +347,14 @@
   [loc]
   (let [v (get-hex-array board* loc)
         target (if (odd? v) (* v 2) (/ v 2))]
-    (println 'target target (+ -2 (* 2 (abs target)) (if (same-sign? v 1) 1 0)))
-    (if (> (get reserve-pieces* (+ -2 (* 2 (abs target)) (if (same-sign? v 1) 1 0))) 0)
+    
+    (if (= (abs target) 2)
       (do
-        (if (= (abs target) 2)
-          (do
-            (inc-pieces-left! (sign v)))
-          (do
-            (dec-pieces-left! (sign v))))
-        
-        (def board* (change-board-cell board* loc target))
-        true)
-      false
-
-      )))
+        (inc-pieces-left! (sign v)))
+      (do
+        (dec-pieces-left! (sign v))))
+    
+    (def board* (change-board-cell board* loc target))))
 
 (def update-game) ; declare
 
@@ -366,6 +370,16 @@
           (update-game 
            (list (cons :aiclear action)))))))))
 
+(defn get-adv-phase
+  []
+  (get adv-phase* (if (= current-player* 1) 1 0)))
+
+(defn set-adv-phase!
+  [value]
+  (def adv-phase* (atv adv-phase*
+                       (if (= current-player* -1) 0 1)
+                       (constantly value))))
+
 (defn start-ai-move!
   []
   (let [b board*
@@ -373,21 +387,16 @@
         rp reserve-pieces*]
     (def ai-action-thread*
       (start-thread
-       (let [action (ai-move board* current-player* reserve-pieces* (get-adv-phase))]
+       (let [action (ai-move board* current-player*
+                             reserve-pieces* (get-adv-phase))]
          (on-swing-thread
           (update-game (list (cons :aimove action)))))))))
 
 (defn switch-players!
   []
-  (def current-player* (- current-player*)))
-
-(defn get-adv-phase
-  []
-  (get adv-phase* (if (= current-player* 1) 1 0)))
-
-(defn set-adv-phase!
-  [value]
-  (def adv-phase* (atv adv-phase* (if (= current-player* -1) 0 1) (constantly value))))
+  (def current-player* (- current-player*))
+  ; cleanup after the line removal action...
+  (def already-removed-lines* (list)))
 
 (defn set-lines!
   "Sets the lines and deals with the rings..."
@@ -480,7 +489,9 @@
         (def rings* (third input))
         (empty-line! (second input))
         (def rings* (list))
-        (let [found (get-lines-of-four board*)]
+        (def already-removed-lines* (cons (second input) already-removed-lines*))
+        
+        (let [found (filter-out-already-used-lines (get-lines-of-four board*))]
           ;; 
           (if (seq found)
             
@@ -571,31 +582,35 @@
                                  (pt= clickpt selected*))
                             (do
                               (println "hit it!")
-                              (when (toggle-piece! clickpt)
-                                (redraw-loc! clickpt)
-                                (draw-highlight! clickpt)
-                                (draw-selector! clickpt)
-                                (repaint!)
-                                ))
-                            
-                            ))
+                              (toggle-piece! clickpt)
+                              (redraw-loc! clickpt)
+                              (draw-highlight! clickpt)
+                              (draw-selector! clickpt)
+                              (repaint!))))
                     
                     :removing-rows
                     (cond (= 4 rad)
                           (do                  
                             (doseq [line lines*] 
-                              (if (on-line? clickpt line)
-                                (empty-line! line)
-                                (undraw-line! line)))
+                              (when (on-line? clickpt line)
+                                (do
+                                  (empty-line! line)
+                                  (def already-removed-lines*
+                                    (cons line already-removed-lines*))))
+                              (undraw-line! line))
                             
-                            (let [found (get-lines-of-four board*)]
+                            (let [found (filter-out-already-used-lines
+                                         (get-lines-of-four board*))]
+                              ; removing-player is human...
                               (set-lines! found removing-player*)
+                              (println "ooh" lines* (- current-player*))
                               (if (seq found)
-                                (if (seq lines*)
+                                (when (empty? lines*)
                                   ;; was human turn; it cleaned; now ai cleans
                                   (do ;; switch to ai removal
                                     (def game-phase* :waiting-for-ai)
                                     (def removing-player* (- current-player*))
+                                    (println "Entering from removing-rows; hmove, opclear")
                                     (start-ai-clear! found)))
                                 (if (= current-player* removing-player*)
                                   ;; human player cleaned rest; ai turn
@@ -676,7 +691,8 @@
         button-quit (javax.swing.JMenuItem. "Quit")
         ]
 
-    (redraw-all!)
+    ;; we call a new game;
+    (update-game (list [:state :new]))
     
     (.setSelected (case mode*
                     :basic  mode-basic
