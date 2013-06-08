@@ -27,9 +27,8 @@
 (def selected* nil)
 (def hovered* "Cell over which the mouse is hovering" nil)
 (def lines* "List of lines that the human player can remove" (list))
-(def rings* "List of gipf-piece positions that will not be taken" (list (pt 0 0 0)))
+(def rings* "List of gipf-piece positions that will not be taken" (list))
 (def game-phase* :placing)
-
 
 ;; constant.  blah
 (def game-img (make-img 800 800))
@@ -281,6 +280,10 @@
     (draw-highlight! selected* true))
   (repaint!))
 
+(defn protected?
+  [loc]
+  (some #(pt= loc %) rings*))
+
 (defn empty-line!
   [line]
   ;; undo line marks
@@ -296,7 +299,7 @@
       (.setStroke (java.awt.BasicStroke. 1)))
     (loop [cur e1p]
       (let [val (get-hex-array board* cur)]
-        (when-not (= val 0)
+        (when-not (or (= val 0) (protected? cur))
           (when (same-sign? val current-player*)
             (if (= 1 (abs val))
               (inc-pieces-left! current-player*)
@@ -416,15 +419,7 @@
   (let [r (filter (partial owns-line? owner) all)]
     (def lines* r)
     (def rings* (reduce concat (map
-                                (fn [line]
-                                        ; line is start (r3) vec -> other
-                                  (loop [cur (second line) fps (list)]
-                                    (if (= 4 (pt-radius cur))
-                                      fps
-                                      (if (= (abs (get-hex-array board* cur)) 2)
-                                        (recur (pt+ cur (third line)) (cons cur fps))
-                                        (recur (pt+ cur (third line)) fps)))  
-                                    ))
+                                (partial get-gipf-potentials-in-line board*)
                                 r)))
     (draw-lines!)))
 
@@ -450,6 +445,7 @@
                 (def current-player* (- current-player*))
                 (def selected* nil)
                 (def lines* (list))
+                (def rings* (list))
                 (def game-phase* :placing)
                 (redraw-all!))
               (= (second input) :basic)
@@ -481,7 +477,7 @@
               (do
                                         ; this is still the ai players turn; but none belong to it
                 (def removing-player* (- current-player*))
-                (def lines* (filter (partial owns-line? removing-player*) found))
+                (set-lines! found removing-player*)
                 (draw-lines!)
                 (def game-phase* :removing-rows)))
             (do
@@ -498,7 +494,10 @@
       ;; otherwise, it is a reaction
       :aiclear
       (do
-        (empty-line! (rest input))
+        (println "AICLEAR" input)
+        (def rings* (third input))
+        (empty-line! (second input))
+        (def rings* (list))
         (let [found (get-lines-of-four board*)]
           ;; 
           (if (seq found)
@@ -509,8 +508,7 @@
               (do ;; nothing left for the ai; player is next
                 (def game-phase* :removing-rows)
                 (def removing-player* (- current-player*))
-                (def lines* (filter (partial owns-line? removing-player*)))
-                (draw-lines!)))
+                (set-lines! found removing-player*)))
             
             ;; nothing left at all:
             (do
@@ -562,8 +560,7 @@
                                       (do ; self has stuff to remove first
                                         (def game-phase* :removing-rows)
                                         (def removing-player* current-player*)
-                                        (def lines* (filter (partial owns-line? removing-player*) found))
-                                        (draw-lines!))
+                                        (set-lines! found removing-player*))
                                       (do ; only the ai is clearing
                                         (def game-phase* :waiting-for-ai)
                                         (def removing-player* (- current-player*))
@@ -599,13 +596,9 @@
                                 (undraw-line! line)))
                             
                             (let [found (get-lines-of-four board*)]
-                              (def lines* (filter
-                                           (partial owns-line? removing-player*)
-                                           found))
+                              (set-lines! found removing-player*)
                               (if (seq found)
                                 (if (seq lines*)
-                                  ;; still some lines left
-                                  (draw-lines!)
                                   ;; was human turn; it cleaned; now ai cleans
                                   (do ;; switch to ai removal
                                     (def game-phase* :waiting-for-ai)
@@ -625,13 +618,23 @@
                                     (switch-players!)
                                     (def game-phase* :placing))))
                               (repaint!)))
-                          (= 2 (abs (get-hex-array board* clickpt)))
+                          (= (* 2 removing-player*) (get-hex-array board* clickpt))
                           (do
                             (println "We hit a removable!")
-
-                            )
-                          
+                            (if (protected? clickpt)
+                              (def rings* (remove #(pt= clickpt %) rings*))
+                              (do
+                                (def rings* (cons clickpt rings*))
+                                (draw-ring! clickpt)))
+                            (redraw-loc! clickpt)
+                            (draw-lines-at-loc! clickpt)                     
+                            (if (pt= clickpt hovered*)
+                              (draw-highlight! hovered*)
+                              )
+                            (repaint!))
                           )
+                          
+                          
                     
                     ;; once chosen,set a flag, allow the ai to remove
                     

@@ -184,11 +184,26 @@
                   nil -100000 possible-moves)]
     (or optimal (rand-nth (get-open-moves board)))))
 
+(defn get-gipf-potentials-in-line
+  [board line]
+  (loop [cur (second line) fps (list)]
+    (if (= 4 (pt-radius cur))
+      fps
+      (if (= (abs (get-hex-array board cur)) 2)
+        (recur (pt+ cur (third line)) (cons cur fps))
+        (recur (pt+ cur (third line)) fps)))))
+
 (defn ai-clear
-  "Returns a set of lines to be cleared. lines must have content."
+  "Returns (list line keep)"
   [board player lines]
   (busy-doing-important-stuff order-distinguishing-pause)
-  (first (filter #(same-sign? (first %) player) lines)))
+  (let [line (rand-nth (doall (filter #(same-sign? (first %) player) lines)))
+        gipf-potentials (filter
+                         #(same-sign? (get-hex-array board %1) player)
+                         (get-gipf-potentials-in-line board line))]
+    (list
+     line
+     gipf-potentials)))
 
 ;; new!
 
