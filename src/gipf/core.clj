@@ -419,7 +419,7 @@
   (let [r (filter (partial owns-line? owner) all)]
     (def lines* r)
     (def rings* (reduce concat (map
-                                (partial get-gipf-potentials-in-line board*)
+                                (partial get-own-gipf-potentials-in-line board* owner)
                                 r)))
     (draw-lines!)))
 
@@ -494,7 +494,6 @@
       ;; otherwise, it is a reaction
       :aiclear
       (do
-        (println "AICLEAR" input)
         (def rings* (third input))
         (empty-line! (second input))
         (def rings* (list))
@@ -618,7 +617,7 @@
                                     (switch-players!)
                                     (def game-phase* :placing))))
                               (repaint!)))
-                          (= (* 2 removing-player*) (get-hex-array board* clickpt))
+                          (= 2 (abs (get-hex-array board* clickpt)))
                           (do
                             (println "We hit a removable!")
                             (if (protected? clickpt)

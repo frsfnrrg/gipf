@@ -184,6 +184,11 @@
                   nil -100000 possible-moves)]
     (or optimal (rand-nth (get-open-moves board)))))
 
+(defn get-own-gipf-potentials-in-line
+  [board player line]
+  (filter #(same-sign? (get-hex-array board %1) player)
+          (get-gipf-potentials-in-line board line)))
+
 (defn get-gipf-potentials-in-line
   [board line]
   (loop [cur (second line) fps (list)]
@@ -198,9 +203,7 @@
   [board player lines]
   (busy-doing-important-stuff order-distinguishing-pause)
   (let [line (rand-nth (doall (filter #(same-sign? (first %) player) lines)))
-        gipf-potentials (filter
-                         #(same-sign? (get-hex-array board %1) player)
-                         (get-gipf-potentials-in-line board line))]
+        gipf-potentials (get-own-gipf-potentials-in-line board player line)]
     (list
      line
      gipf-potentials)))
