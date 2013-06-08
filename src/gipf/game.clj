@@ -39,7 +39,7 @@
   [board pos-in-line lvec]
   (let [start (get-line-limit-point pos-in-line (pt- lvec))
         sp (get-hex-array board start)]
-    (loop [cur start run -1 player nil]
+    (loop [cur start run -1 player 0]
       (cond
         (= run 4)
         (list player start lvec)
@@ -47,7 +47,7 @@
         nil
         :else
         (let [np (get-hex-array board cur)]
-          (if (and (not= player 0) (= np player))
+          (if (and (not= player 0) (same-sign? np player))
             (recur (pt+ lvec cur) (inc run) player)
             (recur (pt+ lvec cur) 1 np)))))))
 
@@ -66,13 +66,14 @@
 (defn get-lines-of-four
   "Returns a list of lists of form (player a b c d)"
   [board]
+  
   (loop [dir (pt 1 0 0) found (list)]
     (if (pt= dir (pt -1 0 0))
-        found
-        (let [new ;(concat 
-                    (four-line-in-rows board dir (pt- (pt-rot+60 dir)))]
-                   ; (four-line-in-rows board dir (pt- (pt-rot-60 dir))))]
-          (recur (pt-rot+60 dir) (concat new found))))))
+      found
+      (let [new ;(concat 
+            (four-line-in-rows board dir (pt- (pt-rot+60 dir)))]
+                                        ; (four-line-in-rows board dir (pt- (pt-rot-60 dir))))]
+        (recur (pt-rot+60 dir) (concat new found))))))
 
 (defn get-open-moves
   "Returns a list of the available moves..."
@@ -110,7 +111,9 @@
         (recur (pt+ (third line) cur) (+ count (case (get-hex-array board cur)
                                                  0 0
                                                  1 (if (= player 1) 1 3)
-                                                 -1 (if (= player -1) 1 3))))))))
+                                                 2 (if (= player 1) -1 5)
+                                                 -1 (if (= player -1) 1 3)
+                                                 -2 (if (= player -1) -1 5))))))))
 
 (defn rank-board
   "Returns a number stating how favorable a board state is to a given player."
@@ -124,11 +127,12 @@
                                       v (get-hex-array board pt)]
                                   (cond
                                     (= 0 v) 0
-                                    (= player v) q
-                                    :else (- q))))
+                                    (same-sign? player v)
+                                    (if (= (abs v) 1) q (* 2 q))
+                                    :else (- (if (= (abs v) 1) q (* 2 q))))))
                        (map n->pt (range (hexagonal-number 5)))))
         lines-points (reduce (fn [sup line]
-                               (let [r (if (= (first line) player) 1 -1)]
+                               (let [r (if (same-sign? (first line) player) 1 -1)]
                                  (+ sup (* r (value-pieces board line (first line))))))
                        0 (get-lines-of-four board))]
     ;; pos-points ; -->|6|; lines-points; 8-14/line
@@ -146,9 +150,10 @@
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
   [board player loc shove]
   (let [del (pt- loc shove)
+        prev (get-hex-array board del)
         pboard (change-board-cell board del 0)
         [slidboard shifteds]
-        (loop [b pboard cur loc last player shift (list)]
+        (loop [b pboard cur loc last prev shift (list)]
           (let [next (get-hex-array b cur)]
             (cond
               (= (pt-radius cur) 4)
@@ -183,25 +188,39 @@
   "Returns a set of lines to be cleared. lines must have content."
   [board player lines]
   (busy-doing-important-stuff order-distinguishing-pause)
-  (first (filter #(= (first %) player) lines)))
+  (first (filter #(same-sign? (first %) player) lines)))
 
 ;; new!
 
 (defn new-board
   "Return a newly set up board."
-  []
-  (applyto-repeatedly
-    change-board-cell
-    (make-hex-array (constantly 0) 5)
-    [(pt 3 0 0) 1]
-    [(pt 0 3 0) -1]
-    [(pt 0 0 3) 1]
-    [(pt -3 0 0) -1]
-    [(pt 0 -3 0) 1]
-    [(pt 0 0 -3) -1]))
+  [mode]
+  (let [m (if (= mode :basic) 1 2)]
+    (applyto-repeatedly
+     change-board-cell
+     (make-hex-array (constantly 0) 5)
+     [(pt 3 0 0) m]
+     [(pt 0 3 0) (- m)]
+     [(pt 0 0 3) m]
+     [(pt -3 0 0) (- m)]
+     [(pt 0 -3 0) m]
+     [(pt 0 0 -3) (- m)])))
 
 
 (defn new-reserves
   "Return a new set of reserves."
-  []
-  (vector 15 15))
+  [mode]
+  (if (= mode :basic)
+    (vector 15 15)
+    (vector 15 15 0 0)))
+
+(defn lost?
+  [board reserves player mode]
+  (println mode)
+  (case mode
+    :basic (= 0 (get reserves (if (= player -1) 0 1)))
+    (:normal :advanced) (or
+             (= 0 (get reserves (if (= player -1) 0 1)))
+             (= 0 (count-over-hex-array
+                   #(= %2 (* player 2))
+                   board)))))

@@ -237,7 +237,15 @@
   (list 
     (min (map first arrays))
     (apply mapvc (fn [c & cells] (apply func-of-pt (n->pt c) cells)) (map second arrays))))
-  
+
+(defn count-over-hex-array
+  "Takes a boolean function of a position and values, and returns the number of
+times it is true over the arrays."
+  [func-of-pt & arrays]
+  (reduce + (second (apply map-hex-array
+                           (fn [& args] (if (apply func-of-pt args) 1 0))
+                           arrays))))
+
 (defn pt-dist
   [pta ptb]
     (pt-radius (pt- pta ptb)))

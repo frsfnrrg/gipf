@@ -242,6 +242,23 @@
             :else
             (recur (rest rcoll) recv reco)))))))
 
+(defn same-sign?
+  "Do all arguments have the same sign? (+,0,-)"
+  [& args]
+  (or (every? pos? args) (every? zero? args) (every? neg? args)))
+
+(defn color->list
+  [c]
+  (list (.getRed c) (.getBlue c) (.getGreen c)))
+
+(defn list->color
+  [l]
+  (java.awt.Color. (first l) (second l) (third l)))
+
+(defn scale-color
+  [col v]
+  (list->color (map int (map #(* v %1) (color->list col)))))
+
 ;;
 ;; Idea
 ;;

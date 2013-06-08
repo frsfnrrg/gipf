@@ -5,3 +5,4 @@
   
 (gipf.core/-main)
 
+"Ola!"
