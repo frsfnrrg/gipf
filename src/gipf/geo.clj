@@ -235,7 +235,7 @@
 (defn map-hex-array
   [func-of-pt & arrays]
   (list 
-    (min (map first arrays))
+    (apply min (map first arrays))
     (apply mapvc (fn [c & cells] (apply func-of-pt (n->pt c) cells)) (map second arrays))))
 
 (defn count-over-hex-array

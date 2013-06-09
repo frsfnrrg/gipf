@@ -107,20 +107,33 @@
       (let [pts (filter #(= (pt-radius %) 3) (map #(pt+ % loc) (get-ring-of-hex-uv-points 1)))]
         (some #(not (row-full? board % (pt- % loc))) pts)))))
 
+(defn value-cell
+  "What is the \"value\" of a cell?
+   The other player has negative value;
+   magnitude increases with piece power
+   and proximity to center"
+  [board pos good-player]
+  ;; TODO improve analysis. Bunching?
+
+  ;; negative numbers correspond to the opponent.
+  (* (pt-radius pos)
+     (case (* (get-hex-array board pos) good-player)
+       -2  5
+       -1  2
+       0   0
+       1   1
+       2   -1 ;; taking your own gipf is baaad.
+       )))
+
 ;; issue; taking 3 opp is better than 3 self
 (defn value-pieces
   "Returns the \"value\" of pieces on a line."
   [board line player]
-  (println line)
-  (log (loop [cur (second line) count 0]
-    (if (= 4 (pt-radius cur))
-        count
-        (recur (pt+ (third line) cur) (+ count (case (get-hex-array board cur)
-                                                 0 0
-                                                 1 (if (= player 1) 1 3)
-                                                 2 (if (= player 1) -1 5)
-                                                 -1 (if (= player -1) 1 3)
-                                                 -2 (if (= player -1) -1 5))))))))
+  (loop [cur (second line) count 0]
+        (if (= 4 (pt-radius cur))
+          count
+          (recur (pt+ (third line) cur)
+                 (+ count (value-cell board cur player))))))
 
 (defn rank-board
   "Returns a number stating how favorable a board state is to a given player."
@@ -130,20 +143,19 @@
 
   (let [pos-points (reduce +
                      (map
-                       (fn [pt] (let [q (pt-radius pt)
-                                      v (get-hex-array board pt)]
-                                  (cond
-                                    (= 0 v) 0
-                                    (same-sign? player v)
-                                    (if (= (abs v) 1) q (* 2 q))
-                                    :else (- (if (= (abs v) 1) q (* 2 q))))))
+                      (fn [pt] (value-cell board pt player))
                        (map n->pt (range (hexagonal-number 5)))))
         lines-points (reduce (fn [sup line]
-                               (let [r (if (same-sign? (first line) player) 1 -1)]
-                                 (+ sup (* r (value-pieces board line (first line))))))
+                               (+ sup (value-pieces board line player)))
                        0 (get-lines-of-four board))]
     ;; pos-points ; -->|6|; lines-points; 8-14/line
-    (+ pos-points (* 2 lines-points))))
+
+    ;; currently, pos-points is 40-100; lines-points is ~5-20
+
+    ;; ex; 59 + 13*20 = 319
+    
+    (print "AI contribution: pos" pos-points "lines:" lines-points)
+    (log (+ pos-points (* 20 lines-points)))))
 
 ;; action 
 
@@ -178,7 +190,6 @@
   "Returns place & shove vector."
   [board player reserves adv]
   (busy-doing-important-stuff order-distinguishing-pause)
-  (println "AIK" adv)
   (let [possible-moves (get-open-moves board)
         ngipfs (count-over-hex-array
                 #(= %2 (* player 2))
@@ -195,7 +206,6 @@
                   nil -100000 possible-moves)]
     (conj (into [] (or optimal (rand-nth (get-open-moves board))))
           degree)))
-
 
 (defn get-gipf-potentials-in-line
   [board line]
@@ -216,9 +226,7 @@
   "Returns (list line keep)"
   [board player lines]
   (busy-doing-important-stuff order-distinguishing-pause)
-                                        ; rand-nth keeps on failing. why??
-  (println "incoming lines" lines player)
-  (let [line (first (doall (filter #(same-sign? (first %) player) lines)))
+  (let [line (rand-nth (filter #(same-sign? (first %) player) lines))
         gipf-potentials (get-own-gipf-potentials-in-line board player line)]
     (list
      line
