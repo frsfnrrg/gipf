@@ -154,7 +154,7 @@
 
     ;; ex; 59 + 13*20 = 319
     
-    (print "AI contribution: pos" pos-points "lines:" lines-points)
+    (print "AI contribution: pos" pos-points "lines:" lines-points ":")
     (log (+ pos-points (* 20 lines-points)))))
 
 ;; action 
