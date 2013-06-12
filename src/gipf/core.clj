@@ -19,13 +19,21 @@
 (load "game") ; free
 (load "graphics") ;; game-panel initialized here...
 
+
+;; NEXT on the TODO list;
+;;
+;; Implement arbitrary player status (ai/free)
+;;
+;;
+;;
+
 ;; "things"
 
 (def mode* :normal)
 (def board* (new-board mode*))
 (def reserve-pieces* (new-reserves mode*))
 
-(def current-player* (- (* 2 (rand-int 2)) 1)) ; -1 or 1
+(def current-player* 1) ; -1 or 1
 (def removing-player* nil)
 (def selected* nil)
 (def hovered* "Cell over which the mouse is hovering" nil)
@@ -35,10 +43,29 @@
 
 (def game-phase* :placing)
 (def adv-phase* [:playing :playing]) ; this may cause problems...
+(def player-types* [:ai :human])
+
+(defn player->index
+  [player]
+  (if (= player -1) 0 1))
+
+(defn ai-player?
+  [player]
+  (= :ai (get player-types* (player->index player))))
+
+(defn human-player?
+  [player]
+  (= :human (get player-types* (player->index player))))
+
+
+(defn set-player-type!
+  [player tp]
+  (def player-types* (atv player-types* (player->index player) (constantly tp)))
+  (println player-types*))
 
 (defn get-pieces-left
   [player]
-  (get reserve-pieces* (if (= player -1) 0 1)))
+  (get reserve-pieces* (player->index player)))
 
 (defn draw-pieces-left!
   [player]
@@ -52,14 +79,14 @@
 (defn dec-pieces-left!
   "Decreases the number of pieces left for the player by 1."
   [player]
-  (let [n (atv reserve-pieces* (if (= player -1) 0 1) dec)]
+  (let [n (atv reserve-pieces* (player->index player) dec)]
     (def reserve-pieces* n))
   (draw-pieces-left! player))
 
 (defn inc-pieces-left!
   [player]
   "Increases the number of pieces left for the player by 1"
-  (let [n (atv reserve-pieces* (if (= player -1) 0 1) inc)]
+  (let [n (atv reserve-pieces* (player->index player) inc)]
     (def reserve-pieces* n))
   (draw-pieces-left! player))
 
@@ -218,7 +245,10 @@
 
 (def update-game) ; declare
 
+;; TODO: use a two-thread vector for these; each player gets 1 thread.
+;; that way, threads can be terminated well on new game
 (def ai-action-thread* nil)
+
 (defn start-ai-clear!
   [found]
   (let [b board*
@@ -232,12 +262,12 @@
 
 (defn get-adv-phase
   []
-  (get adv-phase* (if (= current-player* 1) 1 0)))
+  (get adv-phase* (player->index current-player*)))
 
 (defn set-adv-phase!
   [value]
   (def adv-phase* (atv adv-phase*
-                       (if (= current-player* -1) 0 1)
+                       (player->index current-player*)
                        (constantly value))))
 
 (defn start-ai-move!
@@ -257,6 +287,8 @@
   (def current-player* (- current-player*))
                                         ; cleanup after the line removal action...
   (def already-removed-lines* (list)))
+
+
 
 (defn set-lines!
   "Sets the lines and deals with the rings..."
@@ -283,14 +315,21 @@
     (.interrupt ai-action-thread*))
   (def board* (new-board mode*))
   (def reserve-pieces* (new-reserves mode*))
-  (def current-player* (- current-player*))
+  (def current-player* 1)
   (def selected* nil)
   (def lines* (list))
   (def rings* (list))
-  (def game-phase* :placing)
+  
+
   (if (= mode* :advanced)
     (def adv-phase* [:filling :filling])
     (def adv-phase* [:playing :playing]))
+  (if (human-player? current-player*)
+    (def game-phase* :placing)
+    (do
+      (def game-phase* :waiting-for-ai)
+      (start-ai-move!)))
+  
   (redraw-all!))
 
 (defn update-hover!
@@ -327,6 +366,62 @@
     (draw-highlight! hovered*))
   (repaint!))
 
+
+(defn enter-clearing-phase!
+  []
+  (let [found (get-lines-of-four board*)]
+    (if (seq found)
+      (do
+        (if (some (partial owns-line? current-player*) found)
+          (def removing-player* current-player*)
+          (def removing-player* (- current-player*)))
+
+        (if (human-player? removing-player*)
+          (do
+            (def game-phase* :removing-rows)
+            (set-lines! found removing-player*))
+          (do
+            (def game-phase* :waiting-for-ai)
+            (start-ai-clear! found))))
+      (do 
+        (switch-players!)
+        (when-not (game-over!?)
+          (if (ai-player? current-player*)
+            (do
+              (def game-phase* :waiting-for-ai)
+              (start-ai-move!))
+            (def game-phase* :placing)
+            ))))))
+
+(defn continue-clearing-phase!
+  []
+
+  (let [found (filter-out-already-used-lines
+               (get-lines-of-four board*))]
+    (if (seq found)
+      (do
+        (when-not (some (partial owns-line? removing-player*) found)
+          ;; switch to the other player if this one is done
+          (def removing-player* (- removing-player*)))
+        
+        (if (human-player? removing-player*)
+          (do
+            (def game-phase* :removing-rows)
+            (set-lines! found removing-player*))
+          (do
+            (def game-phase* :waiting-for-ai)
+            (start-ai-clear! found))))
+      ;; nothing left at all:
+      (do
+        (switch-players!)
+        (when-not (game-over!?)
+          (if (human-player? current-player*)
+            (def game-phase* :placing)
+            (do
+              (def game-phase* :waiting-for-ai)
+              (start-ai-move!))))))))
+
+
 (defn try-row-clearing!
   [clickpt]
                   
@@ -336,29 +431,12 @@
       (def already-removed-lines*
         (cons line already-removed-lines*)))
     (undraw-line! line))
+  (def lines* (list))
+  (def rings* (list))
+
+  (continue-clearing-phase!)
   
-  (let [found (filter-out-already-used-lines
-               (get-lines-of-four board*))]
-    ;; removing-player is human...
-    (set-lines! found removing-player*)
-    (if (seq found)
-      (when (empty? lines*)
-        ;; was human turn; it cleaned; now ai cleans
-        (do ;; switch to ai removal
-          (def game-phase* :waiting-for-ai)
-          (def removing-player* (- current-player*))
-          (start-ai-clear! found)))
-      (if (= current-player* removing-player*)
-        ;; human player cleaned rest; ai turn
-        (do 
-          (switch-players!)
-          (when-not (game-over!?)
-            (def game-phase* :waiting-for-ai)
-            (start-ai-move!)))
-        (do ;; ai turn is over now; human player cleaned up
-          (switch-players!)
-          (def game-phase* :placing))))
-    (repaint!)))
+  (repaint!))
 
 (defn shove-piece!
   [clickpt delvec]
@@ -369,25 +447,12 @@
     (set-adv-phase! :playing))
   (move-piece! clickpt delvec)
   (def selected* nil)
-  
-  (let [found (get-lines-of-four board*)]
-    (if (seq found)
-      (if (some (partial owns-line? current-player*) found)
-        (do ; self has stuff to remove first
-          (def game-phase* :removing-rows)
-          (def removing-player* current-player*)
-          (set-lines! found removing-player*))
-        (do ; only the ai is clearing
-          (def game-phase* :waiting-for-ai)
-          (def removing-player* (- current-player*))
-          (start-ai-clear! found)))
-      (do 
-        (switch-players!)
-        (when-not (game-over!?)
-          (def game-phase* :waiting-for-ai)
-          (start-ai-move!)))))
+
+  (enter-clearing-phase!)
+
   (when (not= game-phase* :gameover)
-    (draw-highlight! clickpt))
+    (draw-highlight! hovered*))
+  
   (repaint!))
 
 (defn human-add-piece!
@@ -414,29 +479,10 @@
   (empty-line! line)
   (def rings* (list))
   (def already-removed-lines* (cons line already-removed-lines*))
+
+  (continue-clearing-phase!)
   
-  (let [found (filter-out-already-used-lines
-               (get-lines-of-four board*))]
-    (if (seq found)
-      (if (some (partial owns-line? removing-player*) found)
-        (do ;; AI continues
-          (start-ai-clear! found))
-        (do ;; nothing left for the ai; player is next
-          (def game-phase* :removing-rows)
-          (def removing-player* (- current-player*))
-          (set-lines! found removing-player*)))
-      
-      ;; nothing left at all:
-      (if (= removing-player* current-player*)
-        (do ; ai is done; player has nothing to clear
-          (switch-players!)
-          (when-not (game-over!?)
-            (def game-phase* :placing)))
-        (do ; player had finished; ai is done clearing; on to its turn
-          (def game-phase* :waiting-for-ai)
-          (switch-players!)
-          (start-ai-move!))))
-    (repaint!)))
+  (repaint!))
 
 (defn effect-ai-move!
   [place shove degree]
@@ -449,23 +495,9 @@
   (move-piece! (pt+ place shove) shove)
   (when (pt= place hovered*)
     (draw-highlight! hovered*))
+
+  (enter-clearing-phase!)
   
-  (let [found (get-lines-of-four board*)]
-    (if (seq found)
-      (if (some (partial owns-line? current-player*) found)
-        (do
-          (def removing-player* current-player*)
-          (start-ai-clear! found))
-        (do
-          ;; this is still the ai players turn; but none belong to it
-          (def removing-player* (- current-player*))
-          (set-lines! found removing-player*)
-          (draw-lines!)
-          (def game-phase* :removing-rows)))
-      (do
-        (switch-players!)
-        (when-not (game-over!?)
-          (def game-phase* :placing)))))
   (repaint!))
 
 ;; this function must be called on the swing thread
@@ -479,14 +511,14 @@
   (doseq [input input-list]
     (case (first input)
       :state
-      (cond (= (second input) :new)
-            (setup-new-game!)
-            (= (second input) :basic)
-            (def mode* :basic)
-            (= (second input) :normal)
-            (def mode* :normal)
-            (= (second input) :advanced)
-            (def mode* :advanced))
+      (case (second input)
+            :new       (setup-new-game!)
+            :basic     (def mode* :basic)
+            :normal    (def mode* :normal)
+            :advanced  (def mode* :advanced)
+            :player-ai (set-player-type! (third input)
+                                         (if (fourth input) :ai :human)))
+      
       :aimove
       (effect-ai-move! (second input) (third input) (fourth input))
       :aiclear
@@ -543,6 +575,9 @@
         
         button-new (javax.swing.JMenuItem. "New")
         button-quit (javax.swing.JMenuItem. "Quit")
+
+        iai-one (javax.swing.JCheckBoxMenuItem. "Player 1: AI?")
+        iai-two (javax.swing.JCheckBoxMenuItem. "Player 2: AI?")
         ]
 
     ;; we call a new game;
@@ -552,16 +587,33 @@
                     :basic  mode-basic
                     :normal mode-normal
                     :advanced mode-advanced) true)
+
+    (.setSelected iai-one (ai-player? 1))
+    (.setSelected iai-two (ai-player? -1))
     
     (set-on-button-select! mode-basic
                            (fn []
-                             (update-game (list [:state :basic] [:state :new]))))
+                             (update-game (list [:state :basic]
+                                                [:state :new]))))
     (set-on-button-select! mode-normal
                            (fn []
-                             (update-game (list [:state :normal] [:state :new]))))
+                             (update-game (list [:state :normal]
+                                                [:state :new]))))
     (set-on-button-select! mode-advanced
                            (fn []
-                             (update-game (list [:state :advanced] [:state :new]))))
+                             (update-game (list [:state :advanced]
+                                                [:state :new]))))
+
+    ;; the new-game situation is ugly. threads aren't killed?
+    (set-on-state-change! iai-one
+                          (fn [s]
+                            (update-game (list [:state :player-ai 1 s]))
+                            (update-game (list [:state :new]))))
+
+    (set-on-state-change! iai-two
+                          (fn [s]
+                            (update-game (list [:state :player-ai -1 s]
+                                               [:state :new]))))
     
     (doto (javax.swing.ButtonGroup.)
       (.add mode-basic)
@@ -584,7 +636,10 @@
               (.add mode-advanced)))
       (.add (doto (javax.swing.JMenu. "Game")
               (.add button-new)
-              (.add button-quit))))
+              (.add button-quit)))
+      (.add (doto (javax.swing.JMenu. "Player Types")
+              (.add iai-one)
+              (.add iai-two))))
     
     (doto game-panel
       (.setMinimumSize (java.awt.Dimension. 800 800))

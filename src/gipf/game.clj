@@ -154,8 +154,8 @@
 
     ;; ex; 59 + 13*20 = 319
     
-    (print "AI contribution: pos" pos-points "lines:" lines-points ":")
-    (log (+ pos-points (* 20 lines-points)))))
+    ;(print "AI contribution: pos" pos-points "lines:" lines-points ":")
+    (+ pos-points (* 20 lines-points))))
 
 ;; action 
 
@@ -209,7 +209,7 @@
 
 (defn get-gipf-potentials-in-line
   [board line]
-  (println 'get-gipf-potentials line)
+;;  (println 'get-gipf-potentials line)
   (loop [cur (second line) fps (list)]
     (if (= 4 (pt-radius cur))
       fps
@@ -254,12 +254,15 @@
 (defn new-reserves
   "Return a new set of reserves."
   [mode]
-  (vector 15 15))
+  (case mode
+    :basic (vector 12 12)
+    :advanced (vector 12 12)
+    :normal (vector 15 15)))
 
 
 (defn lost?
   [board reserves player mode advm]
-  (println mode advm)
+;;  (println mode advm)
   (if (= advm :filling) false
       (if (= mode :basic)
         (= 0 (get reserves (if (= player -1) 0 1)))

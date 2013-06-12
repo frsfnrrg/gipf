@@ -11,6 +11,7 @@
             displayed))))
     b))
 
+;; eq to (set-on-state-change! b (fn [s] (when s (thunk))))
 (defn set-on-button-select!
   "When button of a ButtonGroup is selected (state change), call thunk."
   [button thunk]
@@ -22,6 +23,18 @@
             (when-not (= new-state @prev)
               (swap! prev (constantly new-state))
               (if new-state (thunk)))))))))
+
+(defn set-on-state-change!
+  "When a checkbox is selected or deselected, call funk of pressedness."
+  [checkbox func]
+  (let [prev (atom (.isSelected checkbox))] 
+    (.addChangeListener checkbox
+      (proxy [javax.swing.event.ChangeListener] []
+        (stateChanged [evt]
+          (let [new-state (.isSelected checkbox)]
+            (when-not (= new-state @prev)
+              (swap! prev (constantly new-state))
+              (func new-state))))))))
 
 (defn set-on-button-click!
   "When button is clicked, funcall thunk"
