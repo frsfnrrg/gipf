@@ -247,18 +247,24 @@
 
 ;; TODO: use a two-thread vector for these; each player gets 1 thread.
 ;; that way, threads can be terminated well on new game
-(def ai-action-thread* nil)
+(def ai-action-threads* [nil nil])
+
+(defn set-ai-action-thread!
+  [player val]
+  (def ai-action-threads*
+    (atv ai-action-threads* (player->index player) (constantly val))))
 
 (defn start-ai-clear!
   [found]
   (let [b board*
         r removing-player*]
-    (def ai-action-thread*
-      (start-thread
-       (let [action (ai-clear b r found)]
-         (on-swing-thread
-          (update-game 
-           (list (cons :aiclear action)))))))))
+    (set-ai-action-thread!
+     r
+     (start-thread
+      (let [action (ai-clear b r found)]
+        (on-swing-thread
+         (update-game 
+          (list (cons :aiclear action)))))))))
 
 (defn get-adv-phase
   []
@@ -275,12 +281,13 @@
   (let [b board*
         p current-player*
         rp reserve-pieces*]
-    (def ai-action-thread*
-      (start-thread
-       (let [action (ai-move board* current-player*
-                             reserve-pieces* (get-adv-phase))]
-         (on-swing-thread
-          (update-game (list (cons :aimove action)))))))))
+    (set-ai-action-thread!
+     p
+     (start-thread
+      (let [action (ai-move board* current-player*
+                            reserve-pieces* (get-adv-phase))]
+        (on-swing-thread
+         (update-game (list (cons :aimove action)))))))))
 
 (defn switch-players!
   []
@@ -311,8 +318,9 @@
 
 (defn setup-new-game!
   []
-  (when-not (nil? ai-action-thread*)
-    (.interrupt ai-action-thread*))
+  (doseq [t ai-action-threads*]
+    (when-not (nil? t)
+      (.interrupt t)))
   (def board* (new-board mode*))
   (def reserve-pieces* (new-reserves mode*))
   (def current-player* 1)
@@ -655,6 +663,10 @@
                          (keyReleased [e]
                            (when (= java.awt.event.KeyEvent/VK_ESCAPE (.getKeyCode e))
                              (println "Quitting on ESC key! Yay!")
+                             (doseq [t ai-action-threads*]
+                               (println t)
+                               (when-not (nil? t)
+                                 (.interrupt t)))
                              (.setVisible window false)
                              (.dispose window)))))
       (.pack)

@@ -272,6 +272,14 @@
   [col v]
   (list->color (map int (map #(* v %1) (color->list col)))))
 
+(defn summap
+  [func & colls]
+  (reduce + (apply map func colls)))
+
+(defn get-time
+  []
+  1)
+
 ;;
 ;; Idea
 ;;

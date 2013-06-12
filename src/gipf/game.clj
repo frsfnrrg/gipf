@@ -109,45 +109,43 @@
 
 (defn value-cell
   "What is the \"value\" of a cell?
-   The other player has negative value;
-   magnitude increases with piece power
-   and proximity to center"
+   ie, how useful is the ownership of
+   that cell to the good-player?"
   [board pos good-player]
   ;; TODO improve analysis. Bunching?
 
   ;; negative numbers correspond to the opponent.
-  (* (pt-radius pos)
+  (* (- 3 (pt-radius pos))
      (case (* (get-hex-array board pos) good-player)
-       -2  5
-       -1  2
+       -2  -50 ; other gipf is baaad.
+       -1  -10
        0   0
-       1   1
-       2   -1 ;; taking your own gipf is baaad.
+       1   15
+       2   40 ;; my gipf is goood
        )))
 
 ;; issue; taking 3 opp is better than 3 self
 (defn value-pieces
   "Returns the \"value\" of pieces on a line."
-  [board line player]
+  [board line good-player]
   (loop [cur (second line) count 0]
         (if (= 4 (pt-radius cur))
           count
           (recur (pt+ (third line) cur)
-                 (+ count (value-cell board cur player))))))
+                 (+ count (value-cell board cur good-player))))))
 
 (defn rank-board
   "Returns a number stating how favorable a board state is to a given player."
   [board player reserves]
-  ;; additionally, one can add points based on how many pieces are how close to 
-  ;; the center: center is good...
-
-  (let [pos-points (reduce +
-                     (map
-                      (fn [pt] (value-cell board pt player))
-                       (map n->pt (range (hexagonal-number 5)))))
-        lines-points (reduce (fn [sup line]
-                               (+ sup (value-pieces board line player)))
-                       0 (get-lines-of-four board))]
+  ;; additionally, one can add points based
+  ;; on how many pieces are how close to each other
+  
+  ;; pos points: adding
+  ;; lines-points: taking (hence (- player))
+  (let [pos-points (summap (fn [pt] (value-cell board pt player))
+                           (map n->pt (range (hexagonal-number 5))))
+        lines-points (summap (fn [li] (value-pieces board li (- player)))
+                             (get-lines-of-four board))]
     ;; pos-points ; -->|6|; lines-points; 8-14/line
 
     ;; currently, pos-points is 40-100; lines-points is ~5-20
@@ -186,6 +184,32 @@
     
     (list slidboard (apply list loc del shifteds))))
 
+
+(defn act-move
+  [gamestate move player]
+  (let [[board reserves] gamestate]
+    [(first (do-move board player (pt+ (first move) (second move)) (second move)))
+     (atv reserves (player->index player) dec)]))
+
+(defn minimax
+  "Ranks a position resulting from a move based
+  one what the player would respond and the response
+  to that etc."
+  [gamestate player max? depth]
+  (time
+   (let [[board reserves] gamestate]
+     (if (zero? depth)
+       (* (if max? 1 -1)
+          (rank-board board player reserves))
+       (reduce (if max? max min)
+               (map
+                (fn [move]
+                  (minimax (act-move gamestate move player)
+                           (- player)
+                           (not max?)
+                           (dec depth)))
+                (get-open-moves board)))))))
+
 (defn ai-move
   "Returns place & shove vector."
   [board player reserves adv]
@@ -196,16 +220,16 @@
                 board)        
         degree (if (and (= adv :filling) (< ngipfs 4)) 2 1)
         optimal (rand-best
-                  (fn [move]
-                    (rank-board
-                      (first (do-move board player
-                               (pt+ (first move) (second move)) 
-                               (second move)))
-                      player
-                      reserves))
+                 (fn [move]
+                   (minimax (act-move [board reserves] move player)
+                            player
+                            true
+                            0))
                   nil -100000 possible-moves)]
     (conj (into [] (or optimal (rand-nth (get-open-moves board))))
           degree)))
+
+
 
 (defn get-gipf-potentials-in-line
   [board line]

@@ -4,6 +4,9 @@
 ;; see ?redblobgames; hex coordinate grids.
 ;; the best normalize is (= 0 (+ u v w)). distance is (reduce sum map abs map -)
 
+(defrecord UV [u v])
+(defrecord XY [x y])
+
 (defn xy
   [x y]
   "Create a cartesian coordinate pont.
@@ -209,21 +212,23 @@
   [p]
   (reverse-hex-floor (pt->n p)))
 
-(defn n->pt
-  [n]
-  (if (= n 0)
-      (pt 0 0 0)
-      (let [layer (reverse-hex-floor n)
-            nring (- n (hexagonal-number layer))
-            prg (mod nring layer)
-            segment (/ (- nring prg) layer)]
-        (case segment
-          0 (pt layer (- prg) 0)
-          1 (pt (- layer prg) (- layer) 0)
-          2 (pt (- prg) (- prg layer) 0)
-          3 (pt (- layer) prg 0)
-          4 (pt (- prg layer) layer 0)
-          5 (pt prg (- layer prg) 0)))))
+(def n->pt
+  (memoize
+   (fn
+     [n]
+     (if (= n 0)
+       (pt 0 0 0)
+       (let [layer (reverse-hex-floor n)
+             nring (- n (hexagonal-number layer))
+             prg (mod nring layer)
+             segment (/ (- nring prg) layer)]
+         (case segment
+           0 (pt layer (- prg) 0)
+           1 (pt (- layer prg) (- layer) 0)
+           2 (pt (- prg) (- prg layer) 0)
+           3 (pt (- layer) prg 0)
+           4 (pt (- prg layer) layer 0)
+           5 (pt prg (- layer prg) 0)))))))
 
 
 (defn get-hex-array
