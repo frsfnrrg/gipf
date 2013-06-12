@@ -224,11 +224,10 @@
                    (minimax (act-move [board reserves] move player)
                             player
                             true
-                            0))
+                            1))
                   nil -100000 possible-moves)]
     (conj (into [] (or optimal (rand-nth (get-open-moves board))))
           degree)))
-
 
 
 (defn get-gipf-potentials-in-line

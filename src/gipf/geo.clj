@@ -7,6 +7,7 @@
 (defrecord UV [u v])
 (defrecord XY [x y])
 
+
 (defn xy
   [x y]
   "Create a cartesian coordinate pont.
@@ -33,7 +34,7 @@
          w
 "
   [u v w]
-  (list u v w))
+  (UV. (- u w) (+ v w)))
 
 (def xy-u (xy 0 -1))
 (def xy-v (xy (/ (Math/sqrt 3) 2) -0.5))
@@ -41,20 +42,27 @@
 
 (defn pt=
   [& pts]
-  (pairwise-and (fn [a b]
-                  (and 
-                    (= (+ (first a) (/ (second a) 2) (/ (third a) -2))
-                         (+ (first b) (/ (second b) 2) (/ (third b) -2))) ; vert
-                    (= (+ (second a) (third a))
-                      (+ (second b) (third b))))) ; horizontal
-    pts))
+  (apply = pts))
 
-(defn pt+ [& pts]
-  (apply map + pts))
-(defn pt- [& pts]
-  (apply map - pts))
-(defn pt* [factor pt]
-  (map * (repeat factor) pt))
+(defn getU [pt] (:u pt))
+(defn getV [pt] (:v pt))
+
+(defn pt+
+  ([] (UV. 0 0))
+  ([pt] pt)
+  ([a b] (UV. (+ (:u a) (:u b)) (+ (:v a) (:v b))))
+  ([a b & pts]
+      (UV. (apply + (:u a) (:u b) (map getU pts))
+           (apply + (:v a) (:v b) (map getV pts)))))
+
+(defn pt-
+  ([] (UV. 0 0))
+  ([p] (UV. (- (:u p)) (- (:v p))))
+  ([p q] (UV. (- (:u p) (:u q)) (- (:v p) (:v q))))
+  ([p q & rest] (pt- p (apply pt+ q rest))))
+
+(defn pt* [factor p]
+  (UV. (* factor (:u p)) (* factor (:v p))))
 
 (defn xy+ [& xys]
   (apply map + xys))
@@ -66,7 +74,7 @@
 (defn pt->xy
   "Converts a pt-point to a xy-point."
   [pt]
-  (xy+ (xy* (first pt) xy-u) (xy* (second pt) xy-v) (xy* (third pt) xy-w)))
+  (xy+ (xy* (:u pt) xy-u) (xy* (:v pt) xy-v)))
 
 (def sqrt3o3t2 (/ (* 2 (java.lang.Math/sqrt 3)) 3))
 
@@ -83,7 +91,7 @@
 (defn pt-int
   "Coerces coords of a pt to int."
   [p]
-  (apply pt (map round-int p)))
+  (UV. (round-int (:u p)) (round-int (:v p))))
 
 (defn interpolate-list
   [point-a point-b count]
@@ -137,9 +145,6 @@
     radius
     (fill-vector thunk (hexagonal-number radius))))
 
-(defn normalize-to-uv [p]
-  (pt (- (first p) (third p)) (+ (second p) (third p)) 0)) 
-
 (defn reverse-hex-floor
   [n]
   (let [d (/ (- n 1) 3)
@@ -169,7 +174,9 @@
   (defn value [layer segment prog]
     (+ (hexagonal-number layer) (* layer segment) prog))
   
-  (let [[u v] (normalize-to-uv (pt-int pt))]
+  (let [qqq (pt-int pt)
+        u (:u qqq)
+        v (:v qqq)]
     (cond 
           ;; origin
           (= u v 0)
@@ -208,9 +215,10 @@
           (and (> u 0) (> v 0)) ;; segment 5
           (value (+ u v) 5 u))))
 
-(defn pt-radius
-  [p]
-  (reverse-hex-floor (pt->n p)))
+(def pt-radius
+  (memoize
+   (fn [p]
+     (reverse-hex-floor (pt->n p)))))
 
 (def n->pt
   (memoize
@@ -257,14 +265,11 @@ times it is true over the arrays."
 
 (defn pt-rot+60
   [p]
-  (pt (second p) (third p) (- (first p))))
+  (pt (:v p) 0 (- (:u p))))
 
 (defn pt-rot-60
   [p]
-  (pt (- (third p)) (first p) (second p)))
-
-   
-  
+  (pt 0 (:u p) (:v p)))
   
   
   

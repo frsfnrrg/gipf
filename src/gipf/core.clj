@@ -124,7 +124,6 @@
         (.fill game-graphics (circle-at loc 10))
         (.fill game-graphics (circle-at loc 5)))
       (do
-
         (if (> f 0)
           (.setColor game-graphics (get piece-colors 0))
           (.setColor game-graphics (get piece-colors 1)))
