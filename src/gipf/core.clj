@@ -367,6 +367,26 @@
   (repaint!))
 
 
+(defn start-next-clear!
+  [found]
+  (if (human-player? removing-player*)
+    (do
+      (def game-phase* :removing-rows)
+      (set-lines! found removing-player*))
+    (do
+      (def game-phase* :waiting-for-ai)
+      (start-ai-clear! found))))
+
+(defn start-next-move!
+  []
+  (switch-players!)
+  (when-not (game-over!?)
+    (if (ai-player? current-player*)
+      (do
+        (def game-phase* :waiting-for-ai)
+        (start-ai-move!))
+      (def game-phase* :placing))))
+
 (defn enter-clearing-phase!
   []
   (let [found (get-lines-of-four board*)]
@@ -375,27 +395,11 @@
         (if (some (partial owns-line? current-player*) found)
           (def removing-player* current-player*)
           (def removing-player* (- current-player*)))
-
-        (if (human-player? removing-player*)
-          (do
-            (def game-phase* :removing-rows)
-            (set-lines! found removing-player*))
-          (do
-            (def game-phase* :waiting-for-ai)
-            (start-ai-clear! found))))
-      (do 
-        (switch-players!)
-        (when-not (game-over!?)
-          (if (ai-player? current-player*)
-            (do
-              (def game-phase* :waiting-for-ai)
-              (start-ai-move!))
-            (def game-phase* :placing)
-            ))))))
+        (start-next-clear! found))
+      (start-next-move!))))
 
 (defn continue-clearing-phase!
   []
-
   (let [found (filter-out-already-used-lines
                (get-lines-of-four board*))]
     (if (seq found)
@@ -403,24 +407,8 @@
         (when-not (some (partial owns-line? removing-player*) found)
           ;; switch to the other player if this one is done
           (def removing-player* (- removing-player*)))
-        
-        (if (human-player? removing-player*)
-          (do
-            (def game-phase* :removing-rows)
-            (set-lines! found removing-player*))
-          (do
-            (def game-phase* :waiting-for-ai)
-            (start-ai-clear! found))))
-      ;; nothing left at all:
-      (do
-        (switch-players!)
-        (when-not (game-over!?)
-          (if (human-player? current-player*)
-            (def game-phase* :placing)
-            (do
-              (def game-phase* :waiting-for-ai)
-              (start-ai-move!))))))))
-
+        (start-next-clear! found))
+      (start-next-move!))))
 
 (defn try-row-clearing!
   [clickpt]
