@@ -196,19 +196,18 @@
   one what the player would respond and the response
   to that etc."
   [gamestate player max? depth]
-  (time
-   (let [[board reserves] gamestate]
-     (if (zero? depth)
-       (* (if max? 1 -1)
-          (rank-board board player reserves))
-       (reduce (if max? max min)
-               (map
-                (fn [move]
-                  (minimax (act-move gamestate move player)
-                           (- player)
-                           (not max?)
-                           (dec depth)))
-                (get-open-moves board)))))))
+  (let [[board reserves] gamestate]
+    (if (zero? depth)
+      (* (if max? 1 -1)
+         (rank-board board player reserves))
+      (reduce (if max? max min)
+              (map
+               (fn [move]
+                 (minimax (act-move gamestate move player)
+                          (- player)
+                          (not max?)
+                          (dec depth)))
+               (get-open-moves board))))))
 
 (defn ai-move
   "Returns place & shove vector."
@@ -219,13 +218,13 @@
                 #(= %2 (* player 2))
                 board)        
         degree (if (and (= adv :filling) (< ngipfs 4)) 2 1)
-        optimal (rand-best
-                 (fn [move]
-                   (minimax (act-move [board reserves] move player)
-                            player
-                            true
-                            1))
-                  nil -100000 possible-moves)]
+        optimal (time (rand-best
+                       (fn [move]
+                         (time (minimax (act-move [board reserves] move player)
+                                        player
+                                        true
+                                        1)))
+                       nil -100000 possible-moves))]
     (conj (into [] (or optimal (rand-nth (get-open-moves board))))
           degree)))
 

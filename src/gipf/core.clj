@@ -13,6 +13,11 @@
 
 ; everything should be explicitly passed into these
 
+
+(defn player->index
+  [player]
+  (if (= player -1) 0 1))
+
 (load "math") ; free
 (load "util") ; free
 (load "geo") ; free
@@ -45,9 +50,6 @@
 (def adv-phase* [:playing :playing]) ; this may cause problems...
 (def player-types* [:ai :human])
 
-(defn player->index
-  [player]
-  (if (= player -1) 0 1))
 
 (defn ai-player?
   [player]
