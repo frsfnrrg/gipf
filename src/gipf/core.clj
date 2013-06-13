@@ -178,6 +178,8 @@
         e2p (pt+ llp
                  (:delta line))]
     (clear-line! e1p e2p)
+    (redraw-loc! e1p)
+    (redraw-loc! e2p)
     (loop [cur (:start line)]
       (println cur)
       (let [val (get-hex-array board* cur)]

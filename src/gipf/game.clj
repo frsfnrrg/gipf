@@ -24,16 +24,14 @@
           cur
           (recur next)))))
 
-;; a least you can't have two four-in-a rows
 (defn get-four-line-in-row
-  "Returns, if a 4line found, a (player position delta) representing that line"
   [board startpos lvec]
   (loop [cur startpos run -1 player 0]
     (cond
      (= run 4)
      (SignedLine. player startpos lvec)
      (= (pt-radius cur) 4)
-     nil
+     false
      :else
      (let [np (get-hex-array board cur)]
        (if (and (not= player 0) (same-sign? np player))
@@ -62,10 +60,9 @@
 
 (defn get-lines-of-four
   "Returns a list of lists of form (player a b c d)"
-  ;; TODO: this currently costs 0.9 msec per call. I want half that
+  ;; TODO: this currently costs 0.90 msec per call. I want half that
   [board]
-  ;; since getfourlineinrow returns nil/value, ident would work.
-  (filter seq
+  (filter identity
           (map
            (fn [line]
              (get-four-line-in-row board
@@ -157,7 +154,7 @@
 (def rank-board
   "Returns a number stating how favorable
    a board state is to a given player."
-  rank-board-3)
+  rank-board-1)
 
 ;; action 
 
@@ -225,7 +222,7 @@
                          (time (minimax (act-move [board reserves] move player)
                                         player
                                         true
-                                        0)))
+                                        1)))
                        nil -100000 possible-moves))
         chosen (or optimal (rand-nth possible-moves))]
     [(:start chosen) (:delta chosen) degree]))
