@@ -22,6 +22,7 @@
 (load "util") ; free
 (load "geo") ; free
 (load "hex") ; free
+(load "line") ; free
 (load "game") ; free
 (load "graphics") ;; game-panel initialized here...
 
@@ -172,12 +173,12 @@
 (defn empty-line!
   [line]
   (println line)
-  (let [e1p (pt- (second line) (third line))
-        llp (get-line-limit-point (second line) (third line))
+  (let [e1p (pt- (:start line) (:delta line))
+        llp (get-line-limit-point (:start line) (:delta line))
         e2p (pt+ llp
-                 (third line))]
+                 (:delta line))]
     (clear-line! e1p e2p)
-    (loop [cur (second line)]
+    (loop [cur (:start line)]
       (println cur)
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
@@ -190,21 +191,21 @@
         (when (pt= cur hovered*)
           (draw-highlight! cur))
         (when-not (pt= cur llp)
-          (recur (pt+ cur (third line))))))))
+          (recur (pt+ cur (:delta line))))))))
 
 (defn undraw-line!
   [line]
-  (let [e1p (pt- (second line) (third line))
+  (let [e1p (pt- (:start line) (:delta line))
         e2p (pt+ (get-line-limit-point
-                  (second line) (third line))
-                 (third line))]
+                  (:start line) (:delta line))
+                 (:delta line))]
     (clear-line! e1p e2p)
     (loop [cur e1p]
       (redraw-loc! cur)
       (when (pt= cur hovered*)
         (draw-highlight! cur))
       (when-not (pt= cur e2p)
-        (recur (pt+ cur (third line)))))))
+        (recur (pt+ cur (:delta line)))))))
 
 (defn place-piece!
   [loc player]
@@ -229,7 +230,7 @@
 ;; should really extract the (partial owns-line? player) pattern...
 (defn owns-line?
   [player line]
-  (same-sign? (first line) player))
+  (same-sign? (:sig line) player))
 
 (defn toggle-piece!
   "Toggle the state of the piece as or as not a GIPF-potential."
@@ -292,6 +293,7 @@
      (start-thread
       (let [action (ai-move board* current-player*
                             reserve-pieces* (get-adv-phase))]
+        (println "T:" action)
         (on-swing-thread
          (update-game (list (cons :aimove action)))))))))
 
@@ -311,6 +313,7 @@
     (def rings* (reduce concat (map
                                 (partial get-own-gipf-potentials-in-line board* owner)
                                 r)))
+    (println lines*)
     (draw-lines!)))
 
 (defn game-over!?
@@ -501,6 +504,7 @@
   ;; we could, with a delaythreadhack...
   
   (dec-pieces-left! current-player*)
+  (println place shove)
   (move-piece! (pt+ place shove) shove (* current-player* degree))
 
   (when (pt= place hovered*)

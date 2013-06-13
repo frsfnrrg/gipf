@@ -88,8 +88,8 @@
 
 (defn draw-line!
   [line]
-  (let [end1 (pt- (second line) (third line))
-        end2 (pt+ (get-line-limit-point (second line) (third line)) (third line))]
+  (let [end1 (pt- (:start line) (:delta line))
+        end2 (pt+ (get-line-limit-point (:start line) (:delta line)) (:delta line))]
     (doto game-graphics
       (.setColor  java.awt.Color/GREEN)
       (.fill (circle-at end1 25))
