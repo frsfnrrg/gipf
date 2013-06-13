@@ -21,14 +21,18 @@
 (load "math") ; free
 (load "util") ; free
 (load "geo") ; free
+(load "hex") ; free
 (load "game") ; free
 (load "graphics") ;; game-panel initialized here...
 
 
 ;; NEXT on the TODO list;
 ;;
-;; Implement arbitrary player status (ai/free)
+;; Optimize & improve ai.
+;; Why does it take 4 ms per move?
 ;;
+;; currently, randbest - mimimax - do-move takes 0.8 sec w/0
+;; rank-board
 ;;
 ;;
 
@@ -49,6 +53,7 @@
 (def game-phase* :placing)
 (def adv-phase* [:playing :playing]) ; this may cause problems...
 (def player-types* [:ai :human])
+(def placed-cell-value* 0)
 
 
 (defn ai-player?
@@ -120,20 +125,14 @@
   (.setColor game-graphics java.awt.Color/WHITE)
   (.fill game-graphics (hex-tile-at loc))
   (.setColor game-graphics java.awt.Color/BLACK)
-  (let [f (get-hex-array board* loc)]
-    (if (= 0 f)
-      (if (= 4 (pt-radius loc))
-        (.fill game-graphics (circle-at loc 10))
-        (.fill game-graphics (circle-at loc 5)))
-      (do
-        (if (> f 0)
-          (.setColor game-graphics (get piece-colors 0))
-          (.setColor game-graphics (get piece-colors 1)))
-        (.fill game-graphics (circle-at loc 30))
-        (when (= 2 (abs f))
-          (.setColor game-graphics (scale-color (.getColor game-graphics) 0.5))
-          (.fill game-graphics (circle-at loc 25)))))))
-
+  (if (= 4 (pt-radius loc))
+    (if (and (not (nil? selected*)) (pt= loc selected*))
+      (draw-piece-at-loc! loc placed-cell-value*)
+      (.fill game-graphics (circle-at loc 10)))
+    (let [f (get-hex-array board* loc)]
+      (if (= 0 f)
+        (.fill game-graphics (circle-at loc 5))
+        (draw-piece-at-loc! loc f)))))
 
 (defn redraw-loc-disk!
   [loc]
@@ -172,12 +171,14 @@
 
 (defn empty-line!
   [line]
+  (println line)
   (let [e1p (pt- (second line) (third line))
-        e2p (pt+ (get-line-limit-point
-                  (second line) (third line))
+        llp (get-line-limit-point (second line) (third line))
+        e2p (pt+ llp
                  (third line))]
     (clear-line! e1p e2p)
-    (loop [cur e1p]
+    (loop [cur (second line)]
+      (println cur)
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
           (when (same-sign? val removing-player*)
@@ -188,7 +189,7 @@
         (redraw-loc! cur)
         (when (pt= cur hovered*)
           (draw-highlight! cur))
-        (when-not (pt= cur e2p)
+        (when-not (pt= cur llp)
           (recur (pt+ cur (third line))))))))
 
 (defn undraw-line!
@@ -207,14 +208,19 @@
 
 (defn place-piece!
   [loc player]
-  (let [newboard (map-hex-array (fn [p c] (if (pt= p loc) player c)) board*)]
-    (def board* newboard)))
+  (def selected* loc)
+  (def placed-cell-value* player))
 
 (defn move-piece!
-  [loc shove]
-  (let [[newboard updated] (do-move board* current-player* loc shove)]
+  [loc shove shovevalue]
+  (let [[newboard updated]
+        (do-move board* shovevalue loc shove)]
     (def board* newboard)
+
+    (println updated)
+    (def placed-cell-value* 0)
     (redraw-loc-disk! (pt- loc shove))
+    
     (doseq [p updated]
       (redraw-loc! p)
       (when (pt= hovered* p)
@@ -228,17 +234,16 @@
 (defn toggle-piece!
   "Toggle the state of the piece as or as not a GIPF-potential."
   [loc]
-  (let [v (get-hex-array board* loc)
-        target (if (odd? v) (* v 2) (/ v 2))]
+  (let [target (if (odd? placed-cell-value*)
+                 (* placed-cell-value* 2)
+                 (/ placed-cell-value* 2))]
     
     (if (= (abs target) 2)
-      (do
-        (inc-pieces-left! (sign v)))
-      (do
-        (dec-pieces-left! (sign v))))
-    
-    (def board* (change-board-cell board* loc target))
+      (inc-pieces-left! (sign placed-cell-value*))
+      (dec-pieces-left! (sign placed-cell-value*)))
 
+    (def placed-cell-value* target)
+    
     (redraw-loc! loc)
     (draw-highlight! loc)
     (draw-selector! loc board*)
@@ -437,13 +442,18 @@
 
 (defn shove-piece!
   [clickpt delvec]
-
   (when (and (= mode* :advanced)
-             (= (get-adv-phase) :filling)
-             (= 1 (abs (get-hex-array board* selected*))))
-    (set-adv-phase! :playing))
-  (move-piece! clickpt delvec)
+             (= (get-adv-phase) :filling))
+    (cond (= 1 placed-cell-value*)
+          (set-adv-phase! :playing)
+          ;; can't afford another gipf
+          (= 1 (get-pieces-left current-player*))
+          (do
+            (set-adv-phase! :playing)
+            (def placed-cell-value* current-player*))
+          ))
   (def selected* nil)
+  (move-piece! clickpt delvec placed-cell-value*)
 
   (enter-clearing-phase!)
 
@@ -456,10 +466,10 @@
   [loc]
 
   (if (and (= mode* :advanced) (= (get-adv-phase) :filling))
-    (place-piece! loc (* 2 current-player*))
-    (do
-      (place-piece! loc current-player*)
-      (dec-pieces-left! current-player*)))
+    (do (place-piece! loc (* 2 current-player*))
+        (dec-pieces-left! current-player*))
+    (place-piece! loc current-player*))
+  (dec-pieces-left! current-player*)
   (def selected* loc)
   (redraw-loc! loc)
   (draw-highlight! loc)
@@ -486,10 +496,13 @@
 
   (when (and (= (get-adv-phase) :filling) (= degree 1))
     (set-adv-phase! :playing))
-      
-  (place-piece! place (* degree current-player*))
+
+  ;; we don't bother to show the piece being placed.
+  ;; we could, with a delaythreadhack...
+  
   (dec-pieces-left! current-player*)
-  (move-piece! (pt+ place shove) shove)
+  (move-piece! (pt+ place shove) shove (* current-player* degree))
+
   (when (pt= place hovered*)
     (draw-highlight! hovered*))
 
@@ -549,7 +562,7 @@
                         (= 2 (abs (get-hex-array board* clickpt)))
                         (toggle-ring!))
                   :waiting-for-ai
-                  (println "Waiting for AI" (get-hex-array board* clickpt))
+                  (println "Waiting for AI")
                   :gameover
                   (println "Game is over; can't interact.")))))
       :hover

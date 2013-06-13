@@ -4,7 +4,7 @@
 ;; see ?redblobgames; hex coordinate grids.
 ;; the best normalize is (= 0 (+ u v w)). distance is (reduce sum map abs map -)
 
-(defrecord UV [u v])
+(defrecord UV [^int u ^int v])
 (defrecord XY [x y])
 
 
@@ -76,22 +76,11 @@
   [pt]
   (xy+ (xy* (:u pt) xy-u) (xy* (:v pt) xy-v)))
 
-(def sqrt3o3t2 (/ (* 2 (java.lang.Math/sqrt 3)) 3))
-
 ;; converts to a (u v 0). We coerce coords to int
-(defn xy->pt
+(defn xy->pt-int
   "Converts an xy-point to a pt-point."
   [z]
-  (pt (float (- (/ (first z) 2) (second z))) 0 (float (* (first z) sqrt3o3t2))))
-
-(defn round-int
-  [x]
-  (int ^int (java.lang.Math/round ^float x))) 
-
-(defn pt-int
-  "Coerces coords of a pt to int."
-  [p]
-  (UV. (round-int (:u p)) (round-int (:v p))))
+  (pt (round-int (- (/ (first z) 2) (second z))) 0 (round-int (* (first z) sqrt3o3t2))))
 
 (defn interpolate-list
   [point-a point-b count]
@@ -101,163 +90,29 @@
         made
         (recur (cons (pt+ point-a (pt* c delta)) made) (inc c))))))
 
-(defn
-  get-ring-of-hex-uv-points
-  [radius]
-
-  (if (= 0 radius)
-    (list (pt 0 0 0))
-  
-    (let [ringpoints (list (pt 1 0 0) (pt 0 1 0) (pt 0 0 1) (pt -1 0 0) (pt 0 -1 0) (pt 0 0 -1) (pt 1 0 0))]
-      (loop [made (list) pointsleft ringpoints]
-        (if (empty? (rest pointsleft))
-          made
-          (recur (concat made
-                   (reverse (interpolate-list
-                              (pt* radius (first pointsleft))
-                              (pt* radius (second pointsleft))
-                              radius)))
-            (rest pointsleft)))))))
-
-(defn triangular-number [n]
-  (/ (* n (inc n)) 2))
-
-(defn hexagonal-number [n]
-  (+ 1 (* 3 n (dec n))))
-
-(defn make-hex-array 
-  [thunk radius]
-  ;; has an immutable radius, and internal fields.
-  
-  ;; internal structure: a vector containing the fields, arranged in ccw order..
-  ;; to access, we have a 1:1 mapping function to the fields
-  
-  ;;       7
-  ;;     8   I
-  ;;   9   1   H
-  ;;     2   6
-  ;;   A   0   G
-  ;;     3   5  
-  ;;   B   4   F
-  ;;     C   E
-  ;;       D
-  (list
-    radius
-    (fill-vector thunk (hexagonal-number radius))))
-
-(defn reverse-hex-floor
-  [n]
-  (let [d (/ (- n 1) 3)
-        v (Math/sqrt d)]
-    ;; r-1 < v < r
-    (if (> (hexagonal-number (inc (int v))) n)
-        (int v)
-        (inc (int v)))))
-
-;; the reverse op is simple, but never needed
-(defn pt->n
-  "Maps a pt onto the whole numbers. See make-hex-array."
-  [pt]
-  ;           u
-  ;       +-0-+
-  ;       |._ |.5
-  ;       1  .|  .
-  ;       +---+---+ v
-  ;        ._ |._ 4
-  ;         2.|  .|
-  ;           +-3-+
-  ;
-  
-  ;; is there no simple closed form??
-  ;; what is the best normalization? like the hex-ring-production?
-
-  (defn value [layer segment prog]
-    (+ (hexagonal-number layer) (* layer segment) prog))
-  
-  (let [qqq (pt-int pt)
-        u (:u qqq)
-        v (:v qqq)]
-    (cond 
-          ;; origin
-          (= u v 0)
-          0
-          ;; axial points - merge into segments?
-          (and (= v 0) (> u 0))
-          (value u 0 0)
-          (and (= u (- v)) (> u 0))
-          (value u 1 0)
-          (and (= u 0) (< v 0))
-          (value (- v) 2 0)
-          (and (= v 0) (< u 0))
-          (value (- u) 3 0)
-          (and (= (- u) v) (< u 0))
-          (value v 4 0)
-          (and (= u 0) (> v 0))
-          (value v 5 0)
-          
-          ;; segments!!
-          
-          (> u (- v) 0) ;; segment 0
-          (value u 0 (- v))
-          
-          (> (- v) u 0) ;; segment 1
-          (value (- v) 1 (- (- v) u))
-          
-          (and (< u 0) (< v 0)) ;; segment 2
-          (value (- (+ u v)) 2 (- u))
-          
-          (> (- u) v 0) ;; segment 3
-          (value (- u) 3 v)
-          
-          (> v (- u) 0) ;; segment 4
-          (value v 4 (- v (- u)))
-          
-          (and (> u 0) (> v 0)) ;; segment 5
-          (value (+ u v) 5 u))))
+(def pt-origin (UV. 0 0))
 
 (def pt-radius
   (memoize
    (fn [p]
-     (reverse-hex-floor (pt->n p)))))
-
-(def n->pt
-  (memoize
-   (fn
-     [n]
-     (if (= n 0)
-       (pt 0 0 0)
-       (let [layer (reverse-hex-floor n)
-             nring (- n (hexagonal-number layer))
-             prg (mod nring layer)
-             segment (/ (- nring prg) layer)]
-         (case segment
-           0 (pt layer (- prg) 0)
-           1 (pt (- layer prg) (- layer) 0)
-           2 (pt (- prg) (- prg layer) 0)
-           3 (pt (- layer) prg 0)
-           4 (pt (- prg layer) layer 0)
-           5 (pt prg (- layer prg) 0)))))))
-
-
-(defn get-hex-array
-  [array pt]
-  (get (second array) (pt->n pt)))
-
-;; how should one normalize pts?
-
-(defn map-hex-array
-  [func-of-pt & arrays]
-  (list 
-    (apply min (map first arrays))
-    (apply mapvc (fn [c & cells] (apply func-of-pt (n->pt c) cells)) (map second arrays))))
-
-(defn count-over-hex-array
-  "Takes a boolean function of a position and values, and returns the number of
-times it is true over the arrays."
-  [func-of-pt & arrays]
-  (reduce + (second (apply map-hex-array
-                           (fn [& args] (if (apply func-of-pt args) 1 0))
-                           arrays))))
+     (if (pt= p pt-origin)
+       0
+       (let [u (:u p)
+             v (:v p)]
+         (cond (= u v 0) 0
+               (and (= v 0) (> u 0)) u
+               (and (= u (- v)) (> u 0)) u
+               (and (= u 0) (< v 0))  (- v)
+               (and (= v 0) (< u 0))  (- u)
+               (and (= (- u) v) (< u 0)) v
+               (and (= u 0) (> v 0)) v
+               
+               (> u (- v) 0)          u
+               (> (- v) u 0)       (- v)
+               (and (< u 0) (< v 0))      (- (+ u v))
+               (> (- u) v 0)      (- u)
+               (> v (- u) 0)          v
+               (and (> u 0) (> v 0))   (+ u v)))))))
 
 (defn pt-dist
   [pta ptb]

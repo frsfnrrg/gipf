@@ -43,13 +43,12 @@
 ;; a least you can't have two four-in-a rows
 (defn get-four-line-in-row
   "Returns, if a 4line found, a (player position delta) representing that line"
-  [board pos-in-line lvec]
-  (let [start (get-line-limit-point pos-in-line (pt- lvec))
-        sp (get-hex-array board start)]
-    (loop [cur start run -1 player 0]
+  [board startpos lvec]
+  (let [sp (get-hex-array board startpos)]
+    (loop [cur startpos run -1 player 0]
       (cond
         (= run 4)
-        (list player start lvec)
+        (list player startpos lvec)
         (= (pt-radius cur) 4)
         nil
         :else
@@ -59,28 +58,37 @@
             (recur (pt+ lvec cur) 1 np)))))))
 
 (defn four-line-in-rows
-  [board avec rvec]
+  [avec rvec]
   (let [start (pt* -3 avec)]
     (loop [h 0 found (list)]
       (if (= h 7)
         found
         (recur (inc h)
-          (let [new (get-four-line-in-row board
-                      (pt+ start (pt* h avec))
-                      rvec)]
-            (if (nil? new) found (cons new found))))))))
+               (cons (list 0
+                           (get-line-limit-point
+                            (pt+ start (pt* h avec))
+                            (pt- rvec))
+                           rvec)
+                     found))))))
 
-(defn get-lines-of-four
-  "Returns a list of lists of form (player a b c d)"
-  [board]
-  
+(def lines-on-board
   (loop [dir (pt 1 0 0) found (list)]
     (if (pt= dir (pt -1 0 0))
       found
-      (let [new ;(concat 
-            (four-line-in-rows board dir (pt- (pt-rot+60 dir)))]
-                                        ; (four-line-in-rows board dir (pt- (pt-rot-60 dir))))]
+      (let [new (four-line-in-rows dir (pt- (pt-rot+60 dir)))]
         (recur (pt-rot+60 dir) (concat new found))))))
+
+(defn get-lines-of-four
+  "Returns a list of lists of form (player a b c d)"
+  ;; TODO: this currently costs 0.9 msec per call. I want half that
+  [board]
+  (filter seq
+          (map
+           (fn [line]
+             (get-four-line-in-row board
+                                   (second line)
+                                   (third line)))
+           lines-on-board)))
 
 (defn get-open-moves
   "Returns a list of the available moves..."
@@ -134,26 +142,35 @@
           (recur (pt+ (third line) cur)
                  (+ count (value-cell board cur good-player))))))
 
-(defn rank-board
-  "Returns a number stating how favorable a board state is to a given player."
+(defn rank-board-1
+  "225-353"
   [board player reserves]
-  ;; additionally, one can add points based
-  ;; on how many pieces are how close to each other
-  
-  ;; pos points: adding
-  ;; lines-points: taking (hence (- player))
   (let [pos-points (summap (fn [pt] (value-cell board pt player))
-                           (map n->pt (range (hexagonal-number 5))))
+                           arrayfull-of-points)
         lines-points (summap (fn [li] (value-pieces board li (- player)))
-                             (get-lines-of-four board))]
-    ;; pos-points ; -->|6|; lines-points; 8-14/line
-
-    ;; currently, pos-points is 40-100; lines-points is ~5-20
-
-    ;; ex; 59 + 13*20 = 319
-    
-    ;(print "AI contribution: pos" pos-points "lines:" lines-points ":")
+                             (get-lines-of-four board))] 
     (+ pos-points (* 20 lines-points))))
+
+(defn rank-board-2
+  "77 - 143 ms"
+  [board player reserves]
+  (let [pos-points (summap (fn [pt] (value-cell board pt player))
+                           arrayfull-of-points)]
+    pos-points))
+
+
+(defn rank-board-3
+  "162 - 183 ms"
+  [board player reserves]
+  (let [ lines-points (summap (fn [li] (value-pieces board li (- player)))
+                             (get-lines-of-four board))] 
+    (* 20 lines-points)))
+
+
+(def rank-board
+  "Returns a number stating how favorable
+   a board state is to a given player."
+  rank-board-3)
 
 ;; action 
 
@@ -165,29 +182,27 @@
 ;; this is _purely_ abstract...
 (defn do-move
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
-  [board player loc shove]
-  (let [del (pt- loc shove)
-        prev (get-hex-array board del)
-        pboard (change-board-cell board del 0)
-        [slidboard shifteds]
-        (loop [b pboard cur loc last prev shift (list)]
-          (let [next (get-hex-array b cur)]
-            (cond
-              (= (pt-radius cur) 4)
-              (do
-                (println "pushed until radius was 4. ??")
-                :should-never-happen)
-              (= 0 next)
-              (list (change-board-cell b cur last) (cons cur shift))
-              :else
-              (recur (change-board-cell b cur last) (pt+ cur shove) next (cons cur shift)))))]
-    
-    (list slidboard (apply list loc del shifteds))))
+  [board value loc shove]
+  (loop [b board cur loc last value shift (list)]
+    (let [next (get-hex-array b cur)]
+      (cond
+       (= (pt-radius cur) 4)
+       (do
+         (println "pushed until radius was 4. ??")
+         :should-never-happen)
+       (= 0 next)
+       (list (change-board-cell b cur last) (cons cur shift))
+       :else
+       (recur (change-board-cell b cur last)
+              (pt+ cur shove)
+              next
+              (cons cur shift))))))
 
 
 (defn act-move
   [gamestate move player]
   (let [[board reserves] gamestate]
+    ; remember; player == piece
     [(first (do-move board player (pt+ (first move) (second move)) (second move)))
      (atv reserves (player->index player) dec)]))
 
@@ -195,7 +210,7 @@
   "Ranks a position resulting from a move based
   one what the player would respond and the response
   to that etc."
-  [gamestate player max? depth]
+  [gamestate player max? depth]      
   (let [[board reserves] gamestate]
     (if (zero? depth)
       (* (if max? 1 -1)
@@ -223,7 +238,7 @@
                          (time (minimax (act-move [board reserves] move player)
                                         player
                                         true
-                                        1)))
+                                        0)))
                        nil -100000 possible-moves))]
     (conj (into [] (or optimal (rand-nth (get-open-moves board))))
           degree)))
@@ -260,11 +275,11 @@
   "Return a newly set up board."
   [mode]
   (if (= mode :advanced)
-    (make-hex-array (constantly 0) 5)
+    (make-hex-array)
     (let [m (if (= mode :basic) 1 2)]
       (applyto-repeatedly
        change-board-cell
-       (make-hex-array (constantly 0) 5)
+       (make-hex-array)
        [(pt 3 0 0) m]
        [(pt 0 3 0) (- m)]
        [(pt 0 0 3) m]
@@ -278,18 +293,16 @@
   [mode]
   (case mode
     :basic (vector 12 12)
-    :advanced (vector 12 12)
+    :advanced (vector 18 18)
     :normal (vector 15 15)))
 
 
 (defn lost?
   [board reserves player mode advm]
-;;  (println mode advm)
-  (if (= advm :filling) false
-      (if (= mode :basic)
-        (= 0 (get reserves (if (= player -1) 0 1)))
-        (or
-         (= 0 (get reserves (if (= player -1) 0 1)))
-         (= 0 (count-over-hex-array
-               #(= %2 (* player 2))
-               board))))))
+  (if (or (= advm :filling) (= mode :basic))
+    (= 0 (get reserves (if (= player -1) 0 1)))
+    (or
+     (= 0 (get reserves (if (= player -1) 0 1)))
+     (= 0 (count-over-hex-array
+           #(= %2 (* player 2))
+           board)))))

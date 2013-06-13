@@ -32,8 +32,8 @@
 
 (defn screenpx-to-loc
   [screenpx]
-  (pt-int (xy->pt (xy* (/ segment-length) 
-                       (xy- screenpx board-center)))))
+  (xy->pt-int (xy* (/ segment-length) 
+                     (xy- screenpx board-center))))
 
 (defn hex-tile-at
   [p]
@@ -159,3 +159,13 @@
     (doto game-graphics
       (.setColor wincolor)
       (.fillRect 0 0 800 800))))
+
+(defn draw-piece-at-loc!
+  [loc type]
+  (if (> type 0)
+    (.setColor game-graphics (get piece-colors 0))
+    (.setColor game-graphics (get piece-colors 1)))
+  (.fill game-graphics (circle-at loc 30))
+  (when (= 2 (abs type))
+    (.setColor game-graphics (scale-color (.getColor game-graphics) 0.5))
+    (.fill game-graphics (circle-at loc 25))))

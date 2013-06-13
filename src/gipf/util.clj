@@ -276,9 +276,6 @@
   [func & colls]
   (reduce + (apply map func colls)))
 
-(defn get-time
-  []
-  1)
 
 ;;
 ;; Idea
