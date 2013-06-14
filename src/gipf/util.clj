@@ -276,6 +276,40 @@
   [func & colls]
   (reduce + (apply map func colls)))
 
+(defn microbench
+  [func iters]
+  (time (doseq [i (range iters)]
+          (func))))
+
+(defn microbencht
+  [func msecs]
+  (let [start 0])
+  )
+
+(defn print-max-output
+  [func]
+  (let [max (atom 0)]
+    (fn [& args]
+      (let [r (apply func args)]
+        (when (> r @max)
+          (swap! max (constantly r))
+          (println r))
+        r)
+      ))
+  )
+
+(defn logf
+  [func]
+  (fn [& args]
+    (log (apply func args))))
+
+(defn increment-count
+  [func]
+  (let [num (atom 0)]
+    (fn [& args]
+      (swap! num (constantly (inc @num)))
+      (println @num)
+      (apply func args))))
 
 ;;
 ;; Idea

@@ -4,10 +4,10 @@
 
 (defn abs [x] (java.lang.Math/abs x))
 
-(defn triangular-number [n]
+(defn triangular-number [^long n]
   (/ (* n (inc n)) 2))
 
-(defn hexagonal-number [n]
+(defn hexagonal-number [^long n]
   (+ 1 (* 3 n (dec n))))
 
 (defn reverse-hex-floor
@@ -20,7 +20,6 @@
         (inc (int v)))))
 
 (def sqrt3o3t2 (float (/ (* 2 (java.lang.Math/sqrt 3)) 3)))
-
 
 (defn round-int
   [^double x]

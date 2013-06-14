@@ -68,8 +68,8 @@
 
 (defn set-player-type!
   [player tp]
-  (def player-types* (atv player-types* (player->index player) (constantly tp)))
-  (println player-types*))
+  (def player-types*
+    (atv player-types* (player->index player) (constantly tp))))
 
 (defn get-pieces-left
   [player]
@@ -172,7 +172,6 @@
 
 (defn empty-line!
   [line]
-  (println line)
   (let [e1p (pt- (:start line) (:delta line))
         llp (get-line-limit-point (:start line) (:delta line))
         e2p (pt+ llp
@@ -181,7 +180,6 @@
     (redraw-loc! e1p)
     (redraw-loc! e2p)
     (loop [cur (:start line)]
-      (println cur)
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
           (when (same-sign? val removing-player*)
@@ -220,7 +218,6 @@
         (do-move board* shovevalue loc shove)]
     (def board* newboard)
 
-    (println updated)
     (def placed-cell-value* 0)
     (redraw-loc-disk! (pt- loc shove))
     
@@ -295,7 +292,6 @@
      (start-thread
       (let [action (ai-move board* current-player*
                             reserve-pieces* (get-adv-phase))]
-        (println "T:" action)
         (on-swing-thread
          (update-game (list (cons :aimove action)))))))))
 
@@ -315,7 +311,6 @@
     (def rings* (reduce concat (map
                                 (partial get-own-gipf-potentials-in-line board* owner)
                                 r)))
-    (println lines*)
     (draw-lines!)))
 
 (defn game-over!?
@@ -506,7 +501,6 @@
   ;; we could, with a delaythreadhack...
   
   (dec-pieces-left! current-player*)
-  (println place shove)
   (move-piece! (pt+ place shove) shove (* current-player* degree))
 
   (when (pt= place hovered*)
@@ -686,9 +680,9 @@
                              (doseq [t ai-action-threads*]
                                (println t)
                                (when-not (nil? t)
-                                 (.interrupt t)))
+                                 (.interrupt ^java.lang.Thread t)))
                              (.setVisible window false)
-                             (.dispose window)))))
+                             (.dispose ^javax.swing.JFrame window)))))
       (.pack)
       (.setResizable false)
       (.setVisible true))

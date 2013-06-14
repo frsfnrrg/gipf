@@ -17,3 +17,14 @@
        (or (pt= (:delta linea) (:delta lineb))
            (pt= (pt- (:delta linea)) (:delta lineb)))))
 
+(printf "HERE")
+
+(defn get-line-limit-point
+  ;; best would be pure arithmatic version...
+  [^UV pos ^UV vecback]
+  (loop [^UV cur pos]
+    (let [next (pt+ cur vecback)]
+      (if (= (pt-radius next) 4)
+        cur
+        (recur next)))))
+

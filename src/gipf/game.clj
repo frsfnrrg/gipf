@@ -230,7 +230,6 @@
 
 (defn get-gipf-potentials-in-line
   [board line]
-;;  (println 'get-gipf-potentials line)
   (loop [cur (:start line) fps (list)]
     (if (= 4 (pt-radius cur))
       fps
