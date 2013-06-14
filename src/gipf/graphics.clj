@@ -12,14 +12,14 @@
 (def numfont (java.awt.Font. "Angleterre Book" java.awt.Font/PLAIN 70))
 
 (def game-img (make-img 800 800))
-(def game-graphics (.getGraphics game-img))
+(def game-graphics ^java.awt.Graphics2D (.getGraphics game-img))
 (def game-panel (proxy [javax.swing.JPanel] []
                   (paint [^java.awt.Graphics g]
                     (.drawImage g game-img 0 0 game-panel))))
 
 (defn repaint!
   []
-  (.repaint game-panel))
+  (.repaint ^javax.swing.JPanel game-panel))
 
 
 ;; DRAWING STUFF
@@ -42,7 +42,6 @@
         yd (/ segment-length 4)
         ym (/ segment-length 2)]
     
-    
     (java.awt.Polygon.
      (into-array Integer/TYPE [cx (- cx xd) (- cx xd) cx (+ cx xd) (+ cx xd)])
      (into-array Integer/TYPE [(+ cy ym) (+ cy yd) (- cy yd) (- cy ym) (- cy yd) (+ cy yd)])
@@ -59,7 +58,8 @@
   ;; horizontally, it is fine.... The y coord corresponds to the 
   (let [[x y] xy
         fmetric (.getFontMetrics game-graphics)
-        b (.getStringBounds fmetric text game-graphics)
+        ^java.awt.geom.Rectangle2D b
+        (.getStringBounds fmetric text game-graphics)
         [hx hy] (map #(int (/ % 2)) [(.getWidth b) (.getHeight b)])]
     (doto game-graphics
       (.setColor color-bg)
@@ -127,7 +127,6 @@
 (defn draw-ring!
   "Draws a black ring around a position"
   [loc]
-  (println "drawing ring @" loc)
   (let [[x y] (loc-to-screenpx loc)
         s1 (semiring-at x y 15 30 true)
         s2 (semiring-at x y 15 30 false)]
@@ -149,7 +148,7 @@
 
 
 (defn color-fade
-  [color]
+  [^java.awt.Color color]
   (let [h (fn [v] (if (even? v) (+ 128 (/ v 2)) (+ 128 (/ (- v 1) 2))))]
     (java.awt.Color. (h (.getRed color)) (h (.getGreen color)) (h (.getBlue color)) 127)))
 

@@ -16,20 +16,13 @@
           (recur next)))))
   (f start))
 
-(defn get-line-limit-point
-  [pos vecback]
-  (loop [cur pos]
-    (let [next (pt+ cur vecback)]
-      (if (= (pt-radius next) 4)
-          cur
-          (recur next)))))
-
 (defn get-four-line-in-row
+  ;; TODO: why are there so many calls to pt-radius? - 5 per call
   [board startpos lvec]
   (loop [cur startpos run -1 player 0]
     (cond
      (= run 4)
-     (SignedLine. player startpos lvec)
+     (->SignedLine player startpos lvec)
      (= (pt-radius cur) 4)
      false
      :else
@@ -41,20 +34,22 @@
 (defn four-line-in-rows
   [avec rvec]
   (let [start (pt* -3 avec)]
-    (loop [h 0 found (list)]
+    (loop [h 0 cur start found (list)]
       (if (= h 7)
         found
         (recur (inc h)
-               (cons (Line. (get-line-limit-point
-                             (pt+ start (pt* h avec))
-                             (pt- rvec))
-                            rvec)
+               (pt+ cur avec)
+               (cons (->Line (get-line-limit-point
+                              cur
+                              (pt- rvec))
+                             rvec)
                      found))))))
 
 (def lines-on-board
   (loop [dir (pt 1 0 0) found (list)]
     (if (pt= dir (pt -1 0 0))
       found
+      ;; why pt-
       (let [new (four-line-in-rows dir (pt- (pt-rot+60 dir)))]
         (recur (pt-rot+60 dir) (concat new found))))))
 
@@ -70,34 +65,38 @@
                                    (:delta line)))
            lines-on-board)))
 
+(def list-of-move-lines
+  (doall (reduce concat
+                 (map #(let [inside-neighbors (filter
+                                               (fn [p] (= (pt-radius p) 3))
+                                               (map (fn [q] (pt+ q %))
+                                                    (get-ring-of-hex-uv-points 1)))]
+                         (map (fn [ne] (->Line % (pt- ne %)))
+                              inside-neighbors))
+                      (get-ring-of-hex-uv-points 4)))))
+
 (defn get-open-moves
   "Returns a list of the available moves..."
   [board]
   ;; does it work
   (filter #(not (row-full? board (pt+ (:start %) (:delta %)) (:delta %)))  
-    (reduce concat
-            ;; loc -> list of 2 lines
-            (map #(let [inside-neighbors (filter
-                                          (fn [p] (= (pt-radius p) 3))
-                                          (map (fn [q] (pt+ q %))
-                                               (get-ring-of-hex-uv-points 1)))]
-                    ;; pt, neighbor ->  
-                    (map (fn [ne] (Line. % (pt- ne %)))
-                         inside-neighbors))
-        (get-ring-of-hex-uv-points 4)))))
+          list-of-move-lines))
 
-(defn place-point-open?
+(def axial-points
+  (map #(pt* 4 %) unit-ring-points))
+
+(def place-point-open?
   "Can a point be placed here?"
-  [board loc]
-  (and (= 4 (pt-radius loc))
-    (if (some #(pt= % loc)
-          (map #(pt* 4 %) (get-ring-of-hex-uv-points 1)))
-      (let [dekl (pt* (- (/ 4)) loc)]
-        (not (row-full? board (pt+ loc dekl) dekl)))
-      ; the second condition is a superset of the first. Why test?
-      (let [pts (filter #(= (pt-radius %) 3)
-                        (map #(pt+ % loc) (get-ring-of-hex-uv-points 1)))]
-        (some #(not (row-full? board % (pt- % loc))) pts)))))
+  (fn [board loc]
+    (and (= 4 (pt-radius loc))
+         (if (some #(pt= % loc) axial-points)
+           (let [dekl (pt- (pt-div-4 loc))]
+             (not (row-full? board (pt+ loc dekl) dekl)))
+           ;; the second condition is a superset of the first. Why test?
+           ;; (the second is slower...) TODO pull out, optimize!
+           (let [pts (filter #(= (pt-radius %) 3)
+                             (map #(pt+ % loc) unit-ring-points))]
+             (some #(not (row-full? board % (pt- % loc))) pts))))))
 
 (defn value-cell
   "What is the \"value\" of a cell?
@@ -149,6 +148,10 @@
   (let [ lines-points (summap (fn [li] (value-pieces board li (- player)))
                              (get-lines-of-four board))] 
     (* 20 lines-points)))
+
+(defn rank-board-4
+  [board player reserves]
+  10)
 
 
 (def rank-board
@@ -222,7 +225,7 @@
                          (time (minimax (act-move [board reserves] move player)
                                         player
                                         true
-                                        1)))
+                                        0)))
                        nil -100000 possible-moves))
         chosen (or optimal (rand-nth possible-moves))]
     [(:start chosen) (:delta chosen) degree]))

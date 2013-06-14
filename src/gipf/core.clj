@@ -324,7 +324,7 @@
 
 (defn setup-new-game!
   []
-  (doseq [t ai-action-threads*]
+  (doseq [^java.lang.Thread t ai-action-threads*]
     (when-not (nil? t)
       (.interrupt t)))
   (def board* (new-board mode*))
@@ -651,7 +651,7 @@
               (.add iai-one)
               (.add iai-two))))
     
-    (doto game-panel
+    (doto ^javax.swing.JPanel game-panel
       (.setMinimumSize (java.awt.Dimension. 800 800))
       (.setMaximumSize (java.awt.Dimension. 800 800))
       (.setPreferredSize (java.awt.Dimension. 800 800))
@@ -672,9 +672,9 @@
       (.setDefaultCloseOperation javax.swing.WindowConstants/DISPOSE_ON_CLOSE)
       (.setContentPane game-panel)
       (.addKeyListener (proxy [java.awt.event.KeyListener] []
-                         (keyPressed [e] nil)
-                         (keyTyped [e] nil)
-                         (keyReleased [e]
+                         (keyPressed [^java.awt.event.KeyEvent e] nil)
+                         (keyTyped [^java.awt.event.KeyEvent e] nil)
+                         (keyReleased [^java.awt.event.KeyEvent e]
                            (when (= java.awt.event.KeyEvent/VK_ESCAPE (.getKeyCode e))
                              (println "Quitting on ESC key! Yay!")
                              (doseq [t ai-action-threads*]

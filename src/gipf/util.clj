@@ -5,10 +5,10 @@
   [text displayed]
   (let [b (javax.swing.JButton. text)]
     (.addActionListener b
-     (proxy [java.awt.event.ActionListener] []
-       (actionPerformed [evt]
-         (javax.swing.JOptionPane/showMessageDialog  nil,
-            displayed))))
+                        (proxy [java.awt.event.ActionListener] []
+                          (actionPerformed [evt]
+                            (javax.swing.JOptionPane/showMessageDialog  nil,
+                                                                        displayed))))
     b))
 
 ;; eq to (set-on-state-change! b (fn [s] (when s (thunk))))
@@ -17,32 +17,32 @@
   [button thunk]
   (let [prev (atom (.isSelected button))] 
     (.addChangeListener button
-      (proxy [javax.swing.event.ChangeListener] []
-        (stateChanged [evt]
-          (let [new-state (.isSelected button)]
-            (when-not (= new-state @prev)
-              (swap! prev (constantly new-state))
-              (if new-state (thunk)))))))))
+                        (proxy [javax.swing.event.ChangeListener] []
+                          (stateChanged [evt]
+                            (let [new-state (.isSelected button)]
+                              (when-not (= new-state @prev)
+                                (swap! prev (constantly new-state))
+                                (if new-state (thunk)))))))))
 
 (defn set-on-state-change!
   "When a checkbox is selected or deselected, call funk of pressedness."
   [checkbox func]
   (let [prev (atom (.isSelected checkbox))] 
     (.addChangeListener checkbox
-      (proxy [javax.swing.event.ChangeListener] []
-        (stateChanged [evt]
-          (let [new-state (.isSelected checkbox)]
-            (when-not (= new-state @prev)
-              (swap! prev (constantly new-state))
-              (func new-state))))))))
+                        (proxy [javax.swing.event.ChangeListener] []
+                          (stateChanged [evt]
+                            (let [new-state (.isSelected checkbox)]
+                              (when-not (= new-state @prev)
+                                (swap! prev (constantly new-state))
+                                (func new-state))))))))
 
 (defn set-on-button-click!
   "When button is clicked, funcall thunk"
   [button thunk]
   (.addActionListener button
-    (proxy [java.awt.event.ActionListener] []
-           (actionPerformed [evt]
-             (thunk)))))
+                      (proxy [java.awt.event.ActionListener] []
+                        (actionPerformed [evt]
+                          (thunk)))))
 
 
 (defn make-img [x y]
@@ -54,8 +54,8 @@
 (defn applyto-repeatedly
   [func obj & argsets]
   (if (empty? argsets)
-       obj
-       (recur func (apply func obj (first argsets)) (rest argsets))))
+    obj
+    (recur func (apply func obj (first argsets)) (rest argsets))))
 
 (defn mapvc "maps a function onto one or more vectors, passing in the location int as first arg" [func v & vecs]
   (into [] (apply map func (range) v vecs)))
@@ -73,7 +73,7 @@
            (if (= i c)
              (- v 1)
              v))
-    vec))
+         vec))
 
 (defn getxy "Get value of 2d vector array at position (x, y)" [arr x y]
   (get (get arr x) y))
@@ -97,22 +97,22 @@
   ;; ex. (defn cv [val size] ((alambda [c b] (if (>= c size) b (self (+ c 1) (conj b (.clone val)))))))
   (defn yuck [c b]
     (if (>=  c size)
-        b
-        (recur (+ c 1) (conj b val))))
+      b
+      (recur (+ c 1) (conj b val))))
   (yuck 0 (vector)))
 
 (defn merge-two
   "Merges two collections. Order may not be preserved."
   [alpha beta]
   (if (coll? alpha)
-      (if (coll? beta)
-          (if (empty? beta)
-            alpha
-            (apply conj alpha beta))
-          (conj alpha beta))
-      (if (coll? beta)
-          (conj beta alpha)
-          (list alpha beta))))
+    (if (coll? beta)
+      (if (empty? beta)
+        alpha
+        (apply conj alpha beta))
+      (conj alpha beta))
+    (if (coll? beta)
+      (conj beta alpha)
+      (list alpha beta))))
 
 (defn combinations2
   "Returns a list of combinations of an iterable"
@@ -124,8 +124,8 @@
           arr
           (recur (inc count) cap (cons (list pair (first itail)) arr) (rest itail) pair)))
       (reduce merge-two (mapvc
-                           (fn [c pair] (subcombs 0 c (list) iter pair))
-                           (vec iter))))
+                         (fn [c pair] (subcombs 0 c (list) iter pair))
+                         (vec iter))))
     '()))
 
 
@@ -148,15 +148,15 @@
 
 (defn fill-vector [thunk size]
   ((fn [c b]
-    (if (>=  c size)
-        b
-        (recur (+ c 1) (conj b (thunk)))))  0 (vector)))
+     (if (>=  c size)
+       b
+       (recur (+ c 1) (conj b (thunk)))))  0 (vector)))
 
 (defn fill-list [thunk size]
   ((fn [c b]
-    (if (>= c size)
-        b
-        (recur (+ c 1) (cons (thunk) b))))  0 (list)))
+     (if (>= c size)
+       b
+       (recur (+ c 1) (cons (thunk) b))))  0 (list)))
 
 (defn vector-update [v pos func]
   (mapvc (fn [c val] (if (= c pos) (func val) val)) v))
@@ -168,13 +168,13 @@
 
 (defn flatten-level [structure level]
   (cond (<= level 0)
-      structure
-      (coll? structure)
-      (reduce merge-two
-        (map (fn [s] (flatten-level s (dec level)))
-          structure))
-      :else
-      structure))
+        structure
+        (coll? structure)
+        (reduce merge-two
+                (map (fn [s] (flatten-level s (dec level)))
+                     structure))
+        :else
+        structure))
 
 (defn rot90 "Rotates a vector by +90 degrees." [point]
   (list (- (second point)) (first point)))
@@ -182,12 +182,12 @@
 (defn or-coll "Returns the first truthy value in the collection, else false." [coll]
   ;; aif
   (cond
-      (empty? coll)
-      false
-      (first coll)
-      (first coll)
-      :else
-      (recur (rest coll))))
+   (empty? coll)
+   false
+   (first coll)
+   (first coll)
+   :else
+   (recur (rest coll))))
 
 (defn pairwise-and
   [func coll]
@@ -217,24 +217,24 @@
 " 
   [& exprs]
   `(doto (proxy [java.lang.Thread] []
-                    (run [] ~@exprs))
+           (run [] ~@exprs))
      (.start))) 
 
 (defmacro
   on-swing-thread
   [& exprs]
   `(javax.swing.SwingUtilities/invokeLater
-     (proxy [java.lang.Runnable] []
-       (run [] ~@exprs))))
+    (proxy [java.lang.Runnable] []
+      (run [] ~@exprs))))
 
 (defn atv
   [vect pos func]
   (mapvc
-    (fn [c v]
-      (if (= c pos)
-        (func v)
-        v))
-    vect))
+   (fn [c v]
+     (if (= c pos)
+       (func v)
+       v))
+   vect))
 
 (defn rand-best
   "Takes a function returning a number;
@@ -243,17 +243,17 @@
  value is maximized at an element, return that element."
   [test default-obj default-val coll]
   (rand-nth
-    (loop [rcoll coll recv default-val reco (list default-obj)]
-      (if (empty? rcoll)
-        reco
-        (let [f (first rcoll)
-              t (test f)]
-          (cond (> t recv)
-            (recur (rest rcoll) t (list f))
-            (= t recv)
-            (recur (rest rcoll) t (cons f reco))
-            :else
-            (recur (rest rcoll) recv reco)))))))
+   (loop [rcoll coll recv default-val reco (list default-obj)]
+     (if (empty? rcoll)
+       reco
+       (let [f (first rcoll)
+             t (test f)]
+         (cond (> t recv)
+               (recur (rest rcoll) t (list f))
+               (= t recv)
+               (recur (rest rcoll) t (cons f reco))
+               :else
+               (recur (rest rcoll) recv reco)))))))
 
 (defn same-sign?
   "Do all arguments have the same sign? (+,0,-)"
@@ -261,7 +261,7 @@
   (or (every? pos? args) (every? zero? args) (every? neg? args)))
 
 (defn color->list
-  [c]
+  [^java.awt.Color c]
   (list (.getRed c) (.getBlue c) (.getGreen c)))
 
 (defn list->color
@@ -281,10 +281,6 @@
   (time (doseq [i (range iters)]
           (func))))
 
-(defn microbencht
-  [func msecs]
-  (let [start 0])
-  )
 
 (defn print-max-output
   [func]
@@ -310,6 +306,38 @@
       (swap! num (constantly (inc @num)))
       (println @num)
       (apply func args))))
+
+
+(defn array?
+  "See http://clj-me.cgrand.net/2009/10/15/multidim-arrays/ for source."
+  [x]
+  (-> x class .isArray))
+(defn see
+  "See http://clj-me.cgrand.net/2009/10/15/multidim-arrays/ for source."
+  [x]
+  (if (array? x) (map see x) x))
+
+(defmacro deep-aget
+  "See http://clj-me.cgrand.net/2009/10/15/multidim-arrays/ for source."
+  ([hint array idx]
+     `(aget ~(vary-meta array assoc :tag hint) ~idx))
+  ([hint array idx & idxs]
+     `(let [a# (aget ~(vary-meta array assoc :tag 'objects) ~idx)]
+        (deep-aget ~hint a# ~@idxs))))
+
+(defmacro deep-aset [hint array & idxsv]
+  "See http://clj-me.cgrand.net/2009/10/15/multidim-arrays/ for source."
+  (let [hints '{doubles double ints int longs long} ; writing a comprehensive map is left as an exercise to the reader
+        [v idx & sxdi] (reverse idxsv)
+        idxs (reverse sxdi)
+        v (if-let [h (hints hint)] (list h v) v)
+        nested-array (if (seq idxs)
+                       `(deep-aget ~'objects ~array ~@idxs)
+                       array)
+        a-sym (with-meta (gensym "a") {:tag hint})]
+    `(let [~a-sym ~nested-array]
+       (aset ~a-sym ~idx ~v))))
+
 
 ;;
 ;; Idea

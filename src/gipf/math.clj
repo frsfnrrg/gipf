@@ -2,7 +2,7 @@
 
 (defn sqrt [x] (java.lang.Math/sqrt x))
 
-(defn abs [x] (java.lang.Math/abs x))
+(defn abs [^long x] (java.lang.Math/abs x))
 
 (defn triangular-number [^long n]
   (/ (* n (inc n)) 2))

@@ -1,13 +1,13 @@
 (ns gipf.core)
 
-(defrecord SignedLine [^long sig ^UV start ^UV delta])
-(defrecord Line [^UV start ^UV delta])
+(defrecord SignedLine [^long sig ^long start ^long delta])
+(defrecord Line [^long start ^long delta])
 
 (defn on-line?
   [loc line]
   (let [delta (pt- loc (:start line))
         dist (pt-radius delta)
-        approx (pt* dist (:delta line))]
+        approx (pt* dist (:delta line))] 
     (or (pt= delta approx)
       (pt= delta (pt- approx)))))
 
@@ -17,14 +17,35 @@
        (or (pt= (:delta linea) (:delta lineb))
            (pt= (pt- (:delta linea)) (:delta lineb)))))
 
-(printf "HERE")
-
-(defn get-line-limit-point
+(defn uv-get-line-limit-point
   ;; best would be pure arithmatic version...
   [^UV pos ^UV vecback]
-  (loop [^UV cur pos]
-    (let [next (pt+ cur vecback)]
-      (if (= (pt-radius next) 4)
+  (loop [cur pos]
+    (let [next (uv+ cur vecback)]
+      (if (= (uv-radius-fast next) 4)
         cur
         (recur next)))))
 
+
+(defn optimize-1-ring-uv-n-pt
+  "Optimizes a UV x UV -> UV to be a N X N -> N"
+  [^long size func]
+
+  (let [table (make-array java.lang.Long/TYPE (inc (* 6 size)))]
+    (doseq [r (range 1 7 1)
+            p (range size)]
+      (aset-long table
+                 (+ r (* 6 p))
+                 (uv->n (func (n->uv p) (n->uv r)))))
+    
+    
+    (fn [^long p ^long r]
+      (aget ^longs table
+            (unchecked-add r
+                           (unchecked-multiply p 6)))) ))
+
+(def get-line-limit-point
+  "You will get nonsense if the second arg is not in the unit hex"
+  (optimize-1-ring-uv-n-pt
+   (hexagonal-number 4)
+   uv-get-line-limit-point))
