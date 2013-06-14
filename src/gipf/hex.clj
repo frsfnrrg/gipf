@@ -47,11 +47,11 @@
                                  radius)) )
                (rest pointsleft))))))
 
-(defn get-hex-array
-  [array ^long pt]
-  (get array pt))
+(def get-hex-array get)
 
 (def arrayfull-of-points (vec (range (hexagonal-number 4))))
+
+(def change-hex-array assoc)
 
 (defn map-hex-array
   [func-of-pt & arrays]

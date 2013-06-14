@@ -18,7 +18,7 @@
   (let [prev (atom (.isSelected button))] 
     (.addChangeListener button
                         (proxy [javax.swing.event.ChangeListener] []
-                          (stateChanged [evt]
+                          (stateChanged [^javax.swing.event.ChangeEvent evt]
                             (let [new-state (.isSelected button)]
                               (when-not (= new-state @prev)
                                 (swap! prev (constantly new-state))
@@ -257,8 +257,14 @@
 
 (defn same-sign?
   "Do all arguments have the same sign? (+,0,-)"
-  [& args]
-  (or (every? pos? args) (every? zero? args) (every? neg? args)))
+  [a b]
+  (or (and (pos? a) (pos? b))
+      (and (zero? a) (zero? b))
+      (and (neg? a) (neg? b))))
+
+(defn different-sign?
+  [a b]
+  (neg? (unchecked-multiply a b)))
 
 (defn color->list
   [^java.awt.Color c]
@@ -266,7 +272,7 @@
 
 (defn list->color
   [l]
-  (java.awt.Color. (first l) (second l) (third l)))
+  (java.awt.Color. (int (first l)) (int (second l)) (int (third l))))
 
 (defn scale-color
   [col v]
@@ -280,6 +286,16 @@
   [func iters]
   (time (doseq [i (range iters)]
           (func))))
+
+(defn mbench
+  [func iters]
+  (let [r1 (. System (nanoTime))
+        n (fn [])]
+    (doseq [i (range iters)] (func))
+    (let [r2 (. System (nanoTime))]
+      (doseq [i (range iters)] (n))
+      (let [r3 (. System (nanoTime))]
+        (print (str "Elapsed time: " (/ (double (- (- r2 r1) (- r3 r2))) 1000000.0) " msecs" ))))))
 
 
 (defn print-max-output

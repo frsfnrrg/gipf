@@ -142,7 +142,8 @@
       (aset-long table
             n
             (uv->n (func (n->uv n)))))
-     
+
+    ;; the type hint is worth it..
      (fn [^long p]
        (aget ^longs table p))) )
 
@@ -156,7 +157,9 @@
             (aset-long table
                        u v
                        (uv->n (func (n->uv u) (n->uv v)))))
-          (fn [^long u ^long v]                                     
+          ;; microbench implies typehinting u, v is worthless.
+          ;; Function call extra
+          (fn [u v]                                     
             (deep-aget longs table
                   u v )))))
 
@@ -187,9 +190,9 @@
   [^UV pta ^UV ptb]
   (= pta ptb))
 
-(defn pt=
-  [^long pta ^long ptb]
-  (= pta ptb))
+(def pt= =)
+
+;(defn pt= [^long pta ^long ptb] (= pta ptb))
 
 (defn getU [pt] (:u pt))
 (defn getV [pt] (:v pt))
@@ -346,6 +349,13 @@
   (optimize1-uv-n-pt
    (hexagonal-number 5)
    uv-div-4))
+
+(def pt-str
+  (memoize (fn
+            [p]
+            (let [k (n->uv p)]
+              (str "<" (:u k) "," (:v k) ">"))
+            )))
 
 
   

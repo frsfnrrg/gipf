@@ -15,17 +15,25 @@
 
 
 (defn player->index
-  [player]
-  (if (= player -1) 0 1))
+  [^long player]
+  (if (= player (long -1)) 0 1))
 
 (load "math") ; free
+(println "math")
 (load "util") ; free
+(println "util")
 (load "geo") ; free
+(println "geo")
 (load "hex") ; free
+(println "hex")
 (load "line") ; free
+(println "line")
+(load "reserves") ; free
+(println "reserves")
 (load "game") ; free
+(println "game")
 (load "graphics") ;; game-panel initialized here...
-
+(println "graphics")
 
 ;; NEXT on the TODO list;
 ;;
@@ -73,13 +81,13 @@
 
 (defn get-pieces-left
   [player]
-  (get reserve-pieces* (player->index player)))
+  (get-reserves reserve-pieces* player))
 
 (defn draw-pieces-left!
   [player]
   (let [i (if (= player -1) 0 1)
         c (get piece-colors (- 1 i))
-        v (get reserve-pieces* i)]
+        v (get-reserves reserve-pieces* player)]
     (if (= i 0)
       (draw-text-centered-at! (xy 100 700) (str v) c)
       (draw-text-centered-at! (xy 700 700) (str v) c))))
@@ -87,14 +95,14 @@
 (defn dec-pieces-left!
   "Decreases the number of pieces left for the player by 1."
   [player]
-  (let [n (atv reserve-pieces* (player->index player) dec)]
+  (let [n (dec-reserves reserve-pieces* player)]
     (def reserve-pieces* n))
   (draw-pieces-left! player))
 
 (defn inc-pieces-left!
   [player]
   "Increases the number of pieces left for the player by 1"
-  (let [n (atv reserve-pieces* (player->index player) inc)]
+  (let [n (inc-reserves reserve-pieces* player)]
     (def reserve-pieces* n))
   (draw-pieces-left! player))
 
@@ -123,17 +131,18 @@
 
 (defn redraw-loc!
   [loc]
-  (.setColor game-graphics java.awt.Color/WHITE)
-  (.fill game-graphics (hex-tile-at loc))
-  (.setColor game-graphics java.awt.Color/BLACK)
-  (if (= 4 (pt-radius loc))
-    (if (and (not (nil? selected*)) (pt= loc selected*))
-      (draw-piece-at-loc! loc placed-cell-value*)
-      (.fill game-graphics (circle-at loc 10)))
-    (let [f (get-hex-array board* loc)]
-      (if (= 0 f)
-        (.fill game-graphics (circle-at loc 5))
-        (draw-piece-at-loc! loc f)))))
+  (let [^java.awt.Graphics2D g game-graphics]
+    (.setColor g java.awt.Color/WHITE)
+    (.fill g (hex-tile-at loc))
+    (.setColor g java.awt.Color/BLACK)
+    (if (= 4 (pt-radius loc))
+      (if (and (not (nil? selected*)) (pt= loc selected*))
+        (draw-piece-at-loc! loc placed-cell-value*)
+        (.fill g (circle-at loc 10)))
+      (let [f (get-hex-array board* loc)]
+        (if (= 0 f)
+          (.fill g (circle-at loc 5))
+          (draw-piece-at-loc! loc f))))))
 
 (defn redraw-loc-disk!
   [loc]
@@ -149,15 +158,17 @@
 
 (defn draw-base!
   []
-  (.setColor game-graphics java.awt.Color/WHITE)
-  (.fillRect game-graphics 0 0 800 800)
-  (.setColor game-graphics java.awt.Color/BLACK)
-  
-  (doseq [p (apply concat (map get-ring-of-hex-uv-points (range 5)))]
-    (redraw-loc! p))
-  (.setFont game-graphics numfont)
-  (draw-pieces-left! -1)
-  (draw-pieces-left! 1))
+  (let [^java.awt.Graphics2D g game-graphics]
+    (doto g
+      (.setColor java.awt.Color/WHITE)
+      (.fillRect 0 0 800 800)
+      (.setColor java.awt.Color/BLACK))
+    
+    (doseq [p (range (hexagonal-number 5))]
+      (redraw-loc! p))
+    (.setFont ^java.awt.Graphics2D g numfont)
+    (draw-pieces-left! -1)
+    (draw-pieces-left! 1)))
 
 (defn redraw-all!
   []
@@ -537,7 +548,6 @@
       (cond (= (fourth input) 1)
             (let [clickpt (screenpx-to-loc (xy (second input) (third input)))
                   rad (pt-radius clickpt)]
-              (println :click clickpt rad)
               (if (<= rad 4)
                 (case game-phase*
                   :placing
@@ -562,7 +572,7 @@
                         (= 2 (abs (get-hex-array board* clickpt)))
                         (toggle-ring!))
                   :waiting-for-ai
-                  (println "Waiting for AI")
+                  nil
                   :gameover
                   (println "Game is over; can't interact.")))))
       :hover

@@ -5,31 +5,15 @@
 ;; predicates/extraction
 
 (defn row-full?
-  [board start delta]
-  (defn f
-    [curr]
-    (if (= 0 (get-hex-array board curr))
-      false
-      (let [next (pt+ curr delta)]
-        (if (= 4 (pt-radius next))
-          true
-          (recur next)))))
-  (f start))
-
-(defn get-four-line-in-row
-  ;; TODO: why are there so many calls to pt-radius? - 5 per call
-  [board startpos lvec]
-  (loop [cur startpos run -1 player 0]
-    (cond
-     (= run 4)
-     (->SignedLine player startpos lvec)
-     (= (pt-radius cur) 4)
-     false
-     :else
-     (let [np (get-hex-array board cur)]
-       (if (and (not= player 0) (same-sign? np player))
-         (recur (pt+ lvec cur) (inc run) player)
-         (recur (pt+ lvec cur) 1 np))))))
+  [board start ^long delta]
+  (let [^long end (get-line-limit-point start delta)]
+          (loop [^long curr start]
+            (cond (= long-zero ^long (get-hex-array board curr))
+                  false
+                  (pt= curr end)
+                  true
+                  :else
+                  (recur (pt+ curr delta))))))
 
 (defn four-line-in-rows
   [avec rvec]
@@ -53,16 +37,29 @@
       (let [new (four-line-in-rows dir (pt- (pt-rot+60 dir)))]
         (recur (pt-rot+60 dir) (concat new found))))))
 
+
 (defn get-lines-of-four
   "Returns a list of lists of form (player a b c d)"
-  ;; TODO: this currently costs 0.90 msec per call. I want half that
+  ;; TODO: this currently is 52% cycles. I want half that
   [board]
   (filter identity
           (map
-           (fn [line]
-             (get-four-line-in-row board
-                                   (:start line)
-                                   (:delta line)))
+           (fn [^Line line]
+             (let [lvec (long (:delta line))]
+               (loop [^long cur (:start line)
+                      ^long run long-zero
+                      ^long player long-zero]
+                 (cond
+                  (= run 4)
+                  (->SignedLine player (:start line) lvec)
+                  (= (long (pt-radius cur)) 4)
+                  false
+                  :else
+                  (let [np (get-hex-array board cur)]
+                    (if
+                        (or (= player 0) (not (pos? (unchecked-multiply np player))))
+                      (recur (pt+ lvec cur) 1 np)
+                      (recur (pt+ lvec cur) (inc run) player)))))))
            lines-on-board)))
 
 (def list-of-move-lines
@@ -102,55 +99,55 @@
   "What is the \"value\" of a cell?
    ie, how useful is the ownership of
    that cell to the good-player?"
-  [board pos good-player]
+  [board ^long pos ^long good-player ^long rad]
   ;; TODO improve analysis. Bunching?
 
   ;; negative numbers correspond to the opponent.
-  (* (- 3 (pt-radius pos))
-     (case (* (get-hex-array board pos) good-player)
-       -2  -50 ; other gipf is baaad.
-       -1  -10
-       0   0
-       1   15
-       2   40 ;; my gipf is goood
-       )))
+  (unchecked-multiply
+   (unchecked-subtract 3 rad)
+   (case (long (unchecked-multiply (get-hex-array board pos) good-player))
+     -2  -50 ; other gipf is baaad.
+     -1  -10
+     0   0
+     1   15
+     2   40 ;; my gipf is goood
+     )))
 
 ;; issue; taking 3 opp is better than 3 self
 (defn value-pieces
   "Returns the \"value\" of pieces on a line."
-  [board line good-player]
-  (loop [cur (:start line) count 0]
-        (if (= 4 (pt-radius cur))
+  [board ^Line line ^long good-player]
+  (let [delta (:delta line)]
+    (loop [^long cur (:start line) ^long count long-zero]
+      (let [rad (pt-radius cur)]
+        (if (= 4 rad)
           count
-          (recur (pt+ (:delta line) cur)
-                 (+ count (value-cell board cur good-player))))))
+          (recur (pt+ delta cur)
+                 (unchecked-add
+                  count
+                  (value-cell board cur good-player rad))))))))
+
+(def arrayful-of-rads (doall (map pt-radius arrayfull-of-points)))
 
 (defn rank-board-1
-  "225-353"
-  [board player reserves]
-  (let [pos-points (summap (fn [pt] (value-cell board pt player))
-                           arrayfull-of-points)
-        lines-points (summap (fn [li] (value-pieces board li (- player)))
-                             (get-lines-of-four board))] 
-    (+ pos-points (* 20 lines-points))))
-
-(defn rank-board-2
-  "77 - 143 ms"
-  [board player reserves]
-  (let [pos-points (summap (fn [pt] (value-cell board pt player))
-                           arrayfull-of-points)]
-    pos-points))
-
-
-(defn rank-board-3
-  "162 - 183 ms"
-  [board player reserves]
-  (let [ lines-points (summap (fn [li] (value-pieces board li (- player)))
-                             (get-lines-of-four board))] 
-    (* 20 lines-points)))
+  "Currently, this function takes about 90% of computation power."
+  [board ^long player ^Reserves reserves]
+  (let [pos-points (reduce
+                    +
+                    (map (fn [^long pt ^long rad]
+                           (value-cell board pt player rad))
+                         arrayfull-of-points
+                         arrayful-of-rads))
+        lines-points (reduce
+                      +
+                      long-zero
+                      (map
+                       (fn [^Line li] (value-pieces board li (- player)))
+                       (get-lines-of-four board)))] 
+    (unchecked-add pos-points (unchecked-multiply 20 lines-points))))
 
 (defn rank-board-4
-  [board player reserves]
+  [board ^long player reserves]
   10)
 
 
@@ -161,19 +158,18 @@
 
 ;; action 
 
-(defn change-board-cell
-  [board pos val]
-  ;; "Changing " pos "from" (get-hex-array board pos) "to" val)
-  (map-hex-array (fn [p v] (if (pt= p pos) val v)) board))
+(def change-board-cell change-hex-array)
 
 ;; this is _purely_ abstract...
+;; TODO split into two functions: one for ai, one for getting
+;; the updated pieces..
 (defn do-move
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
-  [board value loc shove]
-  (loop [b board cur loc last value shift (list)]
-    (let [next (get-hex-array b cur)]
+  [board value loc ^long shove]
+  (loop [b board ^long cur loc ^long last value shift (list)]
+    (let [^long next (get-hex-array b cur)]
       (cond
-       (= (pt-radius cur) 4)
+       (= (long (pt-radius cur)) 4)
        (do
          (println "pushed until radius was 4. ??")
          :should-never-happen)
@@ -187,11 +183,11 @@
 
 
 (defn act-move
-  [gamestate move player]
+  [gamestate move ^long player]
   (let [[board reserves] gamestate]
     ; remember; player == piece
     [(first (do-move board player (pt+ (:start move) (:delta move)) (:delta move)))
-     (atv reserves (player->index player) dec)]))
+     (dec-reserves reserves player)]))
 
 (defn minimax
   "Ranks a position resulting from a move based
@@ -200,8 +196,9 @@
   [gamestate player max? depth]      
   (let [[board reserves] gamestate]
     (if (zero? depth)
-      (* (if max? 1 -1)
-         (rank-board board player reserves))
+      (if max?
+        (rank-board board player reserves)
+        (unchecked-negate (long (rank-board board player reserves))))
       (reduce (if max? max min)
               (map
                (fn [move]
@@ -213,7 +210,7 @@
 
 (defn ai-move
   "Returns place & shove vector."
-  [board player reserves adv]
+  [board ^long player ^Reserves reserves adv]
   (busy-doing-important-stuff order-distinguishing-pause)
   (let [possible-moves (get-open-moves board)
         ngipfs (count-over-hex-array
@@ -225,7 +222,7 @@
                          (time (minimax (act-move [board reserves] move player)
                                         player
                                         true
-                                        0)))
+                                        1)))
                        nil -100000 possible-moves))
         chosen (or optimal (rand-nth possible-moves))]
     [(:start chosen) (:delta chosen) degree]))
@@ -278,9 +275,9 @@
   "Return a new set of reserves."
   [mode]
   (case mode
-    :basic (vector 12 12)
-    :advanced (vector 18 18)
-    :normal (vector 15 15)))
+    :basic (->Reserves 12 12)
+    :advanced (->Reserves 18 18)
+    :normal (->Reserves 15 15)))
 
 
 (defn lost?

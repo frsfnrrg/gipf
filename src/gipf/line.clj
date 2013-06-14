@@ -37,8 +37,7 @@
       (aset-long table
                  (+ r (* 6 p))
                  (uv->n (func (n->uv p) (n->uv r)))))
-    
-    
+     
     (fn [^long p ^long r]
       (aget ^longs table
             (unchecked-add r

@@ -10,6 +10,8 @@
 (defn hexagonal-number [^long n]
   (+ 1 (* 3 n (dec n))))
 
+(def hex4 (long (hexagonal-number 4)))
+
 (defn reverse-hex-floor
   [^long n]
   (let [d (/ (- (float n) 1) 3)
@@ -20,6 +22,9 @@
         (inc (int v)))))
 
 (def sqrt3o3t2 (float (/ (* 2 (java.lang.Math/sqrt 3)) 3)))
+
+(def long-zero (long 0))
+(def long-4 (long 4))
 
 (defn round-int
   [^double x]
