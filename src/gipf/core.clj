@@ -1,5 +1,6 @@
 (ns gipf.core
-  (:gen-class))
+  (:gen-class)
+  (:import (gipfj Geometry MathUtil)))
 
 ;;;
 ;;; The purpose of this core file
@@ -10,9 +11,11 @@
 ;;; or abstractions
 ;;;
 
-
 ; everything should be explicitly passed into these
 
+(Geometry/loadTables)
+
+(println (Geometry/equals 1 1))
 
 (defn player->index
   [^long player]
@@ -22,8 +25,8 @@
 (println "math")
 (load "util") ; free
 (println "util")
-(load "geo") ; free
-(println "geo")
+(load "geo2") ; free
+(println "geo2")
 (load "hex") ; free
 (println "hex")
 (load "line") ; free

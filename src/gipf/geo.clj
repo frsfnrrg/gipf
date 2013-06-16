@@ -229,7 +229,6 @@
                 (hexagonal-number 6)
                 uv-))
 
-
 (defn pt-
   ([^long p] (pt-neg p))
   ([^long p ^long q] (pt-sub p q)))

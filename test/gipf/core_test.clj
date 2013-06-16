@@ -9,3 +9,4 @@
   (testing "Is the N<->pt mapping one to one?"
     (let []
       (is (= (check 5) true)))))
+
