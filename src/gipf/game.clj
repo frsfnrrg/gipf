@@ -6,18 +6,19 @@
 
 (defn row-full?
   [board start ^long delta]
-  (let [^long end (get-line-limit-point start delta)]
-          (loop [^long curr start]
-            (cond (= long-zero ^long (get-hex-array board curr))
-                  false
-                  (pt= curr end)
-                  true
-                  :else
-                  (recur (pt+ curr delta))))))
+  (let [end (get-line-limit-point start delta)]
+    (loop [^long curr start]
+      (cond
+        (= long-zero ^long (get-hex-array board curr))
+        false
+        (pt= curr end)
+        true
+        :else
+        (recur (pt+ curr delta))))))
 
 (defn four-line-in-rows
   [avec rvec]
-  (let [start (pt* -3 avec)]
+  (let [start (pt- (pt* 3 avec))]
     (loop [h 0 cur start found (list)]
       (if (= h 7)
         found
@@ -29,8 +30,10 @@
                              rvec)
                      found))))))
 
+(def pt-1-0-0 (pt 1 0 0))
+
 (def lines-on-board
-  (loop [dir (pt 1 0 0) found (list)]
+  (loop [dir pt-1-0-0 found (list)]
     (if (pt= dir (pt -1 0 0))
       found
       ;; why pt-
@@ -127,7 +130,10 @@
                   count
                   (value-cell board cur good-player rad))))))))
 
-(def arrayful-of-rads (doall (map pt-radius arrayfull-of-points)))
+(def arrayful-of-rads
+  (doall (map
+           #(pt-radius %)
+           arrayfull-of-points)))
 
 (defn rank-board-1
   "Currently, this function takes about 90% of computation power."
@@ -222,7 +228,7 @@
                          (time (minimax (act-move [board reserves] move player)
                                         player
                                         true
-                                        1)))
+                                        2)))
                        nil -100000 possible-moves))
         chosen (or optimal (rand-nth possible-moves))]
     [(:start chosen) (:delta chosen) degree]))

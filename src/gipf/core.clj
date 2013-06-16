@@ -13,10 +13,6 @@
 
 ; everything should be explicitly passed into these
 
-(Geometry/loadTables)
-
-(println (Geometry/equals 1 1))
-
 (defn player->index
   [^long player]
   (if (= player (long -1)) 0 1))
@@ -29,8 +25,8 @@
 (println "geo2")
 (load "hex") ; free
 (println "hex")
-(load "line") ; free
-(println "line")
+;(load "line") ; free
+;(println "line")
 (load "reserves") ; free
 (println "reserves")
 (load "game") ; free

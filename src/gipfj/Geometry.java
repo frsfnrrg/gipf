@@ -2,7 +2,7 @@ package gipfj;
 
 public class Geometry {
 
-    private static final int JUMP_1D = (int) MathUtil.hexNum(9);
+    private static final int JUMP_1D = (int) MathUtil.hexNum(10);
     private static final int JUMP_2D = (int) MathUtil.hexNum(7);
     private static final int RAD_1 = (int) MathUtil.hexNum(2);
 
@@ -79,42 +79,42 @@ public class Geometry {
         long endTime = System.nanoTime();
 
         System.out.format("Table loading took: %f msecs.\n",
-                1e-9 * (endTime - startTime));
+                1e-6 * (endTime - startTime));
     }
 
-    public static boolean equals(long a, long b) {
+    public static boolean pequals(long a, long b) {
         return a == b;
     }
 
-    public static long distance(long a, long b) {
-        return radius(subtract(a, b));
+    public static long pdistance(long a, long b) {
+        return pradius(psubtract(a, b));
     }
 
-    public static long multiply(long a, long b) {
+    public static long pmultiply(long a, long b) {
         return pmult[(int) a][(int) b];
     }
 
-    public static long divide(long a, long b) {
+    public static long pdivide(long a, long b) {
         return pdiv[(int) a][(int) b];
     }
 
-    public static long add(long a, long b) {
+    public static long padd(long a, long b) {
         return padd[(int) a][(int) b];
     }
 
-    public static long subtract(long a, long b) {
+    public static long psubtract(long a, long b) {
         return psub[(int) a][(int) b];
     }
 
-    public static long negate(long a) {
+    public static long pnegate(long a) {
         return pneg[(int) a];
     }
 
-    public static long radius(long a) {
+    public static long pradius(long a) {
         return prad[(int) a];
     }
 
-    public static long divide4(long a) {
+    public static long pdivide4(long a) {
         return pdiv4[(int) a];
     }
 
@@ -122,11 +122,11 @@ public class Geometry {
         return lend[(int) start][(int) delta];
     }
 
-    public static long rotm60(long i) {
+    public static long protm60(long i) {
         return protm60[(int) i];
     }
 
-    public static long rotp60(long i) {
+    public static long protp60(long i) {
         return protp60[(int) i];
     }
 
@@ -141,7 +141,7 @@ public class Geometry {
      *            W-Coordinate
      * @return efficient representation
      */
-    public static long makePt(long u, long v, long w) {
+    public static long pmakePt(long u, long v, long w) {
         return convertUVPointToLong(makeUVPoint(u, v, w));
     }
 
@@ -152,23 +152,6 @@ public class Geometry {
     }
 
     // how do you integrate this as a clojure record?
-    static public class XYPoint {
-        final public double x;
-        final public double y;
-
-        public XYPoint(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public double getX() {
-            return x;
-        }
-
-        public double getY() {
-            return y;
-        }
-    }
 
     private static XYPoint xyu = new XYPoint(0, -1);
     private static XYPoint xyv = new XYPoint(Math.sqrt(3) / 2, -.5);
@@ -182,10 +165,14 @@ public class Geometry {
     }
 
     public static long convertXYToPt(XYPoint in) {
-        // yeah. efficiency. this isn't called 2^28 times...
-        long u = Math.round(in.x / 2 - in.y);
-        long w = Math.round(in.x / (2 * Math.sqrt(3)));
-        return convertUVPointToLong(makeUVPoint(u, 0, w));
+        // okay, this version retains some uglyness
+
+        // alas, this version is kinda jumpy. Why?
+
+        long u = -Math.round(in.x / 2 + in.y);
+        long v = Math.round(in.x * 2 / Math.sqrt(3));
+
+        return convertUVPointToLong(new UVPoint(u, v));
     }
 
     public static XYPoint add(XYPoint a, XYPoint b) {
@@ -229,7 +216,7 @@ public class Geometry {
             System.out.println("lineEnd failed to terminate");
         }
 
-        return q;
+        return subtract(q, delta);
     }
 
     private static UVPoint makeUVPoint(long u, long v, long w) {
@@ -264,7 +251,7 @@ public class Geometry {
             return cvluvph(-u - v, 2, -u);
         else if (-u > v && v > 0)
             return cvluvph(-u, 3, v);
-        else if (v > -u && v > 0)
+        else if (v > -u && -u > 0)
             return cvluvph(v, 4, v + u);
         else if (u > 0 && v > 0)
             return cvluvph(u + v, 5, u);
@@ -356,7 +343,7 @@ public class Geometry {
     }
 
     private static UVPoint subtract(UVPoint a, UVPoint b) {
-        return new UVPoint(a.u + b.u, a.v + b.v);
+        return new UVPoint(a.u - b.u, a.v - b.v);
     }
 
     private static UVPoint negate(UVPoint a) {

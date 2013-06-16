@@ -1,4 +1,4 @@
-(ns gipf.core)
+(ns obsolete)
 ;; tools for hex geometry
 
 ;; see ?redblobgames; hex coordinate grids.

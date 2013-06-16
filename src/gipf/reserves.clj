@@ -1,5 +1,3 @@
-(println "HEY")
-
 (ns gipf.core)
 
 ;; if we need still more optimization, store as a single number.
