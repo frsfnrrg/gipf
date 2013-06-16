@@ -21,12 +21,10 @@
 (println "math")
 (load "util") ; free
 (println "util")
-(load "geo2") ; free
-(println "geo2")
+(load "geo") ; free
+(println "geo")
 (load "hex") ; free
 (println "hex")
-;(load "line") ; free
-;(println "line")
 (load "reserves") ; free
 (println "reserves")
 (load "game") ; free
