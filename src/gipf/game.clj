@@ -1,6 +1,34 @@
 (ns gipf.core)
 
-(def order-distinguishing-pause 0.6) ; sec 
+;;;
+;;; There is a really nice way of expressing moves.
+;;; One move consists of three phases:
+;;;
+;;;  Pre clean
+;;;  Action
+;;;  Post clean
+;;;
+;;; All are done by the same player; players alternate.
+;;; Preclean is eqv. to the cleaning response to the other
+;;; player's move.
+;;;
+;;; Under this framework, the aimove as a whole can
+;;; be done in one action; [:aimove [[save save] clean clean]
+;;;                                 shoveline
+;;;                                 [[save save] clean clean]]
+;;;
+;;; Then, given two functions: list-possible-boards
+;;;                            list-possible-moves-and-board
+;;;
+;;; Given a board and a player, one can get the list of the results,
+;;; potentially with the move that caused it.
+;;;
+;;;
+
+
+(def order-distinguishing-pause 0.6) ; sec
+(def ranking-infinity (long 100000))
+(def neg-ranking-infinity (long -100000))
 
 ;; predicates/extraction
 
@@ -234,6 +262,131 @@
     [(:start chosen) (:delta chosen) degree]))
 
 
+(defn get-line-taking-orderings
+  "Returns a list of [[clear move move] newboard newreserves]
+   for all possible line
+   orderings"
+  [board reserves player]
+  ;; we go dumb, take only the first ones...
+  ;; if we really want to, we can make a slower, more complete
+  ;; version.
+  ;; We protect ourselves..
+  
+  (list
+   (loop [cb board rr reserves taken [] protected []]
+     (let [found (filter #(= (:sig %) player) (get-lines-of-four cb))]
+       (if (empty? found)
+         [(cons protected taken) cb rr]
+         (let [chosen (first found)
+               delta (:delta chosen)
+               [prot nb nr]
+               (loop [cur (:start chosen) bpr [] bb cb brr rr]
+                 (if (= 4 (pt-radius cur))
+                   [bpr bb brr]
+                   (case (unchecked-multiply (get-hex-array bb cur) player)
+                     (-2 -1) ;; opponent
+                     (recur (pt+ cur delta)
+                            bpr
+                            (change-hex-array bb cur 0)
+                            brr)
+                     0
+                     (recur (pt+ cur delta)
+                            bpr bb brr)
+                     1
+                     (recur (pt+ cur delta)
+                            bpr
+                            (change-hex-array bb cur 0)
+                            (inc-reserves brr player))
+                     2 ;; save own gipfs
+                     (recur (pt+ cur delta)
+                            (conj bpr cur)
+                            bb brr))))]
+           (recur nb nr chosen (conj protected prot))))))))
+
+(defn do-shove
+  [board reserves player shove]
+  [(first (do-move board player (:start shove) (:delta shove)))
+   (dec-reserves reserves player)])
+
+(defn list-possible-moves-and-board
+  "Like list-possible-boards, just returns the moves along with the boards.
+  ([move board reserves] ... )"
+  [board reserves player]
+  
+  (let [lines-board (get-line-taking-orderings board reserves player)
+        actions-board (expand
+                       (fn [[lmove board reserves]]
+                         ;; return all possible shoves after this,
+                         ;; form [[lmove shove]]
+                         (map
+                          (fn [shove]
+                            (let [[nb nr] (do-shove board reserves
+                                                    player
+                                                    (advance-line shove))]
+                              [[lmove shove] nb nr]))
+                          (get-open-moves board)))
+                       lines-board)
+        flines-board (expand
+                      (fn [[move board reserves]]
+                        (map
+                         (fn [[lmove board reserves]]
+                           [(conj move lmove) [board reserves]])
+                         (get-line-taking-orderings board reserves player))
+                        )
+                      actions-board)]
+    flines-board))
+
+
+(defn list-possible-boards
+  "(map rest (list-possible-moves-and-board board reserves player))"
+  [board reserves player]
+  (map second (list-possible-moves-and-board board reserves player)))
+
+(defn minimax2
+  [board-and-reserves player max? depth]
+  (let [[board reserves] board-and-reserves]
+    (if (zero? depth)
+      (if max?
+        (rank-board board player reserves)
+        (unchecked-negate (rank-board board player reserves)))
+      (let [conts (list-possible-boards board reserves player)]
+        (if (empty? conts)
+          ;; loss
+          (if max? neg-ranking-infinity ranking-infinity)
+          ;; continue
+          (reduce (if max? max min)
+                  (map
+                   (fn [new-b-and-r]
+                     (minimax2 new-b-and-r
+                              (unchecked-negate player)
+                              (not max?)
+                              (unchecked-dec depth)))
+                   conts)))))))
+
+(defn compound-ai-move
+  [board ^long player ^Reserves reserves adv-phase]
+
+  ;; TODO: this takes 60% more time than the simple ai move...
+  ;; we need to go deeper (profiling)
+  
+  ;; we assume the opening strategy ignores the gipfiness when in
+  ;; :filling mode
+
+  (let [pieces-left (get-reserves reserves player)
+        possible-moves (list-possible-moves-and-board board reserves player)
+        ngipfs (count-over-hex-array #(= %2 (* player 1)) board)
+        degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
+        optimal (time (rand-best
+                       (fn [[move board-and-res]]
+                         (time (minimax2 board-and-res
+                                        player
+                                        true
+                                        2)))
+                       nil -100000 possible-moves))
+        [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
+
+    [c1 (sign-line m degree) c2]))
+
 (defn get-gipf-potentials-in-line
   [board line]
   (loop [cur (:start line) fps (list)]
@@ -284,7 +437,6 @@
     :basic (->Reserves 12 12)
     :advanced (->Reserves 18 18)
     :normal (->Reserves 15 15)))
-
 
 (defn lost?
   [board reserves player mode advm]

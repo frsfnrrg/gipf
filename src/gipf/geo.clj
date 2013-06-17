@@ -82,3 +82,13 @@
            (pt= (pt- (:delta linea)) (:delta lineb)))))
 
 (defrename get-line-limit-point `Geometry/lend 2)
+
+(defn advance-line
+  [line]
+  (if (nil? (:sig line))
+    (->Line (pt+ (:delta line) (:start line)) (:delta line))
+    (->SignedLine (:sig line) (pt+ (:delta line) (:start line)) (:delta line))))
+
+(defn sign-line
+  [line sig]
+  (->SignedLine sig (:start line) (:delta line)))

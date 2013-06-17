@@ -34,11 +34,8 @@
 
 ;; NEXT on the TODO list;
 ;;
-;; Optimize & improve ai.
-;; Why does it take 4 ms per move?
+;; Restructure move taking as it should be..
 ;;
-;; currently, randbest - mimimax - do-move takes 0.8 sec w/0
-;; rank-board
 ;;
 ;;
 
@@ -391,6 +388,10 @@
 
 (defn start-next-clear!
   [found]
+  ;; TODO temp;
+  (start-thread
+    (println "RESULTS:" (compound-ai-move current-board* removing-player* adv-phase*)))
+  
   (if (human-player? removing-player*)
     (do
       (def game-phase* :removing-rows)
@@ -428,6 +429,7 @@
       (do
         (when-not (some (partial owns-line? removing-player*) found)
           ;; switch to the other player if this one is done
+          
           (def removing-player* (- removing-player*)))
         (start-next-clear! found))
       (start-next-move!))))
@@ -517,6 +519,17 @@
   (enter-clearing-phase!)
   
   (repaint!))
+
+(defn effect-compound-ai-move!
+  [player clear1 move clear2]
+
+  ;; effclear
+
+  ;; effmove
+
+  ;; effclear
+
+  )
 
 ;; this function must be called on the swing thread
 (defn update-game

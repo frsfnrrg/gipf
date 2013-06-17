@@ -17,6 +17,7 @@
     (->Reserves (:p1 r) (unchecked-dec (long (:p2 r))))))
 
 (defn get-reserves
+  "Get the number of piece available to a player"
   [^Reserves r ^long player]
   (if (> player long-zero)
     (:p1 r)

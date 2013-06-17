@@ -354,6 +354,31 @@
     `(let [~a-sym ~nested-array]
        (aset ~a-sym ~idx ~v))))
 
+(defmacro log-action
+  [expr]
+  (let [funcname (first expr)]
+    `(let [q# ~expr]
+       (println ": " '~funcname)
+       q#)))
+
+(defmacro expand
+  " Example time!
+
+ >> (expand (juxt square cube triple) (range 2))
+
+ (0 0 0 1 1 3)
+ 
+ >> (expand #(range %) [1 3 5])
+
+ (0 0 1 2 0 1 2 3 4)
+
+ >> (for-all-funcs-and-seqs? func seq
+      (= (expand func seq) (reduce concat (map func seq))))
+
+ true
+"
+  [func seq]
+  `(reduce concat (map ~func ~seq)))
 
 ;;
 ;; Idea

@@ -54,8 +54,10 @@
 (def change-hex-array assoc)
 
 (defn map-hex-array
-  [func-of-pt & arrays]
-  (apply mapv func-of-pt arrayfull-of-points arrays))
+  ([func-of-pt array]
+     (mapv func-of-pt arrayfull-of-points array))
+  ([func-of-pt array & arrays]
+     (apply mapv func-of-pt arrayfull-of-points array arrays)))
 
 (defn count-over-hex-array
   "Takes a boolean function of a position and
