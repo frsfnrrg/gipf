@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj Geometry MathUtil)))
+  (:import (gipfj Geometry MathUtil Line)))
 
 ;;; POINTS
 
@@ -64,31 +64,51 @@
 
 ;;; LINES
 
-(defrecord SignedLine [^long sig ^long start ^long delta])
-(defrecord Line [^long start ^long delta])
-
-(defn on-line?
-  [loc line]
-  (let [delta (pt- loc (:start line))
-        dist (pt-radius delta)
-        approx (pt* dist (:delta line))] 
-    (or (pt= delta approx)
-      (pt= delta (pt- approx)))))
-
-(defn line=
-  [linea lineb]
-  (and (on-line? (:start linea) lineb)
-       (or (pt= (:delta linea) (:delta lineb))
-           (pt= (pt- (:delta linea)) (:delta lineb)))))
+(defrename ->Line `Line/makeLine 2)
+(defrename ->SignedLine `Line/makeSignedLine 3)
+(defrename on-line? `Line/onLine 2)
+(defrename line= `Line/equals 2)
+(defrename line-start `Line/getStart 1)
+(defrename line-delta `Line/getDelta 1)
+(defrename line-sig `Line/getSig 1)
 
 (defrename get-line-limit-point `Geometry/lend 2)
 
-(defn advance-line
-  [line]
-  (if (nil? (:sig line))
-    (->Line (pt+ (:delta line) (:start line)) (:delta line))
-    (->SignedLine (:sig line) (pt+ (:delta line) (:start line)) (:delta line))))
+(defrename advance-line `Line/advanceLine 1)
+(defrename sign-line `Line/sign 2)
 
-(defn sign-line
-  [line sig]
-  (->SignedLine sig (:start line) (:delta line)))
+(defrename make-hex-array `Board/makeBoard 0)
+(defrename get-hex-array `Board/get 2)
+(defrename change-hex-array `Board/change 3)
+(defrename count-over-hex-array `Board/countItem 2)
+
+(def unit-ring-points-cycled
+  (list (pt 1 0 0) (pt 0 1 0) (pt 0 0 1) (pt -1 0 0) (pt 0 -1 0) (pt 0 0 -1) (pt 1 0 0)))
+
+(def unit-ring-points
+  (list (pt 1 0 0)
+        (pt 0 1 0)
+        (pt 0 0 1)
+        (pt -1 0 0)
+        (pt 0 -1 0)
+        (pt 0 0 -1)))
+
+(defn
+  get-ring-of-hex-uv-points
+  [^long radius]
+  
+  (if (= 0 radius)
+    (list (pt 0 0 0))
+  
+    (loop [made (list) pointsleft unit-ring-points-cycled]
+      (if (empty? (rest pointsleft))
+        made
+        (recur (concat made
+                       (reverse (interpolate-list
+                                 (pt* radius (first pointsleft))
+                                 (pt* radius (second pointsleft))
+                                 radius)) )
+               (rest pointsleft))))))
+
+(def arrayfull-of-points (vec (range (hexagonal-number 4))))
+

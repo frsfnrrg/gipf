@@ -16,4 +16,12 @@ public class MathUtil {
             return iv + 1;
         }
     }
+
+    public static long[] getHexFloorArray(int size) {
+        long[] res = new long[size];
+        for (int i = 0; i < size; i++) {
+            res[i] = reverseHexFloor(i);
+        }
+        return res;
+    }
 }

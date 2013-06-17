@@ -1,6 +1,6 @@
 (ns gipf.core
   (:gen-class)
-  (:import (gipfj Geometry MathUtil)))
+  (:import (gipfj Geometry MathUtil Board)))
 
 ;;;
 ;;; The purpose of this core file
@@ -23,8 +23,6 @@
 (println "util")
 (load "geo") ; free
 (println "geo")
-(load "hex") ; free
-(println "hex")
 (load "reserves") ; free
 (println "reserves")
 (load "game") ; free
@@ -177,40 +175,40 @@
 
 (defn empty-line!
   [line]
-  (let [e1p (pt- (:start line) (:delta line))
-        llp (get-line-limit-point (:start line) (:delta line))
+  (let [e1p (pt- (line-start line) (line-delta line))
+        llp (get-line-limit-point (line-start line) (line-delta line))
         e2p (pt+ llp
-                 (:delta line))]
+                 (line-delta line))]
     (clear-line! e1p e2p)
     (redraw-loc! e1p)
     (redraw-loc! e2p)
-    (loop [cur (:start line)]
+    (loop [cur (line-start line)]
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
           (when (same-sign? val removing-player*)
             (when (= 2 (abs val))
               (inc-pieces-left! removing-player*))
             (inc-pieces-left! removing-player*))
-          (def board* (change-board-cell board* cur 0)))
+          (def board* (change-hex-array board* cur 0)))
         (redraw-loc! cur)
         (when (pt= cur hovered*)
           (draw-highlight! cur))
         (when-not (pt= cur llp)
-          (recur (pt+ cur (:delta line))))))))
+          (recur (pt+ cur (line-delta line))))))))
 
 (defn undraw-line!
   [line]
-  (let [e1p (pt- (:start line) (:delta line))
+  (let [e1p (pt- (line-start line) (line-delta line))
         e2p (pt+ (get-line-limit-point
-                  (:start line) (:delta line))
-                 (:delta line))]
+                  (line-start line) (line-delta line))
+                 (line-delta line))]
     (clear-line! e1p e2p)
     (loop [cur e1p]
       (redraw-loc! cur)
       (when (pt= cur hovered*)
         (draw-highlight! cur))
       (when-not (pt= cur e2p)
-        (recur (pt+ cur (:delta line)))))))
+        (recur (pt+ cur (line-delta line)))))))
 
 (defn place-piece!
   [loc player]
@@ -234,7 +232,7 @@
 ;; should really extract the (partial owns-line? player) pattern...
 (defn owns-line?
   [player line]
-  (same-sign? (:sig line) player))
+  (same-sign? (line-sig line) player))
 
 (defn toggle-piece!
   "Toggle the state of the piece as or as not a GIPF-potential."
@@ -388,10 +386,6 @@
 
 (defn start-next-clear!
   [found]
-  ;; TODO temp;
-  (start-thread
-    (println "RESULTS:" (compound-ai-move current-board* removing-player* adv-phase*)))
-  
   (if (human-player? removing-player*)
     (do
       (def game-phase* :removing-rows)
