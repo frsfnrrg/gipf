@@ -3,15 +3,6 @@
 
 ;;; POINTS
 
-(Geometry/loadTables)
-
-;; I wish I could remove the numargs...
-(defmacro defrename
-  [new old numargs]
-  (let [args (map #(gensym (str "expr" %)) (range numargs))]
-  `(defmacro ~new [~@args]
-     `(~~old ~~@args))))
-
 (defrename pt-radius `Geometry/pradius 1)
 (defrename pt= `Geometry/pequals 2)
 (defrename pt-dist `Geometry/pdistance 2)

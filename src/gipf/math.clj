@@ -1,4 +1,6 @@
-(ns gipf.core)
+(ns gipf.core
+  (:import (gipfj MathUtil))
+  )
 
 (defn sqrt [x] (java.lang.Math/sqrt x))
 
@@ -19,3 +21,13 @@
    (pos? x) 1
    (neg? x) -1
    :else 0))
+
+
+(defrename add `MathUtil/add 2)
+(defrename equals `MathUtil/equals 2)
+(defrename multiply `MathUtil/multiply 2)
+(defrename divide `MathUtil/divide 2)
+(defrename subtract `MathUtil/subtract 2)
+(defrename inc-1 `MathUtil/inc 1)
+(defrename dec-1 `MathUtil/dec 1)
+(defrename negate `MathUtil/negate 1)

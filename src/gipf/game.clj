@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj Board)))
+  (:import (gipfj Board GameState)))
 
 ;;;
 ;;; There is a really nice way of expressing moves.
@@ -79,23 +79,23 @@
 
 (defn rank-board-1
   "Finally kinda efficient"
-  [board ^long player ^Reserves reserves]
+  ^long [board ^long player ^Reserves reserves]
   (let [pos-points (rank-board-org board player)
         lines-points (rank-board-lines board player)] 
-    (unchecked-add pos-points (unchecked-multiply 20 lines-points))))
+    (add pos-points (multiply 20 lines-points))))
 
 (defn rank-board-2
   "Finally kinda efficient"
-  [board ^long player ^Reserves reserves]
+  ^long [board ^long player ^Reserves reserves]
   (rank-board-org board player))
 
 (defn rank-board-3
   "Finally kinda efficient"
-  [board ^long player ^Reserves reserves]
+  ^long [board ^long player ^Reserves reserves]
   (rank-board-lines board player))
 
 (defn rank-board-4
-  [board ^long player reserves]
+  ^long [board ^long player reserves]
   10)
 
 (def rank-board
@@ -117,11 +117,11 @@
   (loop [b board ^long cur loc ^long last value shift (list)]
     (let [next (get-hex-array b cur)]
       (cond
-       (= (long (pt-radius cur)) 4)
+       (equals (pt-radius cur) long-4)
        (do
          (println "pushed until radius was 4. ??")
          :should-never-happen)
-       (= 0 next)
+       (equals long-zero next)
        (list (change-hex-array b cur last) (cons cur shift))
        :else
        (recur (change-hex-array b cur last)
@@ -173,10 +173,25 @@
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
+(defrename place-and-shove `Board/placeAndShove 3) 
+(defrename ->GameState `GameState/makeGameState 2)
+
 (defn do-shove
   [board reserves player shove]
   [(first (do-move board player (line-start shove) (line-delta shove)))
    (dec-reserves reserves player)])
+
+(defn expand-gamestate
+  [gs]
+  [(GameState/getBoard gs) (GameState/getReserves gs)])
+
+(defn get-line-taking-results
+  [gamestate player]
+  (vec (Board/getLineTakingResults gamestate player)))
+
+(defn fget-open-moves
+  [board]
+  (vec (Board/getOpenMoves board)))
 
 (defn list-possible-moves-and-board
   "Like list-possible-boards, just returns the moves along with the boards.
@@ -206,19 +221,26 @@
                       actions-board)]
     flines-board))
 
-
-(defn list-possible-boards
-  "(map rest (list-possible-moves-and-board board reserves player))"
+(defn list-possible-boards-cheat
   [board reserves player]
-  (map second (list-possible-moves-and-board board reserves player)))
+  (map (fn [_] [board reserves]) (range 42)))
 
+(defn list-possible-boards-opt
+  "Costs 60% more in ai than the cheat version"
+  [board reserves player]
+  (map expand-gamestate
+    (vec (Board/listPossibleBoards
+           board reserves player))))
+  
+(def list-possible-boards list-possible-boards-opt)
+  
 (defn minimax2
   [board-and-reserves player max? depth]
   (let [[board reserves] board-and-reserves]
     (if (zero? depth)
       (if max?
         (rank-board board player reserves)
-        (unchecked-negate (rank-board board player reserves)))
+        (negate (rank-board board player reserves)))
       (let [conts (list-possible-boards board reserves player)]
         (if (empty? conts)
           ;; loss
@@ -228,9 +250,9 @@
                   (map
                    (fn [new-b-and-r]
                      (minimax2 new-b-and-r
-                              (unchecked-negate player)
+                              (negate player)
                               (not max?)
-                              (unchecked-dec depth)))
+                              (dec-1 depth)))
                    conts)))))))
 
 (defn compound-ai-move
@@ -253,7 +275,7 @@
                          (time (minimax2 board-and-res
                                         player
                                         true
-                                        2)))
+                                        3)))
                        nil -100000 possible-moves))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
     ;; note positive sig
@@ -272,16 +294,6 @@
   [board player line]
   (filter #(same-sign? (get-hex-array board %1) player)
           (get-gipf-potentials-in-line board line)))
-
-(defn ai-clear
-  "Returns (list line keep)"
-  [board player lines]
-  (busy-doing-important-stuff order-distinguishing-pause)
-  (let [line (rand-nth (filter #(same-sign? (line-sig %) player) lines))
-        gipf-potentials (get-own-gipf-potentials-in-line board player line)]
-    (list
-     line
-     gipf-potentials)))
 
 ;; new!
 
@@ -306,9 +318,9 @@
   "Return a new set of reserves."
   [mode]
   (case mode
-    :basic (->Reserves 12 12)
-    :advanced (->Reserves 18 18)
-    :normal (->Reserves 15 15)))
+    :basic (->Reserves 12)
+    :advanced (->Reserves 18)
+    :normal (->Reserves 15)))
 
 (defn lost?
   [board reserves player mode advm]

@@ -19,13 +19,22 @@ public class Geometry {
     // line actions
     private static long[][] lend;
 
+    private static Geometry GEOOBJ = new Geometry();
+
     private Geometry() {
+        loadTables();
         // Nono call this...
+    }
+
+    public static Geometry getMe() {
+        // Why? I don't know...
+        // if you really, really want a useless obj..
+        return GEOOBJ;
     }
 
     // Optimized long-point section: all public
 
-    public static void loadTables() {
+    private static void loadTables() {
         System.out.println("Loading geometry jump tables");
         long startTime = System.nanoTime();
 

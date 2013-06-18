@@ -13,6 +13,12 @@
 
 ; everything should be explicitly passed into these
 
+(defmacro defrename
+  [new old numargs]
+  (let [args (map #(gensym (str "expr" %)) (range numargs))]
+  `(defmacro ~new [~@args]
+     `(~~old ~~@args))))
+
 (defn player->index
   [^long player]
   (if (= player (long -1)) 0 1))

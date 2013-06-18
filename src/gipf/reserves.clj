@@ -1,24 +1,7 @@
-(ns gipf.core)
+(ns gipf.core
+  (:import (gipfj Reserves)))
 
-;; if we need still more optimization, store as a single number.
-;; use +- 64; bitshift, c++; fortran, assembly, asics...
-(defrecord Reserves [^long p1 ^long p2])
-
-(defn inc-reserves
-  [ ^Reserves r ^long player]
-  (if (> player (long long-zero))
-    (->Reserves (unchecked-inc (long (:p1 r))) (:p2 r))
-    (->Reserves (:p1 r) (unchecked-inc (long (:p2 r))))))
-
-(defn dec-reserves
-  [^Reserves r ^long player]
-  (if (> player long-zero)
-    (->Reserves (unchecked-dec (long (:p1 r))) (:p2 r))
-    (->Reserves (:p1 r) (unchecked-dec (long (:p2 r))))))
-
-(defn get-reserves
-  "Get the number of piece available to a player"
-  [^Reserves r ^long player]
-  (if (> player long-zero)
-    (:p1 r)
-    (:p2 r)))
+(defrename ->Reserves `Reserves/makeReserves 1)
+(defrename inc-reserves `Reserves/incReserves 2)
+(defrename dec-reserves `Reserves/decReserves 2)
+(defrename get-reserves `Reserves/getReserves 2)
