@@ -44,7 +44,6 @@
 (def reserve-pieces* (new-reserves mode*))
 
 (def current-player* 1) ; -1 or 1
-(def removing-player* nil)
 (def selected* nil)
 (def hovered* "Cell over which the mouse is hovering" nil)
 (def lines* "List of lines that the human player can remove" (list))
@@ -185,10 +184,10 @@
     (loop [cur (line-start line)]
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
-          (when (same-sign? val removing-player*)
+          (when (same-sign? val current-player*)
             (when (= 2 (abs val))
-              (inc-pieces-left! removing-player*))
-            (inc-pieces-left! removing-player*))
+              (inc-pieces-left! current-player*))
+            (inc-pieces-left! current-player*))
           (def board* (change-hex-array board* cur 0)))
         (redraw-loc! cur)
         (when (pt= cur hovered*)
@@ -263,18 +262,6 @@
   (def ai-action-threads*
     (atv ai-action-threads* (player->index player) (constantly val))))
 
-(defn start-ai-clear!
-  [found]
-  (let [b board*
-        r removing-player*]
-    (set-ai-action-thread!
-     r
-     (start-thread
-      (let [action (ai-clear b r found)]
-        (on-swing-thread
-         (update-game 
-          (list (cons :aiclear action)))))))))
-
 (defn get-adv-phase
   []
   (get adv-phase* (player->index current-player*)))
@@ -285,7 +272,7 @@
                        (player->index current-player*)
                        (constantly value))))
 
-(defn start-ai-move!
+(defn start-compound-ai-move!
   []
   (let [b board*
         p current-player*
@@ -293,18 +280,16 @@
     (set-ai-action-thread!
      p
      (start-thread
-      (let [action (ai-move board* current-player*
-                            reserve-pieces* (get-adv-phase))]
+      (let [action (into [] (compound-ai-move board* current-player*
+                                              reserve-pieces* (get-adv-phase)))]
         (on-swing-thread
-         (update-game (list (cons :aimove action)))))))))
+         (update-game (list (cons :caimove action)))))))))
 
 (defn switch-players!
   []
   (def current-player* (- current-player*))
                                         ; cleanup after the line removal action...
   (def already-removed-lines* (list)))
-
-
 
 (defn set-lines!
   "Sets the lines and deals with the rings..."
@@ -320,7 +305,9 @@
   "Example use: (when-not (game-over!?) (proceed) (finalize)"
   []
   (if (lost?  board* reserve-pieces* current-player* mode* (get-adv-phase))
-    (do (def game-phase* :gameover)
+    (do
+      (println "Game over!")
+      (def game-phase* :gameover)
         (draw-game-over! (- current-player*))
         true)
     false))
@@ -345,7 +332,7 @@
     (def game-phase* :placing)
     (do
       (def game-phase* :waiting-for-ai)
-      (start-ai-move!)))
+      (start-compound-ai-move!)))
   
   (redraw-all!))
 
@@ -383,17 +370,6 @@
     (draw-highlight! hovered*))
   (repaint!))
 
-
-(defn start-next-clear!
-  [found]
-  (if (human-player? removing-player*)
-    (do
-      (def game-phase* :removing-rows)
-      (set-lines! found removing-player*))
-    (do
-      (def game-phase* :waiting-for-ai)
-      (start-ai-clear! found))))
-
 (defn start-next-move!
   []
   (switch-players!)
@@ -401,36 +377,33 @@
     (if (ai-player? current-player*)
       (do
         (def game-phase* :waiting-for-ai)
-        (start-ai-move!))
-      (def game-phase* :placing))))
+        (start-compound-ai-move!))
+      ;; human must clear...
+      (let [found (filter (partial owns-line? current-player*)
+                          (get-lines-of-four board*))]
+        (if (seq found)
+          (do
+            (def game-phase* :removing-pre)
+            (set-lines! found current-player*))
+          (def game-phase* :placing))))))
 
-(defn enter-clearing-phase!
+(defn post-human-move!
   []
-  (let [found (get-lines-of-four board*)]
+  (let [found (filter (partial owns-line? current-player*)
+                      (filter-out-already-used-lines
+                       (get-lines-of-four board*)))]
     (if (seq found)
+      ;; keep on removing...
       (do
-        (if (some (partial owns-line? current-player*) found)
-          (def removing-player* current-player*)
-          (def removing-player* (- current-player*)))
-        (start-next-clear! found))
-      (start-next-move!))))
-
-(defn continue-clearing-phase!
-  []
-  (let [found (filter-out-already-used-lines
-               (get-lines-of-four board*))]
-    (if (seq found)
-      (do
-        (when-not (some (partial owns-line? removing-player*) found)
-          ;; switch to the other player if this one is done
-          
-          (def removing-player* (- removing-player*)))
-        (start-next-clear! found))
-      (start-next-move!))))
+        (def game-phase* :removing-post)
+        (set-lines! found current-player*))
+      (if (= game-phase* :removing-pre)
+        (def game-phase* :placing)
+        (start-next-move!)))))
 
 (defn try-row-clearing!
   [clickpt]
-                  
+
   (doseq [line lines*] 
     (when (on-line? clickpt line)
       (empty-line! line)
@@ -440,7 +413,7 @@
   (def lines* (list))
   (def rings* (list))
 
-  (continue-clearing-phase!)
+  (post-human-move!)
   
   (repaint!))
 
@@ -454,13 +427,12 @@
           (= 1 (get-pieces-left current-player*))
           (do
             (set-adv-phase! :playing)
-            (def placed-cell-value* current-player*))
-          ))
+            (def placed-cell-value* current-player*))))
   (def selected* nil)
   (move-piece! clickpt delvec placed-cell-value*)
 
-  (enter-clearing-phase!)
-
+  (post-human-move!)
+  
   (when (not= game-phase* :gameover)
     (draw-highlight! hovered*))
   
@@ -481,49 +453,50 @@
   (repaint!)
   (def game-phase* :moving))
 
-(defn effect-ai-clearing!
-  [keep line]
-  ;; removing player is the AI;
-  ;; if currentplayer is the same, removing player is finalizing its move;
-  ;; otherwise, it is a reaction
-  (def rings* keep)
-  (empty-line! line)
+(defn effect-compound-ai-move!
+  [clear1 move clear2]
+
+  ;; could just launch a thread, that periodically acts...
+  ;; (illusion of real oppenent)
+  
+  ;; player is current-player*
+  (println clear1)
+
+  (def rings* (ffirst clear1))
+  (doseq [line (rest clear1)]
+    (empty-line! line))
   (def rings* (list))
-  (def already-removed-lines* (cons line already-removed-lines*))
 
-  (continue-clearing-phase!)
+  ;; doshove
+
+  (println move)
   
-  (repaint!))
+  (let [degree (line-sig move)
+        advline (advance-line move)]
+    (when (and (= (get-adv-phase) :filling) (= degree 1))
+      (set-adv-phase! :playing))
 
-(defn effect-ai-move!
-  [place shove degree]
+    (when (= degree 2)
+      (dec-pieces-left! current-player*))
+    (dec-pieces-left! current-player*)
 
-  (when (and (= (get-adv-phase) :filling) (= degree 1))
-    (set-adv-phase! :playing))
+    (move-piece! (line-start advline) (line-delta advline) (* current-player* degree)))
 
-  ;; we don't bother to show the piece being placed.
-  ;; we could, with a delaythreadhack...
+  (println clear2)
+
+  (def rings* (ffirst clear2))
+  (doseq [line (rest clear2)]
+    (empty-line! line))
+  (def rings* (list))
   
-  (dec-pieces-left! current-player*)
-  (move-piece! (pt+ place shove) shove (* current-player* degree))
+  ;; akin to human end move...
 
-  (when (pt= place hovered*)
+  (when (pt= (line-start move) hovered*)
     (draw-highlight! hovered*))
 
-  (enter-clearing-phase!)
+  (start-next-move!)
   
   (repaint!))
-
-(defn effect-compound-ai-move!
-  [player clear1 move clear2]
-
-  ;; effclear
-
-  ;; effmove
-
-  ;; effclear
-
-  )
 
 ;; this function must be called on the swing thread
 (defn update-game
@@ -543,6 +516,8 @@
             :advanced  (def mode* :advanced)
             :player-ai (set-player-type! (third input)
                                          (if (fourth input) :ai :human)))
+      :caimove
+      (effect-compound-ai-move! (second input) (third input) (fourth input))
       
       :aimove
       (effect-ai-move! (second input) (third input) (fourth input))
@@ -552,6 +527,13 @@
       (cond (= (fourth input) 1)
             (let [clickpt (screenpx-to-loc (xy (second input) (third input)))
                   rad (pt-radius clickpt)]
+              ;; The human player goes through a four-step move
+              ;;
+              ;; removing-pre   - clears own lines from opp's move
+              ;; placing        - places a piece
+              ;; moving         - shoves it
+              ;; removing-post  - clears own lines from own move
+              ;;
               (if (<= rad 4)
                 (case game-phase*
                   :placing
@@ -570,11 +552,11 @@
                                (= (get-adv-phase) :filling)
                                (pt= clickpt selected*))
                           (toggle-piece! clickpt)))
-                  :removing-rows
+                  (:removing-pre :removing-post)
                   (cond (= 4 rad)
                         (try-row-clearing! clickpt)         
                         (= 2 (abs (get-hex-array board* clickpt)))
-                        (toggle-ring!))
+                        (toggle-ring! clickpt))
                   :waiting-for-ai
                   nil
                   :gameover

@@ -12,7 +12,7 @@
 (def numfont (java.awt.Font. "Angleterre Book" java.awt.Font/PLAIN 70))
 
 (def game-img (make-img 800 800))
-(def game-graphics ^java.awt.Graphics2D (.getGraphics game-img))
+(def game-graphics ^java.awt.Graphics2D (.getGraphics ^java.awt.image.BufferedImage game-img))
 (def game-panel (proxy [javax.swing.JPanel] []
                   (paint [^java.awt.Graphics g]
                     (.drawImage g game-img 0 0 game-panel))))
@@ -54,43 +54,43 @@
 
 
 (defn draw-text-centered-at!
-  [xy text color]
+  [xy ^java.lang.String text color]
   ;; horizontally, it is fine.... The y coord corresponds to the 
   (let [[x y] xy
-        fmetric (.getFontMetrics game-graphics)
+        fmetric (.getFontMetrics ^java.awt.Graphics2D game-graphics)
         ^java.awt.geom.Rectangle2D b
         (.getStringBounds fmetric text game-graphics)
         [hx hy] (map #(int (/ % 2)) [(.getWidth b) (.getHeight b)])]
-    (doto game-graphics
+    (doto ^java.awt.Graphics2D game-graphics
       (.setColor color-bg)
       ;; 4x; we will never drop more than 1 digit...
       (.fillRect
        (- x (* 2 hx)) (+ y (int (.getY b)))
        (* 4 hx) (int  (.getHeight b)))
       (.setColor color)
-      (.drawString text (- x hx) y))))
+      (.drawString text (int (- x hx)) (int y)))))
 
 (defn draw-highlight!
   [loc]
-  (.setColor game-graphics (java.awt.Color. 255 255 0 200))
-  (.fill game-graphics (hex-tile-at loc)))
+  (.setColor ^java.awt.Graphics2D game-graphics (java.awt.Color. 255 255 0 200))
+  (.fill ^java.awt.Graphics2D game-graphics (hex-tile-at loc)))
 
 (defn draw-selector!
   [loc board]
   ;; TODO make there be arrows, pointing only
   ;; in the available directions
-  (.setColor game-graphics (java.awt.Color. 0 0 255 200))
-  (.fill game-graphics (circle-at loc 20))
+  (.setColor ^java.awt.Graphics2D game-graphics (java.awt.Color. 0 0 255 200))
+  (.fill ^java.awt.Graphics2D game-graphics (circle-at loc 20))
   (let [[cx cy] (loc-to-screenpx loc)]
     ;; star shape
     (doseq [[px py] [[(* 40 (sqrt 3)) 40] [(* -40 (sqrt 3)) 40] [0 80]]]
-      (.drawLine game-graphics (- cx px) (- cy py) (+ cx px) (+ cy py)) )))
+      (.drawLine ^java.awt.Graphics2D game-graphics (- cx px) (- cy py) (+ cx px) (+ cy py)) )))
 
 (defn draw-line!
   [line]
   (let [end1 (pt- (line-start line) (line-delta line))
         end2 (pt+ (get-line-limit-point (line-start line) (line-delta line)) (line-delta line))]
-    (doto game-graphics
+    (doto ^java.awt.Graphics2D game-graphics
       (.setColor  java.awt.Color/GREEN)
       (.fill (circle-at end1 25))
       (.fill (circle-at end2 25))
@@ -100,8 +100,8 @@
       (.setStroke (java.awt.BasicStroke. 15)))
     (let [[e1x e1y] (loc-to-screenpx end1)
           [e2x e2y] (loc-to-screenpx end2)]
-      (.drawLine game-graphics  e1x e1y e2x e2y))
-    (.setStroke game-graphics (java.awt.BasicStroke. 1))))
+      (.drawLine ^java.awt.Graphics2D game-graphics  e1x e1y e2x e2y))
+    (.setStroke ^java.awt.Graphics2D game-graphics (java.awt.BasicStroke. 1))))
 
 
 
@@ -119,9 +119,9 @@
         inner-ring (semicircle-at x y inner top?)
         outer-ring (semicircle-at x y outer top?)
         ]
-    (doto k
-      (.append inner-ring true)
-      (.append outer-ring true)                             
+    (doto ^java.awt.geom.Path2D$Float k
+      (.append ^java.awt.geom.Arc2D$Float inner-ring true)
+      (.append ^java.awt.geom.Arc2D$Float outer-ring true)                             
       (.closePath))))
 
 (defn draw-ring!
@@ -130,7 +130,7 @@
   (let [[x y] (loc-to-screenpx loc)
         s1 (semiring-at x y 15 30 true)
         s2 (semiring-at x y 15 30 false)]
-    (doto game-graphics
+    (doto ^java.awt.Graphics2D game-graphics
       (.setColor java.awt.Color/BLACK)
       (.fill s1)
       (.fill s2))))
@@ -140,7 +140,7 @@
   [p1 p2]
   (let [[e1x e1y] (loc-to-screenpx p1)
         [e2x e2y] (loc-to-screenpx p2)]
-    (doto game-graphics
+    (doto ^java.awt.Graphics2D game-graphics
       (.setColor java.awt.Color/WHITE)
       (.setStroke (java.awt.BasicStroke. 15))
       (.drawLine e1x e1y e2x e2y)
@@ -149,22 +149,25 @@
 
 (defn color-fade
   [^java.awt.Color color]
-  (let [h (fn [v] (if (even? v) (+ 128 (/ v 2)) (+ 128 (/ (- v 1) 2))))]
-    (java.awt.Color. (h (.getRed color)) (h (.getGreen color)) (h (.getBlue color)) 127)))
+  (let [h (fn  [v] (if (even? v) (+ 128 (/ v 2)) (+ 128 (/ (- v 1) 2))))]
+    (java.awt.Color. (int (h (.getRed color)))
+                     (int (h (.getGreen color)))
+                     (int (h (.getBlue color)))
+                     (int 127))))
 
 (defn draw-game-over!
   [winner]
   (let [wincolor (color-fade (get piece-colors (if (> winner 0) 0 1)))]
-    (doto game-graphics
+    (doto ^java.awt.Graphics2D game-graphics
       (.setColor wincolor)
       (.fillRect 0 0 800 800))))
 
 (defn draw-piece-at-loc!
   [loc type]
   (if (> type 0)
-    (.setColor game-graphics (get piece-colors 0))
-    (.setColor game-graphics (get piece-colors 1)))
-  (.fill game-graphics (circle-at loc 30))
+    (.setColor ^java.awt.Graphics2D game-graphics (get piece-colors 0))
+    (.setColor ^java.awt.Graphics2D game-graphics (get piece-colors 1)))
+  (.fill ^java.awt.Graphics2D game-graphics (circle-at loc 30))
   (when (= 2 (abs type))
-    (.setColor game-graphics (scale-color (.getColor game-graphics) 0.5))
-    (.fill game-graphics (circle-at loc 25))))
+    (.setColor ^java.awt.Graphics2D game-graphics (scale-color (.getColor ^java.awt.Graphics2D game-graphics) 0.5))
+    (.fill ^java.awt.Graphics2D game-graphics (circle-at loc 25))))

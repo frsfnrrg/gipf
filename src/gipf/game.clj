@@ -108,6 +108,9 @@
 ;; this is _purely_ abstract...
 ;; TODO split into two functions: one for ai, one for getting
 ;; the updated pieces..
+
+;; TODO again: put into java for optimization (if needed)
+
 (defn do-move
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
   [board value loc ^long shove]
@@ -126,52 +129,8 @@
               next
               (cons cur shift))))))
 
-(defn act-move
-  [gamestate move ^long player]
-  (let [[board reserves] gamestate]
-    ; remember; player == piece
-    [(first (do-move board player (pt+ (line-start move) (line-delta move)) (line-delta move)))
-     (dec-reserves reserves player)]))
-
-(defn minimax
-  "Ranks a position resulting from a move based
-  one what the player would respond and the response
-  to that etc."
-  [gamestate player max? depth]      
-  (let [[board reserves] gamestate]
-    (if (zero? depth)
-      (if max?
-        (rank-board board player reserves)
-        (unchecked-negate (long (rank-board board player reserves))))
-      (reduce (if max? max min)
-              (map
-               (fn [move]
-                 (minimax (act-move gamestate move player)
-                          (- player)
-                          (not max?)
-                          (dec depth)))
-               (get-open-moves board))))))
-
-(defn ai-move
-  "Returns place & shove vector."
-  [board ^long player ^Reserves reserves adv]
-  (busy-doing-important-stuff order-distinguishing-pause)
-  (let [possible-moves (get-open-moves board)
-        ngipfs (count-over-hex-array board (* player 2))
-        degree (if (and (= adv :filling) (< ngipfs 4)) 2 1)
-        optimal (time (rand-best
-                       (fn [move]
-                         (time (minimax (act-move [board reserves] move player)
-                                        player
-                                        true
-                                        3)))
-                       nil -100000 possible-moves))
-        chosen (or optimal (rand-nth possible-moves))]
-    [(line-start chosen) (line-delta chosen) degree]))
-
-
 (defn get-line-taking-orderings
-  "Returns a list of [[clear move move] newboard newreserves]
+  "Returns a list of [[[prot] take1 take2] newboard newreserves]
    for all possible line
    orderings"
   [board reserves player]
@@ -182,16 +141,18 @@
   
   (list
    (loop [cb board rr reserves taken [] protected []]
-     (let [found (filter #(= (line-sig %) player) (get-lines-of-four cb))]
+     (let [found (filter #(same-sign? (line-sig %) player) (get-lines-of-four cb))]
        (if (empty? found)
-         [(cons protected taken) cb rr]
+         [(concat [protected] taken) cb rr]
+
+         ;; this seems to work...
          (let [chosen (first found)
                delta (line-delta chosen)
                [prot nb nr]
                (loop [cur (line-start chosen) bpr [] bb cb brr rr]
                  (if (= 4 (pt-radius cur))
                    [bpr bb brr]
-                   (case (unchecked-multiply (get-hex-array bb cur) player)
+                   (case (int (unchecked-multiply (get-hex-array bb cur) player))
                      (-2 -1) ;; opponent
                      (recur (pt+ cur delta)
                             bpr
@@ -209,7 +170,8 @@
                      (recur (pt+ cur delta)
                             (conj bpr cur)
                             bb brr))))]
-           (recur nb nr chosen (conj protected prot))))))))
+           
+           (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
 (defn do-shove
   [board reserves player shove]
@@ -276,6 +238,8 @@
 
   ;; TODO: this takes 60% more time than the simple ai move...
   ;; we need to go deeper (profiling)
+
+  (busy-doing-important-stuff 0.5)
   
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode
@@ -292,7 +256,7 @@
                                         2)))
                        nil -100000 possible-moves))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
-
+    ;; note positive sig
     [c1 (sign-line m degree) c2]))
 
 (defn get-gipf-potentials-in-line
