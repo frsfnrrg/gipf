@@ -68,4 +68,20 @@ public class MathUtil {
     public static long min(long a, long b) {
         return (a < b) ? a : b;
     }
+
+    public static boolean greater(long a, long b) {
+        return (a > b);
+    }
+
+    public static boolean less(long a, long b) {
+        return (a > b);
+    }
+
+    public static boolean evenp(long a) {
+        return 0 == (a % 2);
+    }
+
+    public static boolean oddp(long a) {
+        return 1 == (a % 2);
+    }
 }

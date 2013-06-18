@@ -125,10 +125,11 @@ public class Board {
     }
 
     // the thing that was 84.6% cpu...
-    public static long rankBoardOrg(Board b, long player) {
+    public static long rankBoardOrg(GameState g, long player) {
+        long[] d = g.b.data;
         long r = 0;
         for (int i = 0; i < SIZE; i++) {
-            r += valueCell(b.data[i], player, radiusBoard[i]);
+            r += valueCell(d[i], player, radiusBoard[i]);
         }
         return r;
     }
@@ -248,8 +249,9 @@ public class Board {
         return foo;
     }
 
-    public static long rankBoardLines(Board b, long player) {
+    public static long rankBoardLines(GameState g, long player) {
         long r = 0;
+        long[] d = g.b.data;
 
         for (int xx = 0; xx < 21; xx++) {
             int[] l = listOfLinePoints[xx];
@@ -259,7 +261,7 @@ public class Board {
             int count = 1;
             int len = l.length;
             for (int kk = 0; kk < len; kk++) {
-                long v = b.data[l[kk]];
+                long v = d[l[kk]];
                 if (v == 0 || (sign * v <= 0)) {
                     count = 1;
                     sign = v;
@@ -275,7 +277,7 @@ public class Board {
 
             // most will not pass this test
             if (fix != 0) {
-                r += rankLine(b, l, fix);
+                r += rankLine(g.b, l, fix);
             }
         }
 
@@ -521,12 +523,11 @@ public class Board {
     private static final GameState[] mpm2 = new GameState[120];
     private static final GameState[] mpm3 = new GameState[360];
 
-    public static GameState[] listPossibleBoards(Board b, Reserves r,
-            long player) {
+    public static GameState[] listPossibleBoards(GameState g, long player) {
 
         int i = 0, j = 0, k = 0;
 
-        for (GameState q : getLineTakingResults(new GameState(b, r), player)) {
+        for (GameState q : getLineTakingResults(g, player)) {
             mpm1[i] = q;
             i++;
         }

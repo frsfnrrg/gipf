@@ -1,39 +1,31 @@
 (ns gipf.core
-  (:import (gipfj Board GameState Reserves)))
-
-;;;
-;;; There is a really nice way of expressing moves.
-;;; One move consists of three phases:
-;;;
-;;;  Pre clean
-;;;  Action
-;;;  Post clean
-;;;
-;;; All are done by the same player; players alternate.
-;;; Preclean is eqv. to the cleaning response to the other
-;;; player's move.
-;;;
-;;; Under this framework, the aimove as a whole can
-;;; be done in one action; [:aimove [[save save] clean clean]
-;;;                                 shoveline
-;;;                                 [[save save] clean clean]]
-;;;
-;;; Then, given two functions: list-possible-boards
-;;;                            list-possible-moves-and-board
-;;;
-;;; Given a board and a player, one can get the list of the results,
-;;; potentially with the move that caused it.
-;;;
-;;;
+  (:import (gipfj Board GameState Reserves IDRNode)))
 
 
 (def order-distinguishing-pause 0.6) ; sec
 (def ranking-infinity (long 100000))
 (def neg-ranking-infinity (long -100000))
 
-;; predicates/extraction
+(defrename place-and-shove `Board/placeAndShove 3) 
+(defrename ->GameState `GameState/makeGameState 2)
+(defrename game-state-board `GameState/getBoard 1)
+(defrename game-state-reserves `GameState/getReserves 1)
 
 (defrename row-full? `Board/lineFull 3)
+
+(defrename value-cell `Board/valueCell 3)
+(defrename rank-board-org `Board/rankBoardOrg 2)
+(defrename rank-line `Board/rankLine 3)
+(defrename rank-board-lines `Board/rankBoardLines 2)
+
+(defrename make-idr-node `IDRNode/makeIDRNode 3)
+(defrename idr-node-update `IDRNode/updateIDRNode 3)
+(defrename idr-node-gamestate `IDRNode/getGameState 1)
+(defrename idr-node-player `IDRNode/getPlayer 1)
+(defrename idr-node-rank `IDRNode/getRank 1)
+(defrename idr-node-children `IDRNode/getChildren 1)
+
+;; predicates/extraction
 
 (defn get-lines-of-four
   [board]
@@ -72,44 +64,38 @@
                              (map #(pt+ % loc) unit-ring-points))]
              (some #(not (row-full? board % (pt- % loc))) pts))))))
 
-(defrename value-cell `Board/valueCell 3)
-(defrename rank-board-org `Board/rankBoardOrg 2)
-(defrename rank-line `Board/rankLine 3)
-(defrename rank-board-lines `Board/rankBoardLines 2)
-
 (defn rank-board-1
+  ;; why measure lines after the fact?
   "Finally kinda efficient"
-  ^long [board player reserves]
-  (let [pos-points (rank-board-org board player)
-        lines-points (rank-board-lines board player)] 
+  [gamestate player]
+  (let [pos-points (rank-board-org gamestate player)
+        lines-points (rank-board-lines gamestate player)] 
     (add pos-points (multiply 20 lines-points))))
 
 (defn rank-board-2
   "Finally kinda efficient"
-  ^long [board player ^Reserves reserves]
-  (rank-board-org board player))
+  [gamestate player]
+  ;; hmm. could roll in # of gipfs in play,
+  ;; number of gipfs taken, etc into the Reserves
+  
+  (let [pos-points (rank-board-org gamestate player)
+        gipf-points (subtract
+                      (count-over-hex-array (game-state-board gamestate)
+                        (multiply 2 player))
+                      (count-over-hex-array (game-state-board gamestate)
+                        (multiply -2 player)))
+        reserves (game-state-reserves gamestate)
+        piece-points (subtract (get-reserves reserves player)
+                       (get-reserves reserves (negate player)))]
 
-(defn rank-board-3
-  "Finally kinda efficient"
-  ^long [board player ^Reserves reserves]
-  (rank-board-lines board player))
+    (add pos-points
+      (add
+        (multiply 200 gipf-points)
+        (multiply 50 piece-points)))))
 
-(defn rank-board-4
-  ^long [board player reserves]
-  10)
-
-(def rank-board
-  "Returns a number stating how favorable
-   a board state is to a given player."
-  rank-board-1)
+(def rank-board rank-board-2)
 
 ;; action 
-
-;; this is _purely_ abstract...
-;; TODO split into two functions: one for ai, one for getting
-;; the updated pieces..
-
-;; TODO again: put into java for optimization (if needed)
 
 (defn do-move
   "Takes the board, move, gamemode, returns the changed board and list of changed squares."
@@ -152,7 +138,7 @@
                (loop [cur (line-start chosen) bpr [] bb cb brr rr]
                  (if (= 4 (pt-radius cur))
                    [bpr bb brr]
-                   (case (int (unchecked-multiply (get-hex-array bb cur) player))
+                   (case (int (multiply (get-hex-array bb cur) player))
                      (-2 -1) ;; opponent
                      (recur (pt+ cur delta)
                             bpr
@@ -173,9 +159,6 @@
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
-(defrename place-and-shove `Board/placeAndShove 3) 
-(defrename ->GameState `GameState/makeGameState 2)
-
 (defn do-shove
   [board reserves player shove]
   [(first (do-move board player (line-start shove) (line-delta shove)))
@@ -183,7 +166,7 @@
 
 (defn expand-gamestate
   [gs]
-  [(GameState/getBoard gs) (GameState/getReserves gs)])
+  [(game-state-board gs) (game-state-reserves gs)])
 
 (defn get-line-taking-results
   [gamestate player]
@@ -222,38 +205,95 @@
     flines-board))
 
 (defn list-possible-boards-cheat
-  [board reserves player]
-  (map (fn [_] [board reserves]) (range 42)))
+  [gamestate player]
+  (map (constantly gamestate) (range 42)))
 
 (defn list-possible-boards-opt
   "Costs 60% more in ai than the cheat version"
-  [board reserves player]
-  (map expand-gamestate
-    (vec (Board/listPossibleBoards
-           board reserves player))))
+  [gamestate player]
+  (vec (Board/listPossibleBoards gamestate player)))
   
 (def list-possible-boards list-possible-boards-opt)
 
 (defn minimax2
-  [board-and-reserves player max? depth]
-  (let [[board reserves] board-and-reserves]
-    (if (equals 0 depth)
-      (if max?
-        (rank-board board player reserves)
-        (negate (rank-board board player reserves)))
-      (let [conts (list-possible-boards board reserves player)]
-        (if (empty? conts)
-          ;; loss
-          (if max? neg-ranking-infinity ranking-infinity)
-          ;; continue
-          (reduce (if max? #(fastmax) #(fastmin))
-                  (map
-                   (fn [new-b-and-r]
-                     (minimax2 new-b-and-r
-                              (negate player)
-                              (not max?)
-                              (dec-1 depth)))
-                   conts)))))))
+  [gamestate player max? depth]
+  (if (equals 0 depth)
+    (if max?
+      (rank-board gamestate player)
+      (negate (rank-board gamestate player)))
+    (let [conts (list-possible-boards gamestate player)]
+      (if (empty? conts)
+        ;; loss
+        (if max? neg-ranking-infinity ranking-infinity)
+        ;; continue
+        (reduce (if max? #(fastmax %1 %2) #(fastmin %1 %2))
+                (map
+                 (fn [new-b-and-r]
+                   (minimax2 new-b-and-r
+                             (negate player)
+                             (not max?)
+                             (dec-1 depth)))
+                 conts))))))
+
+(defmacro past-time?
+  [time]
+  `(>  (. System (nanoTime)) ~time))
+
+;(defrecord Node [^GameState gamestate ^long player ^long rank ^clojure.lang.ISeq children])
+
+;; take a node. replace (loop) it with the rank of its children, and
+;; add pointers. Loop over all nodes.
+;;  .  .  .  .
+;;     .  .  .
+;;        .  .
+;;           .
+
+(defn idr-sub
+  ;; why can't I hint the first node?
+  [^IDRNode node ^long depth ^long ede ^long endtime]
+  (cond
+   (and (equals depth 0) (past-time? endtime)) node
+   (equals depth ede)
+   (let [subgs (list-possible-boards (idr-node-gamestate node) (idr-node-player node))
+         newp (negate (idr-node-player node))
+         childlist (map (fn [gamestate]
+                           (make-idr-node gamestate
+                                   newp
+                                   (if (fast-odd? ede)
+                                     (rank-board gamestate newp)
+                                     (negate (rank-board gamestate newp)))))
+                        subgs)
+         rank (if (fast-odd? ede)
+                (reduce #(fastmax %1 %2) (map #(idr-node-rank %) childlist))
+                (reduce #(fastmin %1 %2) (map #(idr-node-rank %) childlist)))]
+     (idr-node-update node rank childlist))
+   :else
+   (let [childlist (map #(idr-sub % (inc-1 depth) ede endtime)
+                        (idr-node-children node))
+         rank (if (fast-odd? ede)
+                (reduce #(fastmax %1 %2) (map #(idr-node-rank %) childlist))
+                (reduce #(fastmin %1 %2) (map #(idr-node-rank %) childlist)))]
+     (idr-node-update node rank childlist))))
+
+;; I want a macro that inlines x times, then iterates in a function..
+;; (optimizer)
+
+(defn iterative-deepening-ranking
+  "Ranks a position. It deepens. Iteratively."
+  ^long [gamestate player depth time]
+
+  (let [starttime (. System (nanoTime))
+        endtime (+ (* time 1e6) starttime)]
+    (loop [nodetree (make-idr-node gamestate
+                            player
+                            (rank-board gamestate player))
+           level 0]
+    ;  (println (/ (- (System/nanoTime) starttime) 1e6))
+      (if (or (past-time? endtime) (equals level depth))
+        (do
+      ;    (println "Depth attained:" level)
+          (idr-node-rank nodetree))
+        (recur (idr-sub nodetree 0 level endtime) (inc-1 level))))))
 
 (defn compound-ai-move
   [board ^long player ^Reserves reserves adv-phase]
@@ -271,11 +311,12 @@
         ngipfs (count-over-hex-array board player)
         degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
         optimal (time (rand-best
-                       (fn [[move board-and-res]]
-                         (time (minimax2 board-and-res
-                                        player
-                                        true
-                                        3)))
+                       (fn [[move [board res]]]
+                         (time (iterative-deepening-ranking
+                                (->GameState board res)
+                                player
+                                2
+                                100)))
                        nil -100000 possible-moves))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
     ;; note positive sig

@@ -31,6 +31,10 @@
 (defrename inc-1 `MathUtil/inc 1)
 (defrename dec-1 `MathUtil/dec 1)
 (defrename negate `MathUtil/negate 1)
-(defrename fastmax `MathUtil/max 1)
-(defrename fastmin `MathUtil/min 1)
+(defrename fastmax `MathUtil/max 2)
+(defrename fastmin `MathUtil/min 2)
+(defrename greater `MathUtil/greater 2)
+(defrename less `MathUtil/less 2)
+(defrename fast-even? `MathUtil/evenp 1)
+(defrename fast-odd? `MathUtil/oddp 1)
 
