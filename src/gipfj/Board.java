@@ -1,5 +1,26 @@
 package gipfj;
 
+//
+// Optimization idea: as it stands, 30% of CPU
+// is used by rankBoardOrg. By placing a single long field
+// onto a board, one could incrementally rank it:
+// 
+// Each board change leads to average 4 cell changes. 
+// Branching number of 40 and depth of 3, pure minimax
+// leads to 40^3 nodes, 40^3 * hex4 rankings, old style.
+// 
+// Incremental mode leads to 40^3 * 4 rankings, but there 
+// is a loss of flexibility ? Well, 1/9th the number
+// of rankings needed...
+//
+// 30% * 8/9 = 27% faster, 0.63x time needed.
+//
+// But, a caveat: rankings "could" later
+// depend on the number of GIPF pieces on the board,
+// as well as number of pieces in own/opp's reserve
+// can't change
+//
+
 public class Board {
     private static final int SIZE = (int) MathUtil.hexNum(4);
     private final long[] data;
@@ -64,41 +85,39 @@ public class Board {
     // These are the weights ... that would, eventually, need
     // to be genetically tuned....
 
-    public static long valueCell(Board b, long player, long pos) {
-        int i = (int) pos;
-        long q = (player * b.data[i]);
+    public static long valueCell(long value, long player, long radius) {
+        long q = player * value;
         if (q > 0) {
             if (q == 1) {
-                return 15 * (3 - radiusBoard[i]);
+                return 15 * (3 - radius);
             } else {
-                return 40 * (3 - radiusBoard[i]);
+                return 40 * (3 - radius);
             }
         } else if (q < 0) {
             if (q == -1) {
-                return -10 * (3 - radiusBoard[i]);
+                return -10 * (3 - radius);
             } else {
-                return -50 * (3 - radiusBoard[i]);
+                return -50 * (3 - radius);
             }
         } else {
             return 0;
         }
     }
 
-    public static long valueLineCell(Board b, long player, long pos) {
-        int i = (int) pos;
-        long q = (player * b.data[i]);
+    public static long valueLineCell(long value, long player, long radius) {
+        long q = player * value;
         if (q > 0) {
             if (q == 1) {
-                return -3 * (4 - radiusBoard[i]);
+                return -3 * (4 - radius);
             } else {
                 // you will not take your own GIPF piece
-                return 50 * (4 - radiusBoard[i]);
+                return 50 * (4 - radius);
             }
         } else if (q < 0) {
             if (q == -1) {
-                return 100 * (4 - radiusBoard[i]);
+                return 100 * (4 - radius);
             } else {
-                return 500 * (4 - radiusBoard[i]);
+                return 500 * (4 - radius);
             }
         } else {
             return 0;
@@ -109,7 +128,7 @@ public class Board {
     public static long rankBoardOrg(Board b, long player) {
         long r = 0;
         for (int i = 0; i < SIZE; i++) {
-            r += valueCell(b, player, i);
+            r += valueCell(b.data[i], player, radiusBoard[i]);
         }
         return r;
     }
@@ -267,7 +286,8 @@ public class Board {
         long r = 0;
 
         for (int xx = 0; xx < l.length; xx++) {
-            r += valueLineCell(b, player, l[xx]);
+            int loc = l[xx];
+            r += valueLineCell(b.data[loc], player, radiusBoard[loc]);
         }
 
         return r;
@@ -281,10 +301,14 @@ public class Board {
         long r = 0;
 
         while (q != le) {
-            r += valueLineCell(b, player, q);
+            int i = (int) q;
+            r += valueLineCell(b.data[i], player, radiusBoard[i]);
             q = Geometry.padd(q, delta);
+
+            if (q == le) {
+                break;
+            }
         }
-        r += valueLineCell(b, player, q);
 
         return r;
     }

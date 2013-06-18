@@ -31,3 +31,6 @@
 (defrename inc-1 `MathUtil/inc 1)
 (defrename dec-1 `MathUtil/dec 1)
 (defrename negate `MathUtil/negate 1)
+(defrename fastmax `MathUtil/max 1)
+(defrename fastmin `MathUtil/min 1)
+

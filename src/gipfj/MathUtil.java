@@ -60,4 +60,12 @@ public class MathUtil {
     public static boolean equals(long a, long b) {
         return a == b;
     }
+
+    public static long max(long a, long b) {
+        return (a > b) ? a : b;
+    }
+
+    public static long min(long a, long b) {
+        return (a < b) ? a : b;
+    }
 }

@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj Board GameState)))
+  (:import (gipfj Board GameState Reserves)))
 
 ;;;
 ;;; There is a really nice way of expressing moves.
@@ -79,23 +79,23 @@
 
 (defn rank-board-1
   "Finally kinda efficient"
-  ^long [board ^long player ^Reserves reserves]
+  ^long [board player reserves]
   (let [pos-points (rank-board-org board player)
         lines-points (rank-board-lines board player)] 
     (add pos-points (multiply 20 lines-points))))
 
 (defn rank-board-2
   "Finally kinda efficient"
-  ^long [board ^long player ^Reserves reserves]
+  ^long [board player ^Reserves reserves]
   (rank-board-org board player))
 
 (defn rank-board-3
   "Finally kinda efficient"
-  ^long [board ^long player ^Reserves reserves]
+  ^long [board player ^Reserves reserves]
   (rank-board-lines board player))
 
 (defn rank-board-4
-  ^long [board ^long player reserves]
+  ^long [board player reserves]
   10)
 
 (def rank-board
@@ -233,11 +233,11 @@
            board reserves player))))
   
 (def list-possible-boards list-possible-boards-opt)
-  
+
 (defn minimax2
   [board-and-reserves player max? depth]
   (let [[board reserves] board-and-reserves]
-    (if (zero? depth)
+    (if (equals 0 depth)
       (if max?
         (rank-board board player reserves)
         (negate (rank-board board player reserves)))
@@ -246,7 +246,7 @@
           ;; loss
           (if max? neg-ranking-infinity ranking-infinity)
           ;; continue
-          (reduce (if max? max min)
+          (reduce (if max? #(fastmax) #(fastmin))
                   (map
                    (fn [new-b-and-r]
                      (minimax2 new-b-and-r
