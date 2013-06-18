@@ -36,4 +36,9 @@ public class Reserves {
             return r.p2;
         }
     }
+
+    @Override
+    public String toString() {
+        return String.format("reserves %d %d", p1, p2);
+    }
 }

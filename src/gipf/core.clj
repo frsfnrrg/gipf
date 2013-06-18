@@ -38,7 +38,7 @@
 
 ;; NEXT on the TODO list;
 ;;
-;; Restructure move taking as it should be..
+;; Fix the weird line removal bug
 ;;
 ;;
 ;;
@@ -180,6 +180,7 @@
 
 (defn empty-line!
   [line]
+  (println "Emptying" line)
   (let [e1p (pt- (line-start line) (line-delta line))
         llp (get-line-limit-point (line-start line) (line-delta line))
         e2p (pt+ llp
@@ -463,7 +464,7 @@
   [clear1 move clear2]
 
   ;; could just launch a thread, that periodically acts...
-  ;; (illusion of real oppenent)
+  ;; (illusion of real opponent)
   
   ;; player is current-player*
   (println clear1)

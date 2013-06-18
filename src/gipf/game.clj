@@ -138,6 +138,7 @@
                (loop [cur (line-start chosen) bpr [] bb cb brr rr]
                  (if (= 4 (pt-radius cur))
                    [bpr bb brr]
+                  
                    (case (int (multiply (get-hex-array bb cur) player))
                      (-2 -1) ;; opponent
                      (recur (pt+ cur delta)
@@ -153,9 +154,11 @@
                             (change-hex-array bb cur 0)
                             (inc-reserves brr player))
                      2 ;; save own gipfs
-                     (recur (pt+ cur delta)
-                            (conj bpr cur)
-                            bb brr))))]
+                     (do
+                       (println cur (get-hex-array bb cur) player)
+                       (recur (pt+ cur delta)
+                         (conj bpr cur)
+                         bb brr)))))]
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
@@ -239,8 +242,6 @@
   [time]
   `(>  (. System (nanoTime)) ~time))
 
-;(defrecord Node [^GameState gamestate ^long player ^long rank ^clojure.lang.ISeq children])
-
 ;; take a node. replace (loop) it with the rank of its children, and
 ;; add pointers. Loop over all nodes.
 ;;  .  .  .  .
@@ -308,7 +309,7 @@
 
   (let [pieces-left (get-reserves reserves player)
         possible-moves (list-possible-moves-and-board board reserves player)
-        ngipfs (count-over-hex-array board player)
+        ngipfs (count-over-hex-array board (* 2 player))
         degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
         optimal (time (rand-best
                        (fn [[move [board res]]]

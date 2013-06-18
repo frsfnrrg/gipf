@@ -20,4 +20,9 @@ public class GameState {
     public static Reserves getReserves(GameState g) {
         return g.r;
     }
+
+    @Override
+    public String toString() {
+        return "{" + b.toString() + " " + r.toString() + "}";
+    }
 }
