@@ -518,11 +518,7 @@
                                          (if (fourth input) :ai :human)))
       :caimove
       (effect-compound-ai-move! (second input) (third input) (fourth input))
-      
-      :aimove
-      (effect-ai-move! (second input) (third input) (fourth input))
-      :aiclear
-      (effect-ai-clearing! (third input) (second input))
+
       :click
       (cond (= (fourth input) 1)
             (let [clickpt (screenpx-to-loc (xy (second input) (third input)))
