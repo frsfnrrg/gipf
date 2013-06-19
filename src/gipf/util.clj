@@ -136,15 +136,19 @@
     (catch java.lang.InterruptedException bobby
       :ignore-bobby)))
 
+(def silent** true)
 (defn busy-doing-important-stuff
   "Feign activity"
   [sec]
-  (println "Commencing...")
+  (when-not silent**
+    (println "Commencing..."))
   (dotimes [k (int sec)]
-    (println "Calculating...")
+    (when-not silent**
+      (println "Calculating..."))
     (sleep 1000))
   (sleep (int (* 1000 (mod sec 1.0))))
-  (println "Done!"))
+  (when-not silent**
+    (println "Done!")))
 
 (defn fill-vector [thunk size]
   ((fn [c b]

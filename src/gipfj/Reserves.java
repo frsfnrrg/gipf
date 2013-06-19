@@ -82,9 +82,9 @@ public class Reserves {
 
     public static boolean losingReserve(Reserves r, long player) {
         if (player > 0) {
-            return (r.p1 == 0) || (r.g1 == 0);
+            return (r.p1 <= 0) || (r.g1 <= 0);
         } else {
-            return (r.p2 == 0) || (r.g2 == 0);
+            return (r.p2 <= 0) || (r.g2 <= 0);
         }
     }
 

@@ -35,6 +35,8 @@
 (println "reserves")
 (load "graphics") ;; game-panel initialized here...
 (println "graphics")
+(load "game-aux") ; free
+(println "game-aux")
 (load "game") ; free
 (println "game")
 
@@ -52,6 +54,7 @@
 
 (def current-player* 1) ; -1 or 1
 (def selected* nil)
+;; why don't we just default this to -1? well, at least nil fails loudly
 (def hovered* "Cell over which the mouse is hovering" nil)
 (def lines* "List of lines that the human player can remove" (list))
 (def already-removed-lines* "List of lines that were removed; tournament mode.." (list))
@@ -211,7 +214,7 @@
           
           (def board* (change-hex-array board* cur 0)))
         (redraw-loc! cur)
-        (when (pt= cur hovered*)
+        (when (and (not (nil? hovered*)) (pt= cur hovered*))
           (draw-highlight! cur))
         (when-not (pt= cur llp)
           (recur (pt+ cur (line-delta line))))))))
@@ -246,7 +249,7 @@
     
     (doseq [p updated]
       (redraw-loc! p)
-      (when (pt= hovered* p)
+      (when (and (not (nil? hovered*)) (pt= hovered* p))
         (draw-highlight! hovered*)))))
 
 ;; should really extract the (partial owns-line? player) pattern...
@@ -276,12 +279,6 @@
 
 ;; TODO: use a two-thread vector for these; each player gets 1 thread.
 ;; that way, threads can be terminated well on new game
-(def ai-action-threads* [nil nil])
-
-(defn set-ai-action-thread!
-  [player val]
-  (def ai-action-threads*
-    (atv ai-action-threads* (player->index player) (constantly val))))
 
 (defn get-adv-phase
   []
@@ -293,24 +290,70 @@
                        (player->index current-player*)
                        (constantly value))))
 
+
+;; THREADING START
+
+;; please wrap ai-action-threads into 1 func../local binding
+
+;; there should be a better datastruct.
+(def ai-action-threads* {})
+
+(defn add-ai-action-thread!
+  [key val]
+  (def ai-action-threads* (assoc ai-action-threads* key [val false])))
+
+(defn remove-ai-action-thread!
+  [key]
+  (def ai-action-threads* (dissoc ai-action-threads* key)))
+
+(defn check-ai-action-thread
+  [key]
+  (second (get ai-action-threads* key)))
+
+(defn end-ai-action-thread!
+  [key]
+  (def ai-action-threads* 
+    (assoc ai-action-threads* key
+      [(first (get ai-action-threads* key)) true])))
+
+(def get-next-key-num
+  (let [kn (atom 0)]
+    (fn []
+      (swap! kn inc)
+      @kn)))
+
+(defn call-ai-move-action
+  [action]
+  (on-swing-thread
+    (update-game (list (cons :caimove action)))
+    (draw-base!)))
+
 (defn start-compound-ai-move!
   []
+  ;; one question remains: how does one cut/interrupt compound-ai-move ?
   (let [b board*
         p current-player*
-        rp reserve-pieces*]
-    (set-ai-action-thread!
-     p
-     (start-thread
-      (try
-        (let [action (into [] (compound-ai-move board* current-player*
-                                                reserve-pieces* (get-adv-phase)))]
-          (on-swing-thread
-           (update-game (list (cons :caimove action)))
-           (draw-base!)
-           ))
-        (catch java.lang.InterruptedException _
-          (println "Interrupted")) )
-      (println "Thread killed")))))
+        rp reserve-pieces*
+        key (get-next-key-num)
+        thread (proxy [java.lang.Thread] []
+                 (run []
+                   (let [action (into [] (compound-ai-move board* current-player*
+                                           reserve-pieces* (get-adv-phase)))]
+                     (when-not (check-ai-action-thread key)
+                       (call-ai-move-action action)))
+                   (println "Thread killed")
+                   (remove-ai-action-thread! key)))]
+    (add-ai-action-thread!
+     key
+     (doto thread (.start)))))
+
+(defn interrupt-ai-action-threads!
+  []
+  (doseq [[key _] ai-action-threads*]
+    (println "sending EOL")
+    (end-ai-action-thread! key)))
+
+;; THREADING OVER
 
 (defn switch-players!
   []
@@ -331,7 +374,12 @@
 (defn game-over!?
   "Example use: (when-not (game-over!?) (proceed) (finalize)"
   []
-  (if (lost?  board* reserve-pieces* current-player* mode* (get-adv-phase))
+  ;; warning: this fails when ai has a clear left, but 0 in reserve
+  ;; _the best loss check is the lack of any moves to make_
+  ;; - for that, use magic.
+  
+  
+  (if (lost? board* reserve-pieces* current-player* mode* (get-adv-phase))
     (do
       (println "Game over!")
       (def game-phase* :gameover)
@@ -341,9 +389,7 @@
 
 (defn setup-new-game!
   []
-  (doseq [^java.lang.Thread t ai-action-threads*]
-    (when-not (nil? t)
-      (.interrupt t)))
+  (interrupt-ai-action-threads!)
   (def board* (new-board mode*))
   (def reserve-pieces* (new-reserves mode*))
   (def current-player* 1)
@@ -459,10 +505,7 @@
   (move-piece! clickpt delvec placed-cell-value*)
 
   (post-human-move!)
-  
-  (when (not= game-phase* :gameover)
-    (draw-highlight! hovered*))
-  
+
   (repaint!))
 
 (defn human-add-piece!
@@ -483,44 +526,28 @@
 (defn effect-compound-ai-move!
   [clear1 move clear2]
 
-  ;; could just launch a thread, that periodically acts...
-  ;; (illusion of real opponent)
-  
-  ;; player is current-player*
-  (println clear1)
-
+  ;; clear  
   (def rings* (ffirst clear1))
   (doseq [line (rest clear1)]
     (empty-line! line))
   (def rings* (list))
 
-  ;; doshove
-
-  (println move)
-  
+  ;; shove
   (let [degree (line-sig move)
         advline (advance-line move)]
     (when (and (= (get-adv-phase) :filling) (= degree 1))
       (set-adv-phase! :playing))
-
     (when (= degree 2)
       (dec-pieces-left! current-player*))
     (dec-pieces-left! current-player*)
-
     (move-piece! (line-start advline) (line-delta advline) (* current-player* degree)))
 
-  (println clear2)
-
+  ;; clear
   (def rings* (ffirst clear2))
   (doseq [line (rest clear2)]
     (empty-line! line))
   (def rings* (list))
   
-  ;; akin to human end move...
-
-  (when (pt= (line-start move) hovered*)
-    (draw-highlight! hovered*))
-
   (start-next-move!)
   
   (repaint!))
@@ -689,6 +716,7 @@
     (doto window
       (.setJMenuBar menubar)
       (.setDefaultCloseOperation javax.swing.WindowConstants/DISPOSE_ON_CLOSE)
+      ;; TODO: use a run script on close
       (.setContentPane game-panel)
       (.addKeyListener (proxy [java.awt.event.KeyListener] []
                          (keyPressed [^java.awt.event.KeyEvent e] nil)
@@ -696,10 +724,7 @@
                          (keyReleased [^java.awt.event.KeyEvent e]
                            (when (= java.awt.event.KeyEvent/VK_ESCAPE (.getKeyCode e))
                              (println "Quitting on ESC key! Yay!")
-                             (doseq [t ai-action-threads*]
-                               (println t)
-                               (when-not (nil? t)
-                                 (.interrupt ^java.lang.Thread t)))
+                             (interrupt-ai-action-threads!)
                              (.setVisible window false)
                              (.dispose ^javax.swing.JFrame window)))))
       (.pack)
