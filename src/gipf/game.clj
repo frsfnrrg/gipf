@@ -18,7 +18,7 @@
 ;; action 
 
 (defn minimax2
-  [gamestate player max? depth rank-func]
+  [gamestate player rank-func max? depth]
   (if (equals 0 depth)
     (if max?
       (rank-func gamestate player)
@@ -34,6 +34,7 @@
                  (fn [new-b-and-r]
                    (minimax2 new-b-and-r
                              (negate player)
+                             rank-func
                              (not max?)
                              (dec-1 depth)))
                  conts))))))
@@ -79,7 +80,7 @@
 
 (defn iterative-deepening-ranking
   "Ranks a position. It deepens. Iteratively."
-  [gamestate player depth time rank-func]
+  [gamestate player rank-func depth time]
 
   (let [starttime (. System (nanoTime))
         endtime (+ (* time 1e6) starttime)]
@@ -106,58 +107,41 @@
         lines-points (rank-board-lines gamestate player)] 
     (add (divide pos-points 7) (multiply 10 lines-points))))
 
-(defn rank-board-2-setup
-  []
-  (def expected-max-rank* 800)
-     ;; mp mg op og rl
-     (set-value-cell-constants 1 3 -1 -3 5))
 
-(defn rank-board-2
-  "Finally kinda efficient"
-  [gamestate player]
-  
-  (let [reserves (game-state-reserves gamestate)
-        antiplayer (negate player)]
-    (cond (losing-reserve? reserves player)
-          -1000
-          (losing-reserve? reserves antiplayer)
-          1000
-          :else
-          (let [gipf-points (subtract
+(def-ranking-function rank-board-2
+  (:setup
+   []
+   (def expected-max-rank* 800)
+   ;; mp mg op og rl
+   (set-value-cell-constants 1 3 -1 -3 5))
+  (:eval
+   [gamestate player]
+   
+   (let [reserves (game-state-reserves gamestate)
+         antiplayer (negate player)]
+     (cond (losing-reserve? reserves player)
+           -1000
+           (losing-reserve? reserves antiplayer)
+           1000
+           :else
+           (let [gipf-points (subtract
                               (get-gipfs reserves player)
                               (get-gipfs reserves antiplayer))
-                piece-points (subtract (get-reserves reserves player)
-                       (get-reserves reserves antiplayer))
-                pos-points (rank-board-org gamestate player)]
-            (add pos-points
-              (add
-                (multiply 200 gipf-points)
-                (multiply 50 piece-points)))))))
+                 piece-points (subtract (get-reserves reserves player)
+                                        (get-reserves reserves antiplayer))
+                 pos-points (rank-board-org gamestate player)]
+             (add pos-points
+                  (add
+                   (multiply 200 gipf-points)
+                   (multiply 50 piece-points))))))))
 
 ;; best would be to disconnect the two choices
 ;; between ai search algorithm and ranking heuristic
 
 ;; ie, (setup-move-ranking-func! rank-func search-func & args-to-rankfunc)  
 
-(def idr-fast-r2
-  [rank-board-2-setup
-   (fn
-     [gamestate player]
-     (iterative-deepening-ranking gamestate player 2 50 rank-board-2))])
 
-(def idr-slow-r2
-  [rank-board-2-setup
-   (fn
-     [gamestate player]
-     (iterative-deepening-ranking gamestate player 3 1 rank-board-2))])
-
-(def idr-fast-r1
-  [rank-board-1-setup
-   (fn
-     [gamestate player]
-     (iterative-deepening-ranking gamestate player 2 50 rank-board-1))])
-
-(setup-move-ranking-func! idr-slow-r2)
+(setup-move-ranking-func! rank-board-2 iterative-deepening-ranking 2 50)
 
 ;; move-ranking-func* comes from game-aux
 

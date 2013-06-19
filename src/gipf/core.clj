@@ -19,26 +19,24 @@
   `(defmacro ~new [~@args]
      `(~~old ~~@args))))
 
+(defmacro llload
+  [name]
+  `(do (load ~name)
+       (println "Loaded <" ~name ">")))
+
 (defn player->index
   [^long player]
   (if (= player (long -1)) 0 1))
 
 ;; what happens if we get a cyclical dependency??
 
-(load "math") ; free
-(println "math")
-(load "util") ; free
-(println "util")
-(load "geo") ; free
-(println "geo")
-(load "reserves") ; free
-(println "reserves")
-(load "graphics") ;; game-panel initialized here...
-(println "graphics")
-(load "game-aux") ; free
-(println "game-aux")
-(load "game") ; free
-(println "game")
+(llload "math")
+(llload "util")
+(llload "geo")
+(llload "reserves")
+(llload "graphics")
+(llload "game-aux")
+(llload "game")
 
 ;; NEXT on the TODO list;
 ;;
@@ -275,11 +273,6 @@
     (draw-selector! loc board*)
     (repaint!)))
 
-(def update-game) ; declare
-
-;; TODO: use a two-thread vector for these; each player gets 1 thread.
-;; that way, threads can be terminated well on new game
-
 (defn get-adv-phase
   []
   (get adv-phase* (player->index current-player*)))
@@ -293,65 +286,52 @@
 
 ;; THREADING START
 
-;; please wrap ai-action-threads into 1 func../local binding
+(def update-game) ; declare
 
-;; there should be a better datastruct.
-(def ai-action-threads* {})
+(let [ai-action-threads (atom {})
+      add-ai-action-thread! (fn [key val]
+                              (swap! ai-action-threads
+                                #(assoc % key [val false])))
+      remove-ai-action-thread! (fn [key]
+                                 (swap! ai-action-threads
+                                        #(dissoc % key)))
+      check-ai-action-thread (fn [key]
+                               (second (get @ai-action-threads key)))
+      end-ai-action-thread! (fn [key]
+                               (swap! ai-action-threads
+                                      #(assoc % key
+                                              [(first (get % key)) true])))
+      get-next-key-num (let [kn (atom 0)]
+                         (fn []
+                           (swap! kn inc)
+                           @kn))]
 
-(defn add-ai-action-thread!
-  [key val]
-  (def ai-action-threads* (assoc ai-action-threads* key [val false])))
+  (defn start-compound-ai-move!
+    []
+    ;; one question remains: how does one cut/interrupt compound-ai-move ?
+    (let [b board*
+          p current-player*
+          rp reserve-pieces*
+          key (get-next-key-num)
+          thread (proxy [java.lang.Thread] []
+                   (run []
+                     (let [action (compound-ai-move b p rp (get-adv-phase))]
+                       (if-not (check-ai-action-thread key)
+                         (on-swing-thread
+                          (update-game (list (cons :caimove action)))
+                          (draw-base!)))
+                         (println "Thread ignored"))
+                     (println "Thread killed")
+                     (remove-ai-action-thread! key)))]
+      (add-ai-action-thread!
+       key
+       (doto thread (.start)))))
 
-(defn remove-ai-action-thread!
-  [key]
-  (def ai-action-threads* (dissoc ai-action-threads* key)))
-
-(defn check-ai-action-thread
-  [key]
-  (second (get ai-action-threads* key)))
-
-(defn end-ai-action-thread!
-  [key]
-  (def ai-action-threads* 
-    (assoc ai-action-threads* key
-      [(first (get ai-action-threads* key)) true])))
-
-(def get-next-key-num
-  (let [kn (atom 0)]
-    (fn []
-      (swap! kn inc)
-      @kn)))
-
-(defn call-ai-move-action
-  [action]
-  (on-swing-thread
-    (update-game (list (cons :caimove action)))
-    (draw-base!)))
-
-(defn start-compound-ai-move!
-  []
-  ;; one question remains: how does one cut/interrupt compound-ai-move ?
-  (let [b board*
-        p current-player*
-        rp reserve-pieces*
-        key (get-next-key-num)
-        thread (proxy [java.lang.Thread] []
-                 (run []
-                   (let [action (into [] (compound-ai-move board* current-player*
-                                           reserve-pieces* (get-adv-phase)))]
-                     (when-not (check-ai-action-thread key)
-                       (call-ai-move-action action)))
-                   (println "Thread killed")
-                   (remove-ai-action-thread! key)))]
-    (add-ai-action-thread!
-     key
-     (doto thread (.start)))))
-
-(defn interrupt-ai-action-threads!
-  []
-  (doseq [[key _] ai-action-threads*]
-    (println "sending EOL")
-    (end-ai-action-thread! key)))
+  (defn interrupt-ai-threads!
+    []
+    (doseq [[key _] @ai-action-threads]
+      (println "sending EOL")
+      (end-ai-action-thread! key))))
 
 ;; THREADING OVER
 
@@ -389,7 +369,7 @@
 
 (defn setup-new-game!
   []
-  (interrupt-ai-action-threads!)
+  (interrupt-ai-threads!)
   (def board* (new-board mode*))
   (def reserve-pieces* (new-reserves mode*))
   (def current-player* 1)
@@ -724,7 +704,7 @@
                          (keyReleased [^java.awt.event.KeyEvent e]
                            (when (= java.awt.event.KeyEvent/VK_ESCAPE (.getKeyCode e))
                              (println "Quitting on ESC key! Yay!")
-                             (interrupt-ai-action-threads!)
+                             (interrupt-ai-threads!)
                              (.setVisible window false)
                              (.dispose ^javax.swing.JFrame window)))))
       (.pack)
