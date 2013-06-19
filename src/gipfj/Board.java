@@ -414,6 +414,9 @@ public class Board {
 
             if (v < 0) {
                 cdata[i] = 0;
+                if (v == -2) {
+                    rr = Reserves.decGipfs(rr, -player);
+                }
             } else if (v == 1) {
                 cdata[i] = 0;
                 rr = Reserves.incReserves(rr, player);

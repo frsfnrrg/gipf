@@ -23,6 +23,8 @@
   [^long player]
   (if (= player (long -1)) 0 1))
 
+;; what happens if we get a cyclical dependency??
+
 (load "math") ; free
 (println "math")
 (load "util") ; free
@@ -31,15 +33,14 @@
 (println "geo")
 (load "reserves") ; free
 (println "reserves")
-(load "game") ; free
-(println "game")
 (load "graphics") ;; game-panel initialized here...
 (println "graphics")
+(load "game") ; free
+(println "game")
 
 ;; NEXT on the TODO list;
 ;;
-;; Fix the weird line removal bug
-;;
+;; Use new reserves. Improve ai, use alpha-beta..
 ;;
 ;;
 
@@ -61,7 +62,6 @@
 (def player-types* [:ai :human])
 (def placed-cell-value* 0)
 
-
 (defn ai-player?
   [player]
   (= :ai (get player-types* (player->index player))))
@@ -69,7 +69,6 @@
 (defn human-player?
   [player]
   (= :human (get player-types* (player->index player))))
-
 
 (defn set-player-type!
   [player tp]
@@ -103,6 +102,17 @@
     (def reserve-pieces* n))
   (draw-pieces-left! player))
 
+(defn dec-gipfs-left!
+  "Decreases the number of pieces left for the player by 1."
+  [player]
+  (let [n (dec-gipfs reserve-pieces* player)]
+    (def reserve-pieces* n)))
+
+(defn inc-gipfs-left!
+  [player]
+  "Increases the number of pieces left for the player by 1"
+  (let [n (inc-gipfs reserve-pieces* player)]
+    (def reserve-pieces* n)))
 
 (defn draw-lines-at-loc!
   [loc]
@@ -191,10 +201,14 @@
     (loop [cur (line-start line)]
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
-          (when (same-sign? val current-player*)
+          (if (same-sign? val current-player*)
+            (do (when (= 2 (abs val))
+                  (inc-pieces-left! current-player*)
+                  (dec-gipfs-left! current-player*))
+                (inc-pieces-left! current-player*))
             (when (= 2 (abs val))
-              (inc-pieces-left! current-player*))
-            (inc-pieces-left! current-player*))
+              (dec-gipfs-left! (- current-player*))))
+          
           (def board* (change-hex-array board* cur 0)))
         (redraw-loc! cur)
         (when (pt= cur hovered*)
@@ -287,10 +301,16 @@
     (set-ai-action-thread!
      p
      (start-thread
-      (let [action (into [] (compound-ai-move board* current-player*
-                                              reserve-pieces* (get-adv-phase)))]
-        (on-swing-thread
-         (update-game (list (cons :caimove action)))))))))
+      (try
+        (let [action (into [] (compound-ai-move board* current-player*
+                                                reserve-pieces* (get-adv-phase)))]
+          (on-swing-thread
+           (update-game (list (cons :caimove action)))
+           (draw-base!)
+           ))
+        (catch java.lang.InterruptedException _
+          (println "Interrupted")) )
+      (println "Thread killed")))))
 
 (defn switch-players!
   []

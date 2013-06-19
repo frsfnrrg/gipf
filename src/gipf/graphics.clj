@@ -171,3 +171,61 @@
   (when (= 2 (abs type))
     (.setColor ^java.awt.Graphics2D game-graphics (scale-color (.getColor ^java.awt.Graphics2D game-graphics) 0.5))
     (.fill ^java.awt.Graphics2D game-graphics (circle-at loc 25))))
+
+
+
+(def max-ai-line-width 15)
+
+(def max-abs-ai-line-strength* 0)
+
+(def ai-ranking-lines* (list))
+
+(defn setup-visualize-ai-ranking
+  [line strength]
+
+  (when (> (abs strength) max-abs-ai-line-strength*)
+    (def max-abs-ai-line-strength* (abs strength)))
+  
+  (def ai-ranking-lines* (cons [line strength] ai-ranking-lines*)))
+
+(defn visualize-ai-ranking
+  "Draw a line that corresponds to an ai \"push\""
+  []
+  (let [^java.awt.Graphics2D g game-graphics
+        ai-line-weighting-factor (/ max-ai-line-width max-abs-ai-line-strength*)
+        ]
+    (doseq [[line strength] ai-ranking-lines*]
+      (let [
+            [e1x e1y] (loc-to-screenpx (line-start line))
+            [e2x e2y] (loc-to-screenpx (pt+ (line-start line) (line-delta line)))]
+        (if (neg? strength)
+          (.setColor g (java.awt.Color/PINK))
+          (.setColor g (java.awt.Color/GREEN))
+          )
+        
+        (doto g
+          (.setStroke (java.awt.BasicStroke.
+                       (* (abs strength) ai-line-weighting-factor)))
+          (.drawLine e1x e1y e2x e2y)
+          (.setStroke (java.awt.BasicStroke.)))))
+    (repaint!)))
+
+(defn direct-visualize-ai-ranking
+  [line strength]
+
+  (let [magic-factor 0.0001
+        ^java.awt.Graphics2D g game-graphics
+        [e1x e1y] (loc-to-screenpx (line-start line))
+        [e2x e2y] (loc-to-screenpx (pt+ (line-start line) (line-delta line)))]
+    (if (neg? strength)
+      (.setColor g (java.awt.Color/PINK))
+      (.setColor g (java.awt.Color/GREEN))
+      )
+    
+    (doto g
+      (.setStroke (java.awt.BasicStroke.
+                   (* (abs strength) magic-factor)))
+      (.drawLine e1x e1y e2x e2y)
+      (.setStroke (java.awt.BasicStroke.))))
+
+  (repaint!))

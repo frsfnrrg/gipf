@@ -1,6 +1,18 @@
 (ns gipf.core
   (:import (gipfj Board GameState Reserves IDRNode)))
 
+;;
+;; TODO: next order of business 
+;;
+;; Make a board-ranking function that actually... um... 
+;; ... tries to win.
+;;
+;;
+;;
+;;
+;;
+;;
+
 
 (def order-distinguishing-pause 0.6) ; sec
 (def ranking-infinity (long 100000))
@@ -24,6 +36,8 @@
 (defrename idr-node-player `IDRNode/getPlayer 1)
 (defrename idr-node-rank `IDRNode/getRank 1)
 (defrename idr-node-children `IDRNode/getChildren 1)
+
+(defrename losing-reserve? `Reserves/losingReserve 2)
 
 ;; predicates/extraction
 
@@ -70,7 +84,7 @@
   [gamestate player]
   (let [pos-points (rank-board-org gamestate player)
         lines-points (rank-board-lines gamestate player)] 
-    (add pos-points (multiply 20 lines-points))))
+    (add (divide pos-points 10) (multiply 20 lines-points))))
 
 (defn rank-board-2
   "Finally kinda efficient"
@@ -78,22 +92,22 @@
   ;; hmm. could roll in # of gipfs in play,
   ;; number of gipfs taken, etc into the Reserves
   
-  (let [pos-points (rank-board-org gamestate player)
-        gipf-points (subtract
-                      (count-over-hex-array (game-state-board gamestate)
-                        (multiply 2 player))
-                      (count-over-hex-array (game-state-board gamestate)
-                        (multiply -2 player)))
-        reserves (game-state-reserves gamestate)
-        piece-points (subtract (get-reserves reserves player)
-                       (get-reserves reserves (negate player)))]
-
-    (add pos-points
-      (add
-        (multiply 200 gipf-points)
-        (multiply 50 piece-points)))))
-
-(def rank-board rank-board-2)
+  (let [reserves (game-state-reserves gamestate)
+        antiplayer (negate player)]
+    (cond (losing-reserve? reserves player)
+          -100000
+          (losing-reserve? reserves antiplayer)
+          100000
+          :else
+          (let [
+                gipf-points (subtract
+                              (get-gipfs reserves player)
+                              (get-gipfs reserves antiplayer))
+                piece-points (subtract (get-reserves reserves player)
+                       (get-reserves reserves antiplayer))]
+            (add
+             (multiply 20000 gipf-points)
+             (multiply 5000 piece-points))))))
 
 ;; action 
 
@@ -219,10 +233,10 @@
 (def list-possible-boards list-possible-boards-opt)
 
 (defn minimax2
-  [gamestate player max? depth]
+  [gamestate player max? depth rank-func]
   (if (equals 0 depth)
     (if max?
-      (rank-board gamestate player)
+      (rank-func gamestate player)
       (negate (rank-board gamestate player)))
     (let [conts (list-possible-boards gamestate player)]
       (if (empty? conts)
@@ -251,25 +265,26 @@
 
 (defn idr-sub
   ;; why can't I hint the first node?
-  [^IDRNode node ^long depth ^long ede ^long endtime]
+  [node depth ede endtime rank-func]
   (cond
    (and (equals depth 0) (past-time? endtime)) node
    (equals depth ede)
    (let [subgs (list-possible-boards (idr-node-gamestate node) (idr-node-player node))
          newp (negate (idr-node-player node))
          childlist (map (fn [gamestate]
-                           (make-idr-node gamestate
-                                   newp
-                                   (if (fast-odd? ede)
-                                     (rank-board gamestate newp)
-                                     (negate (rank-board gamestate newp)))))
+                          (make-idr-node
+                           gamestate
+                           newp
+                           (if (fast-odd? ede)
+                             (rank-func gamestate newp)
+                             (negate (rank-func gamestate newp)))))
                         subgs)
          rank (if (fast-odd? ede)
                 (reduce #(fastmax %1 %2) (map #(idr-node-rank %) childlist))
                 (reduce #(fastmin %1 %2) (map #(idr-node-rank %) childlist)))]
      (idr-node-update node rank childlist))
    :else
-   (let [childlist (map #(idr-sub % (inc-1 depth) ede endtime)
+   (let [childlist (map #(idr-sub % (inc-1 depth) ede endtime rank-func)
                         (idr-node-children node))
          rank (if (fast-odd? ede)
                 (reduce #(fastmax %1 %2) (map #(idr-node-rank %) childlist))
@@ -281,7 +296,7 @@
 
 (defn iterative-deepening-ranking
   "Ranks a position. It deepens. Iteratively."
-  ^long [gamestate player depth time]
+  [gamestate player depth time rank-func]
 
   (let [starttime (. System (nanoTime))
         endtime (+ (* time 1e6) starttime)]
@@ -289,37 +304,59 @@
                             player
                             (rank-board gamestate player))
            level 0]
-    ;  (println (/ (- (System/nanoTime) starttime) 1e6))
       (if (or (past-time? endtime) (equals level depth))
         (do
-      ;    (println "Depth attained:" level)
           (idr-node-rank nodetree))
-        (recur (idr-sub nodetree 0 level endtime) (inc-1 level))))))
+        (recur (idr-sub nodetree 0 level endtime rank-func) (inc-1 level))))))
+
+(defn idr-fast-r2
+  [gamestate player]
+  (iterative-deepening-ranking gamestate player 2 50 rank-board-2))
+
+(defn idr-fast-r1
+  [gamestate player]
+  (iterative-deepening-ranking gamestate player 2 50 rank-board-1))
+
+;; should make this easily changeable... (per menu?; with registering stuf)
+
+(def  move-ranking-func "Takes a gamestate and a player. Woo" idr-fast-r2)
+
+
+(def timing** false)
+
+(defmacro
+  timec
+  [expr]
+  (if timing**
+    `(time ~expr)
+    expr))
 
 (defn compound-ai-move
   [board ^long player ^Reserves reserves adv-phase]
 
-  ;; TODO: this takes 60% more time than the simple ai move...
-  ;; we need to go deeper (profiling)
-
-  (busy-doing-important-stuff 0.5)
-  
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode
 
   (let [pieces-left (get-reserves reserves player)
-        possible-moves (list-possible-moves-and-board board reserves player)
+        possible-moves (shuffle
+                        (list-possible-moves-and-board board reserves player))
         ngipfs (count-over-hex-array board (* 2 player))
         degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
-        optimal (time (rand-best
+        optimal (timec (rand-best
                        (fn [[move [board res]]]
-                         (time (iterative-deepening-ranking
-                                (->GameState board res)
-                                player
-                                2
-                                100)))
+                         (let [rank
+                               (timec (move-ranking-func
+                                      (->GameState board res)
+                                      player))]
+                           (on-swing-thread
+                            (direct-visualize-ai-ranking (second move) rank))
+                           rank))
                        nil -100000 possible-moves))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
+    ;; best would be, until mouse is moved...
+    (busy-doing-important-stuff 1.0)
+;
+;;  (on-swing-thread)  How do we repaint all?
     ;; note positive sig
     [c1 (sign-line m degree) c2]))
 
@@ -360,17 +397,15 @@
   "Return a new set of reserves."
   [mode]
   (case mode
-    :basic (->Reserves 12)
-    :advanced (->Reserves 18)
-    :normal (->Reserves 15)))
+    :basic (->Reserves 12 1)
+    :advanced (->Reserves 18 0)
+    :normal (->Reserves 15 3)))
 
 (defn lost?
   [board reserves player mode advm]
+  (println reserves)
   (if (or (= advm :filling) (= mode :basic))
-    (= 0 (get reserves (if (= player -1) 0 1)))
+    (= 0 (get-reserves reserves player)))
     (or
-     (= 0 (get reserves (if (= player -1) 0 1)))
-     (= 0 (count-over-hex-array
-           board
-           (* player 2)
-           )))))
+     (= 0 (get-reserves reserves player)))
+     (= 0 (get-gipfs reserves player)))
