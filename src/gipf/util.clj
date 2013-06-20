@@ -384,11 +384,27 @@
   [func seq]
   `(reduce concat (map ~func ~seq)))
 
+(defmacro msquare
+  [expr]
+  `(let [b# ~expr]
+     (multiply b# b#)))
+
 ;;
-;; Idea
+;; Idea 1
 ;;
 ;;
 ;;  (let [b (parallel (heavycalc))]
 ;;    (local (needs-swing b)))
 ;;
 ;;
+;; Idea 2
+;;
+;; (defn foofah [x] (* x x))
+;; 
+;; (let [a (compile (foofah 2))] // inline
+;;    (foofah a)) // funcall
+;;
+;; Problem: side effects, closures
+;; could have a (defcompilable; which stores 
+;; both the source and the func; calling a defcompilable
+;; yields the function; source is metadata...

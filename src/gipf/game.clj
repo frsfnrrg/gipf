@@ -4,14 +4,14 @@
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
 
-(setup-move-ranking-func! rank-board-hybrid iterative-deepening-ranking 3 150)
+(setup-move-ranking-func! rank-board-hybrid abprune 4)
 
 (defn compound-ai-move
   [board ^long player ^Reserves reserves adv-phase]
 
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode
-  
+  (swap! ranks-count (constantly 0)) 
   (let [pieces-left (get-reserves reserves player)
         possible-moves (shuffle
                         (list-possible-moves-and-board board reserves player))
@@ -29,9 +29,11 @@
                            rank))
                        nil -100000 possible-moves))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
+    (println "Nodes evaluated:" @ranks-count)
     ;; best would be, until mouse is moved...
     (busy-doing-important-stuff 1.0)
     ;; note positive sig
+    
     [c1 (sign-line m degree) c2]))
 
 

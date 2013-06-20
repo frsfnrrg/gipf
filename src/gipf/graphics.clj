@@ -157,16 +157,14 @@
 
 (defn draw-game-over!
   [winner]
-  (let [wincolor (color-fade (get piece-colors (if (> winner 0) 0 1)))]
+  (let [wincolor (color-fade (get piece-colors (player->index winner)))]
     (doto ^java.awt.Graphics2D game-graphics
       (.setColor wincolor)
       (.fillRect 0 0 800 800))))
 
 (defn draw-piece-at-loc!
   [loc type]
-  (if (> type 0)
-    (.setColor ^java.awt.Graphics2D game-graphics (get piece-colors 0))
-    (.setColor ^java.awt.Graphics2D game-graphics (get piece-colors 1)))
+  (.setColor ^java.awt.Graphics2D game-graphics (get piece-colors (player->index type)))
   (.fill ^java.awt.Graphics2D game-graphics (circle-at loc 30))
   (when (= 2 (abs type))
     (.setColor ^java.awt.Graphics2D game-graphics (scale-color (.getColor ^java.awt.Graphics2D game-graphics) 0.5))
@@ -197,3 +195,11 @@
       (repaint!))
     (catch java.lang.InterruptedException _
       (println "Awt blocker activation interrupt occured"))))
+
+(defn draw-player-indicator!
+  "Draws a bar near the bottom of the screen, indicating which player is active."
+  [player]
+  (let [col (get piece-colors (player->index player))]
+    (doto ^java.awt.Graphics2D game-graphics
+          (.setColor col)
+          (.fillRect 0 750 800 800))))

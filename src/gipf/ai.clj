@@ -125,3 +125,57 @@
         (do
           (idr-node-rank nodetree))
         (recur (idr-sub nodetree 0 level endtime rank-func player) (inc-1 level))))))
+
+;;
+;; Negamax search:
+;; 
+;; at each node: maximize the negation of the value of the subnodes
+;;
+;;
+;;
+;;
+;;
+;;
+
+
+(defrecord HNode [gamestate owner rank children ancestors])
+
+;;; negamax: rank := (fastmax (map #(negate %) ranks)
+
+;;;          rank := (negate (fastmin)
+
+(def negative-infinity -1000000000)
+
+(defn abps
+  [gamestate owner ranker gp depth bestrank]
+  (if (equals depth 0)
+    (ranker gamestate gp)
+
+    ;; otherwise, go through all direct subnodes.
+    ;; if one of its subs has a worse than bestrank, ignore them.
+    ;; once an node has a better negrank, take it
+    (let [subnodes
+            (list-possible-boards gamestate owner)
+          ;; question: is it worth it to sort the boards in terms
+          ;; of their ranks? - no, by an order of magnitude
+          ]
+      ;; todo: empty check for terminal (losing) node
+      
+      (loop [rem subnodes record negative-infinity]
+        (if (empty? rem) record
+            (let [nr (negate (abps (first rem)
+                                   (negate owner)
+                                   ranker gp
+                                   (dec-1 depth)
+                                   (negate record)))]
+              ;; (println (apply str (map (constantly ". ") (range (subtract 4 depth))))
+              ;;          nr bestrank)
+              
+              (if (greater nr bestrank)
+                nr
+                (recur (rest rem) (fastmax nr record)))))))))
+
+(defn abprune
+  [gamestate gp rank-func depth]
+  ;; core is negamax, using 2-deep cutting
+  (abps gamestate (negate gp) rank-func gp depth -10000000))

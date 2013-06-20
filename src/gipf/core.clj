@@ -26,7 +26,7 @@
 
 (defn player->index
   [^long player]
-  (if (= player (long -1)) 0 1))
+  (if (neg? player) 0 1))
 
 ;; what happens if we get a cyclical dependency??
 
@@ -44,16 +44,20 @@
 (llload "geo")
 (llload "reserves")
 (llload "graphics")
-(llload "game-aux")
+(llload "field")
 (llload "ranking")
 (llload "ai")
 (llload "game")
 
 ;; NEXT on the TODO list;
 ;;
-;; See the AI TODO list
+;; Improve ai.... It can't beat me yet.
+;; Better move sorting, quiescent search, transp tables, easily
+;; enabled/disabled incremental ranking in a gamestate. (ie, by using
+;; new classes that extend gamestate, add some info.) Maker funcs
+;; are easy to swap, doable in :setup of a Heuristic
 ;;
-;;
+
 
 ;; "things"
 
@@ -93,8 +97,8 @@
 
 (defn draw-pieces-left!
   [player]
-  (let [i (if (= player -1) 0 1)
-        c (get piece-colors (- 1 i))
+  (let [i (player->index player)
+        c (get piece-colors i)
         v (get-reserves reserve-pieces* player)]
     (if (= i 0)
       (draw-text-centered-at! (xy 100 700) (str v) c)
@@ -194,6 +198,7 @@
   (draw-base!)
   (if selected*
     (draw-highlight! selected* true))
+  (draw-player-indicator! current-player*)
   (repaint!))
 
 (defn protected?
@@ -347,7 +352,8 @@
 (defn switch-players!
   []
   (def current-player* (- current-player*))
-                                        ; cleanup after the line removal action...
+  ;; cleanup after the line removal action...
+  (draw-player-indicator! current-player*)
   (def already-removed-lines* (list)))
 
 (defn set-lines!
