@@ -1,5 +1,7 @@
 (ns gipf.core)
 
+(def ranks-count (atom 0))
+
 (def-ranking-function rank-board-old
   (:setup []
           (def expected-max-rank* 100000)
@@ -32,8 +34,6 @@
              (add
               (multiply 20 gipf-points)
               (multiply 5 piece-points)))))))
-
-(def ranks-count (atom 0))
 
 (def-ranking-function rank-board-hybrid
   (:setup
