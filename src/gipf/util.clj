@@ -389,6 +389,11 @@
   `(let [b# ~expr]
      (multiply b# b#)))
 
+(defmacro fastempty?
+  "Assumes nil is not a legal first arg"
+  [seq]
+  `(nil? (first ~seq)))
+
 ;;
 ;; Idea 1
 ;;

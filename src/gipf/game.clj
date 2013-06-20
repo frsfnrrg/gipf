@@ -4,11 +4,15 @@
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
 
-(setup-move-ranking-func! rank-board-hybrid abprune 4)
+(setup-move-ranking-func! rank-board-hybrid idr-ab-ranking 6 50)
 
 (defn compound-ai-move
   [board ^long player ^Reserves reserves adv-phase]
 
+  ;; we could do an (if (pos? player) (smrf! options) (smrf!
+  ;; options));
+  ;; or best yet, give a player arg to smrf!, for easier testing
+  
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode
   (swap! ranks-count (constantly 0)) 
@@ -83,9 +87,10 @@
 
 (defn lost?
   [board reserves player mode advm]
-  (println reserves)
-  (if (or (= advm :filling) (= mode :basic))
-    (= 0 (get-reserves reserves player))
-    (or
-     (= 0 (get-reserves reserves player))
-     (= 0 (get-gipfs reserves player)))))
+  (empty? (list-possible-boards (->GameState board reserves) player)))
+  ;(println reserves)
+  ;(if (or (= advm :filling) (= mode :basic))
+  ;  (= 0 (get-reserves reserves player))
+   ; (or
+    ; (= 0 (get-reserves reserves player))
+     ;(= 0 (get-gipfs reserves player)))))

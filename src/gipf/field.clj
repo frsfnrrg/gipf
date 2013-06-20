@@ -209,7 +209,7 @@
 (defn dfr-helper
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
   `(def ~name ~doc (->Heuristic (fn [] ~@setupexprs)
-                           (fn [~evalarg1 ~evalarg2] ~@evalexprs))))
+                           (fn ^long [^GameState ~evalarg1 ^long ~evalarg2] ~@evalexprs))))
 
 (defmacro def-ranking-function
   "Example input:
@@ -231,7 +231,7 @@
         (throw (IllegalArgumentException. "wrong clauses to def-ranking-function"))))
 
 
-(def timing** false)
+(def timing** true)
 (defmacro
   timec
   [expr]

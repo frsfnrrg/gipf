@@ -1,5 +1,11 @@
 package gipfj;
 
+// LONGTERM: create instances of this for passable
+// use inside threads... That way allocation, buffers 
+// still are minimized, and we do not have interference
+// or synchonization issues.
+
+@SuppressWarnings("unused")
 public class GameCalc {
 
     // These are the weights ... that would, eventually, need
@@ -509,9 +515,10 @@ public class GameCalc {
         }
 
         for (int x = 0; x < i; x++) {
-            // TODO: filter out game states with
-            // reserves at 0 (GIPF || real)
-            //
+            if (Reserves.losingReserve(mpm1[x].r, player)) {
+                continue;
+            }
+
             for (GameState q : getMoveMakingResults(mpm1[x], player)) {
                 mpm2[j] = q;
                 j++;
@@ -531,4 +538,5 @@ public class GameCalc {
 
         return foo;
     }
+
 }

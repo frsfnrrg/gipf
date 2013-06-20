@@ -331,11 +331,14 @@
           rp reserve-pieces*
           key (get-next-key-num)
           fut (future
-                (let [action (compound-ai-move b p rp (get-adv-phase))]
-                  (if (check-ai-action-thread key)
-                    (on-swing-thread
-                     (update-game (list (cons :caimove action))))
-                    (println "aborting move" key)))
+                (try
+                  (let [action (compound-ai-move b p rp (get-adv-phase))]
+                    (if (check-ai-action-thread key)
+                      (on-swing-thread
+                       (update-game (list (cons :caimove action))))
+                      (println "aborting move" key)))
+                  (catch java.lang.Exception e
+                    (.printStackTrace e)))
                 (remove-ai-action-thread! key))]
       (add-ai-action-thread!
        key

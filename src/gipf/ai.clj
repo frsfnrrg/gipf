@@ -108,8 +108,6 @@
 ;; I want a macro that inlines x times, then iterates in a function..
 ;; (optimizer)
 
-;; The ai ranking feels like: this is NOT what I want the opponent to do.
-
 (defn iterative-deepening-ranking
   "Ranks a position. It deepens. Iteratively."
   [gamestate player rank-func depth time]
@@ -137,9 +135,6 @@
 ;;
 ;;
 
-
-(defrecord HNode [gamestate owner rank children ancestors])
-
 ;;; negamax: rank := (fastmax (map #(negate %) ranks)
 
 ;;;          rank := (negate (fastmin)
@@ -155,9 +150,10 @@
     ;; if one of its subs has a worse than bestrank, ignore them.
     ;; once an node has a better negrank, take it
     (let [subnodes
-            (list-possible-boards gamestate owner)
+          (list-possible-boards gamestate owner)
           ;; question: is it worth it to sort the boards in terms
-          ;; of their ranks? - no, by an order of magnitude
+          ;; of their ranks? - no, by an order of magnitude?? by
+          ;; sort-by, which is not incremental..
           ]
       ;; todo: empty check for terminal (losing) node
       
@@ -170,7 +166,6 @@
                                    (negate record)))]
               ;; (println (apply str (map (constantly ". ") (range (subtract 4 depth))))
               ;;          nr bestrank)
-              
               (if (greater nr bestrank)
                 nr
                 (recur (rest rem) (fastmax nr record)))))))))
@@ -179,3 +174,81 @@
   [gamestate gp rank-func depth]
   ;; core is negamax, using 2-deep cutting
   (abps gamestate (negate gp) rank-func gp depth -10000000))
+
+(defrecord Node [gamestate owner rank children])
+(defmacro generate-node
+  [gamestate owner]
+  `(->Node ~gamestate ~owner 0 (transient {})))
+
+;; need let over lambda's g!, o! symbols
+(defmacro add-tr!
+  [thing index val]
+  `(let [th# ~thing
+         existing# (get th# ~index)]
+    (if existing#
+      (assoc! th# ~index
+              (cons ~val existing#))
+      (assoc! th# ~index (list ~val)))))
+
+(defmacro expand-trm
+  [thing]
+  `(let [t# ~thing]
+     (expand #(get t# %) (sort (keys t#)))))
+
+;; rankfunc, gp remain constant the entire time....
+(defn idr-ab-s
+  [node rankfunc gp cdepth edepth etime bestrank]
+  (if
+      (and (less cdepth 1) (past-time? etime))
+    node
+    (let [gamestate (:gamestate node)
+          owner (:owner node)
+          antiowner (negate owner)
+          ochildren (:children node)
+          nchildren (transient {})
+          nrank
+          (if (equals cdepth edepth)
+            (loop [rem (list-possible-boards gamestate owner)
+                   record negative-infinity]
+              (if (empty? rem)
+                record
+                (let [gs (first rem)
+                      nr (negate (rankfunc gs gp))]
+                  (add-tr! nchildren nr (generate-node gs antiowner))
+                  (if (greater nr bestrank)
+                    record
+                    (recur
+                     (rest rem)
+                     (fastmax nr record))))))
+            (loop [rem (expand-trm ochildren)
+                   record negative-infinity]
+              (if (empty? rem)
+                record
+                (let [child (first rem)
+                      nn (idr-ab-s child rankfunc gp
+                                   (inc-1 cdepth) edepth etime
+                                   (negate record))
+                      nr (negate (:rank nn))]
+                  (add-tr! nchildren nr nn)
+                  (if (greater nr bestrank)
+                    record
+                    (recur
+                     (rest rem)
+                     (fastmax nr record)))))))]
+      ;; children have mutated :-)
+      (->Node gamestate owner nrank (persistent! nchildren)))))
+
+
+;; warning: doesn't idr & alpha-beta prune
+;; potentially good nodes? Yes, but the ranking add is worth it
+
+(defn idr-ab-ranking
+  "A ranking function"
+  [gamestate gp rank-func depth max-time]
+
+  (let [endtime (+ (System/nanoTime) (* 1e6 max-time))]
+    (loop [nodetree (generate-node gamestate (negate gp)) level (long 0)]
+      (if (or (past-time? endtime) (equals level depth))
+        (:rank nodetree)
+        (recur (idr-ab-s nodetree rank-func gp 0 level endtime -10000000)
+               (inc-1 level))))))
