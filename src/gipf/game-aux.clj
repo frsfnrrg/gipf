@@ -188,7 +188,8 @@
 
 (defmacro past-time?
   [time]
-  `(>  (. System (nanoTime)) ~time))
+  `(let [newtime# (System/nanoTime)]
+     (greater newtime# ~time)))
 
 
 ;; should make this easily changeable... (per menu?; with registering stuf)
@@ -231,7 +232,7 @@
         (throw (IllegalArgumentException. "wrong clauses to def-ranking-function"))))
 
 
-(def timing** true)
+(def timing** false)
 (defmacro
   timec
   [expr]

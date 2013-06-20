@@ -3,7 +3,7 @@
 (defn clickableButton
   "Generates a button, that, when clicked, displays a popup with a message"
   [text displayed]
-  (let [b (javax.swing.JButton. text)]
+  (let [b (javax.swing.JButton. ^java.lang.String text)]
     (.addActionListener b
                         (proxy [java.awt.event.ActionListener] []
                           (actionPerformed [evt]
@@ -14,7 +14,7 @@
 ;; eq to (set-on-state-change! b (fn [s] (when s (thunk))))
 (defn set-on-button-select!
   "When button of a ButtonGroup is selected (state change), call thunk."
-  [button thunk]
+  [^javax.swing.AbstractButton button thunk]
   (let [prev (atom (.isSelected button))] 
     (.addChangeListener button
                         (proxy [javax.swing.event.ChangeListener] []
@@ -26,7 +26,7 @@
 
 (defn set-on-state-change!
   "When a checkbox is selected or deselected, call funk of pressedness."
-  [checkbox func]
+  [^javax.swing.AbstractButton checkbox func]
   (let [prev (atom (.isSelected checkbox))] 
     (.addChangeListener checkbox
                         (proxy [javax.swing.event.ChangeListener] []
@@ -38,7 +38,7 @@
 
 (defn set-on-button-click!
   "When button is clicked, funcall thunk"
-  [button thunk]
+  [^javax.swing.AbstractButton button thunk]
   (.addActionListener button
                       (proxy [java.awt.event.ActionListener] []
                         (actionPerformed [evt]

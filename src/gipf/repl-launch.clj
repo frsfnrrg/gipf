@@ -8,5 +8,3 @@
 (gipf.core/-main)
 
 "Ola!"
-
-

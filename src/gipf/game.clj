@@ -1,149 +1,10 @@
 (ns gipf.core
   (:import (gipfj Board GameState Reserves IDRNode GameCalc)))
 
-;;
-;; TODO: next order of business 
-;;
-;; Make a board-ranking function that actually... um... 
-;; ... tries to win.
-;;
-;;
-;;
-;;
-;;
-;;
+;; This file should contain all the interface between the logic
+;; and the rest of the game... Yeah. Right.
 
-
-
-;; action 
-
-(defn minimax2
-  [gamestate player rank-func max? depth]
-  (if (equals 0 depth)
-    (if max?
-      (rank-func gamestate player)
-      (negate (rank-func gamestate player)))
-    (let [conts (list-possible-boards gamestate player)]
-      ;; NOTE: need to implement this drying up of moves..
-      (if (empty? conts)
-        ;; loss
-        (if max? neg-ranking-infinity ranking-infinity)
-        ;; continue
-        (reduce (if max? #(fastmax %1 %2) #(fastmin %1 %2))
-                (map
-                 (fn [new-b-and-r]
-                   (minimax2 new-b-and-r
-                             (negate player)
-                             rank-func
-                             (not max?)
-                             (dec-1 depth)))
-                 conts))))))
-
-
-;; take a node. replace (loop) it with the rank of its children, and
-;; add pointers. Loop over all nodes.
-;;  .  .  .  .
-;;     .  .  .
-;;        .  .
-;;           .
-
-(defn idr-sub
-  ;; why can't I hint the first node?
-  [node depth ede endtime rank-func]
-  (cond
-   (and (equals depth 0) (past-time? endtime)) node
-   (equals depth ede)
-   (let [subgs (list-possible-boards (idr-node-gamestate node) (idr-node-player node))
-         newp (negate (idr-node-player node))
-         childlist (map (fn [gamestate]
-                          (make-idr-node
-                           gamestate
-                           newp
-                           (if (fast-even? ede)
-                             (rank-func gamestate newp)
-                             (negate (rank-func gamestate newp)))))
-                        subgs)
-         rank (if (fast-even? ede)
-                (reduce #(fastmax %1 %2) (map #(idr-node-rank %) childlist))
-                (reduce #(fastmin %1 %2) (map #(idr-node-rank %) childlist)))]
-     (idr-node-update node rank childlist))
-   :else
-   (let [childlist (map #(idr-sub % (inc-1 depth) ede endtime rank-func)
-                        (idr-node-children node))
-         rank (if (fast-even? ede)
-                (reduce #(fastmax %1 %2) (map #(idr-node-rank %) childlist))
-                (reduce #(fastmin %1 %2) (map #(idr-node-rank %) childlist)))]
-     (idr-node-update node rank childlist))))
-
-;; I want a macro that inlines x times, then iterates in a function..
-;; (optimizer)
-
-(defn iterative-deepening-ranking
-  "Ranks a position. It deepens. Iteratively."
-  [gamestate player rank-func depth time]
-
-  (let [starttime (. System (nanoTime))
-        endtime (+ (* time 1e6) starttime)]
-    (loop [nodetree (make-idr-node gamestate
-                            player
-                            (rank-func gamestate player))
-           level 0]
-      (if (or (past-time? endtime) (equals level depth))
-        (do
-          (idr-node-rank nodetree))
-        (recur (idr-sub nodetree 0 level endtime rank-func) (inc-1 level))))))
-
-(defn rank-board-1-setup
-  []
-  (def expected-max-rank* 100000)
-     (set-value-cell-constants 15 40 -10 -50 3)
-     (set-value-line-cell-constants -3 50 100 500 4))
-
-(defn rank-board-1
-  ;; why measure lines after the fact?
-  "Finally kinda efficient"
-  [gamestate player]
-  (let [pos-points (rank-board-org gamestate player)
-        lines-points (rank-board-lines gamestate player)] 
-    (add (divide pos-points 7) (multiply 10 lines-points))))
-
-
-(def-ranking-function rank-board-2
-  (:setup
-   []
-   (def expected-max-rank* 800)
-   ;; mp mg op og rl
-   (set-value-cell-constants 1 3 -1 -3 5))
-  (:eval
-   [gamestate player]
-   
-   (let [reserves (game-state-reserves gamestate)
-         antiplayer (negate player)]
-     (cond (losing-reserve? reserves player)
-           -1000
-           (losing-reserve? reserves antiplayer)
-           1000
-           :else
-           (let [gipf-points (subtract
-                              (get-gipfs reserves player)
-                              (get-gipfs reserves antiplayer))
-                 piece-points (subtract (get-reserves reserves player)
-                                        (get-reserves reserves antiplayer))
-                 pos-points (rank-board-org gamestate player)]
-             (add pos-points
-                  (add
-                   (multiply 200 gipf-points)
-                   (multiply 50 piece-points))))))))
-
-;; best would be to disconnect the two choices
-;; between ai search algorithm and ranking heuristic
-
-;; ie, (setup-move-ranking-func! rank-func search-func & args-to-rankfunc)  
-
-
-(setup-move-ranking-func! rank-board-2 iterative-deepening-ranking 2 50)
-
-;; move-ranking-func* comes from game-aux
+(setup-move-ranking-func! rank-board-hybrid iterative-deepening-ranking 3 150)
 
 (defn compound-ai-move
   [board ^long player ^Reserves reserves adv-phase]
@@ -156,14 +17,15 @@
                         (list-possible-moves-and-board board reserves player))
         ngipfs (count-over-hex-array board (* 2 player))
         degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
+        current-rank (move-ranking-func* (->GameState board reserves) player)
         optimal (timec (rand-best
                        (fn [[move [board res]]]
                          (let [rank
                                (timec (move-ranking-func*
                                       (->GameState board res)
                                       player))]
-                           ;(println (second move) "->" rank)
-                           (direct-visualize-ai-ranking (second move) rank)
+                           (println (second move) "->" (- rank current-rank))
+                           (direct-visualize-ai-ranking (second move) (- rank current-rank))
                            rank))
                        nil -100000 possible-moves))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
@@ -171,6 +33,8 @@
     (busy-doing-important-stuff 1.0)
     ;; note positive sig
     [c1 (sign-line m degree) c2]))
+
+
 
 (defn get-gipf-potentials-in-line
   [board line]
@@ -185,6 +49,8 @@
   [board player line]
   (filter #(same-sign? (get-hex-array board %1) player)
           (get-gipf-potentials-in-line board line)))
+
+
 
 ;; new!
 

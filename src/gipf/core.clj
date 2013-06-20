@@ -11,13 +11,13 @@
 ;;; or abstractions
 ;;;
 
-; everything should be explicitly passed into these
+                                        ; everything should be explicitly passed into these
 
 (defmacro defrename
   [new old numargs]
   (let [args (map #(gensym (str "expr" %)) (range numargs))]
-  `(defmacro ~new [~@args]
-     `(~~old ~~@args))))
+    `(defmacro ~new [~@args]
+       `(~~old ~~@args))))
 
 (defmacro llload
   [name]
@@ -30,17 +30,28 @@
 
 ;; what happens if we get a cyclical dependency??
 
+;; best way: specify dependencies;
+;; have a function that calls llload in the right order.
+;; ex: (load-all
+;; [math util geo reserves graphics game-aux ranking ai game]
+;;  (game ai ranking game-aux graphics)
+;; (ranking geo reserves util)
+;; (graphics geo util)
+
+
 (llload "math")
 (llload "util")
 (llload "geo")
 (llload "reserves")
 (llload "graphics")
 (llload "game-aux")
+(llload "ranking")
+(llload "ai")
 (llload "game")
 
 ;; NEXT on the TODO list;
 ;;
-;; Use new reserves. Improve ai, use alpha-beta..
+;; See the AI TODO list
 ;;
 ;;
 
@@ -291,16 +302,17 @@
 (let [ai-action-threads (atom {})
       add-ai-action-thread! (fn [key val]
                               (swap! ai-action-threads
-                                #(assoc % key [val false])))
+                                     #(assoc % key [val true])))
       remove-ai-action-thread! (fn [key]
                                  (swap! ai-action-threads
                                         #(dissoc % key)))
       check-ai-action-thread (fn [key]
                                (second (get @ai-action-threads key)))
       end-ai-action-thread! (fn [key]
-                               (swap! ai-action-threads
-                                      #(assoc % key
-                                              [(first (get % key)) true])))
+                              (swap! ai-action-threads
+                                     #(assoc % key
+                                             [(first (get % key)) false]))
+                              (future-cancel (first (get @ai-action-threads key))))
       get-next-key-num (let [kn (atom 0)]
                          (fn []
                            (swap! kn inc)
@@ -313,19 +325,16 @@
           p current-player*
           rp reserve-pieces*
           key (get-next-key-num)
-          thread (proxy [java.lang.Thread] []
-                   (run []
-                     (let [action (compound-ai-move b p rp (get-adv-phase))]
-                       (if-not (check-ai-action-thread key)
-                         (on-swing-thread
-                          (update-game (list (cons :caimove action)))
-                          (draw-base!)))
-                         (println "Thread ignored"))
-                     (println "Thread killed")
-                     (remove-ai-action-thread! key)))]
+          fut (future
+                (let [action (compound-ai-move b p rp (get-adv-phase))]
+                  (if (check-ai-action-thread key)
+                    (on-swing-thread
+                     (update-game (list (cons :caimove action))))
+                    (println "aborting move" key)))
+                (remove-ai-action-thread! key))]
       (add-ai-action-thread!
        key
-       (doto thread (.start)))))
+       fut)))
 
   (defn interrupt-ai-threads!
     []
@@ -358,13 +367,12 @@
   ;; _the best loss check is the lack of any moves to make_
   ;; - for that, use magic.
   
-  
   (if (lost? board* reserve-pieces* current-player* mode* (get-adv-phase))
     (do
       (println "Game over!")
       (def game-phase* :gameover)
-        (draw-game-over! (- current-player*))
-        true)
+      (draw-game-over! (- current-player*))
+      true)
     false))
 
 (defn setup-new-game!
@@ -506,6 +514,9 @@
 (defn effect-compound-ai-move!
   [clear1 move clear2]
 
+  ;; temporary - clear ai gunk
+  (draw-base!)
+  
   ;; clear  
   (def rings* (ffirst clear1))
   (doseq [line (rest clear1)]
@@ -544,12 +555,12 @@
     (case (first input)
       :state
       (case (second input)
-            :new       (setup-new-game!)
-            :basic     (def mode* :basic)
-            :normal    (def mode* :normal)
-            :advanced  (def mode* :advanced)
-            :player-ai (set-player-type! (third input)
-                                         (if (fourth input) :ai :human)))
+        :new       (setup-new-game!)
+        :basic     (def mode* :basic)
+        :normal    (def mode* :normal)
+        :advanced  (def mode* :advanced)
+        :player-ai (set-player-type! (third input)
+                                     (if (fourth input) :ai :human)))
       :caimove
       (effect-compound-ai-move! (second input) (third input) (fourth input))
 
@@ -613,8 +624,7 @@
         button-quit (javax.swing.JMenuItem. "Quit")
 
         iai-one (javax.swing.JCheckBoxMenuItem. "Player 1: AI?")
-        iai-two (javax.swing.JCheckBoxMenuItem. "Player 2: AI?")
-        ]
+        iai-two (javax.swing.JCheckBoxMenuItem. "Player 2: AI?")]
 
     ;; we call a new game;
     (update-game (list [:state :new]))
@@ -678,25 +688,33 @@
               (.add iai-two))))
     
     (doto ^javax.swing.JPanel game-panel
-      (.setMinimumSize (java.awt.Dimension. 800 800))
-      (.setMaximumSize (java.awt.Dimension. 800 800))
-      (.setPreferredSize (java.awt.Dimension. 800 800))
-      (.addMouseListener (proxy [java.awt.event.MouseListener] []
-                           (mouseClicked [^java.awt.event.MouseEvent e]
-                             (update-game (list [:click (.getX e) (.getY e) (.getButton e)])))
-                           (mouseEntered [^java.awt.event.MouseEvent e] nil)
-                           (mouseExited [^java.awt.event.MouseEvent e] nil)
-                           (mousePressed [^java.awt.event.MouseEvent e] nil)
-                           (mouseReleased [^java.awt.event.MouseEvent e] nil)))
-      (.addMouseMotionListener (proxy [java.awt.event.MouseMotionListener] []
-                                 (mouseDragged [^java.awt.event.MouseEvent e] nil)
-                                 (mouseMoved [^java.awt.event.MouseEvent e] 
-                                   (update-game (list [:hover (.getX e) (.getY e)]))))))
+          (.setMinimumSize (java.awt.Dimension. 800 800))
+          (.setMaximumSize (java.awt.Dimension. 800 800))
+          (.setPreferredSize (java.awt.Dimension. 800 800))
+          (.addMouseListener (proxy [java.awt.event.MouseListener] []
+                               (mouseClicked [^java.awt.event.MouseEvent e]
+                                 (update-game (list [:click (.getX e) (.getY e) (.getButton e)])))
+                               (mouseEntered [^java.awt.event.MouseEvent e] nil)
+                               (mouseExited [^java.awt.event.MouseEvent e] nil)
+                               (mousePressed [^java.awt.event.MouseEvent e] nil)
+                               (mouseReleased [^java.awt.event.MouseEvent e] nil)))
+          (.addMouseMotionListener (proxy [java.awt.event.MouseMotionListener] []
+                                     (mouseDragged [^java.awt.event.MouseEvent e] nil)
+                                     (mouseMoved [^java.awt.event.MouseEvent e] 
+                                       (update-game (list [:hover (.getX e) (.getY e)]))))))
     
     (doto window
       (.setJMenuBar menubar)
       (.setDefaultCloseOperation javax.swing.WindowConstants/DISPOSE_ON_CLOSE)
-      ;; TODO: use a run script on close
+      (.addWindowListener (proxy [java.awt.event.WindowListener] []
+                            (windowOpened [_])
+                            (windowClosed [_])
+                            (windowActivated [_])
+                            (windowDeactivated [_])
+                            (windowIconified [_])
+                            (windowDeiconified [_])
+                            (windowClosing [^java.awt.event.WindowEvent _]
+                              (interrupt-ai-threads!))))
       (.setContentPane game-panel)
       (.addKeyListener (proxy [java.awt.event.KeyListener] []
                          (keyPressed [^java.awt.event.KeyEvent e] nil)
