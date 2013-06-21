@@ -17,7 +17,7 @@
                  :board-snapshot true
                  :rank-value false
                  :pre-rank-value false
-                 :screen-display false
+                 :screen-display true
                  :evaluation-count false
                  :equals-moves false})]
   (defn set-diagnostic-level!
