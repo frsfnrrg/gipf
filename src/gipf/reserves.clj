@@ -1,5 +1,4 @@
-(ns gipf.core
-  (:import (gipfj Reserves)))
+(ns gipf.core)
 
 (defrename ->Reserves `Reserves/makeReserves 2)
 (defrename inc-reserves `Reserves/incReserves 2)
@@ -8,3 +7,5 @@
 (defrename inc-gipfs `Reserves/incGipfs 2)
 (defrename dec-gipfs `Reserves/decGipfs 2)
 (defrename get-gipfs `Reserves/getGipfs 2)
+
+(def null-reserves (->Reserves 0 0))

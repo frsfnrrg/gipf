@@ -1,6 +1,6 @@
 (ns gipf.core
   (:gen-class)
-  (:import (gipfj Geometry MathUtil Board)))
+  (:import (gipfj Geometry MathUtil Board GameState Reserves IDRNode GameCalc IncrementalGameCalc)))
 
 ;;;
 ;;; The purpose of this core file
@@ -333,6 +333,7 @@
           fut (future
                 (try
                   (let [action (compound-ai-move b p rp (get-adv-phase))]
+                    (busy-doing-important-stuff 1.0)
                     (if (check-ai-action-thread key)
                       (on-swing-thread
                        (update-game (list (cons :caimove action))))
@@ -393,7 +394,7 @@
   (def selected* nil)
   (def lines* (list))
   (def rings* (list))
-  
+  (setup-ai!)  
 
   (if (= mode* :advanced)
     (def adv-phase* [:filling :filling])
@@ -620,9 +621,9 @@
 
   true)
 
-(defn -main
-  "See \"GIPF: I play the game\" for details."
-  [& args]
+(defn runGUI
+  []
+  (println "Loading gui")
   (let [window (javax.swing.JFrame. "GIPF")
         menubar (javax.swing.JMenuBar.)
         mode-basic (javax.swing.JRadioButtonMenuItem. "Basic")
@@ -736,6 +737,19 @@
                              (.dispose ^javax.swing.JFrame window)))))
       (.pack)
       (.setResizable false)
-      (.setVisible true))
-    
-    true))
+      (.setVisible true)))
+
+;; TODO: why is this unbound?
+(def -main
+  "See \"GIPF: I play the game\" for details."
+  (fn [& args]
+    (println "MAIN")
+    (runGUI)
+    "MAIN")))
+
+;; how do we know if this has been run before?
+(defn runSimulation
+  [mode]
+  (start-thread
+   (simulate mode)))
+

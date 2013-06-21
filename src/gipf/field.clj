@@ -1,5 +1,4 @@
-(ns gipf.core
-    (:import (gipfj Board GameState Reserves IDRNode GameCalc IncrementalGameCalc)))
+(ns gipf.core)
 
 (defrename place-and-shove `GameCalc/placeAndShove 3) 
 (defrename ->GameState `GameState/makeGameState 2)
@@ -78,10 +77,54 @@
   "Does not update properly"
   [board value loc shove]
   [ (game-state-board (place-and-shove
-                        (->GameState board (->Reserves 0 0))
+                        (->GameState board null-reserves)
                         value
                         (->Line loc shove)))
    (impacted-cells board loc shove)])
+
+(defn do-linemoves
+  [gs player move]
+  (let [prot (ffirst move)]
+    (loop [lleft (rest move) gamestate gs]
+      (if (empty? lleft)
+        gamestate
+        (recur
+         (rest lleft)
+         (let [line (first lleft)
+               delta (line-delta line)]
+           (loop [pos (line-start line)
+                  board (game-state-board gamestate)
+                  reserves (game-state-reserves gamestate)]
+             (if (= (pt-radius pos) 4)
+               (->GameState board reserves)
+               (let [val (get-hex-array board pos)]
+                 (cond (some #(pt= pos %) prot)
+                       (recur (pt+ pos delta) board reserves)
+                       
+                       (same-sign? val player)
+                       (if (equals 2 (abs val))
+                         (recur (pt+ pos delta)
+                                (change-hex-array board pos 0)
+                                (dec-gipfs
+                                 (inc-reserves
+                                  (inc-reserves reserves player)
+                                  player)
+                                 player))
+                         (recur (pt+ pos delta)
+                                (change-hex-array board pos 0)
+                                (inc-reserves reserves player)))
+
+                       (not (equals val 0))
+                       (if (equals 2 (abs val))
+                         (recur (pt+ pos delta)
+                                (change-hex-array board pos 0)
+                                (dec-gipfs reserves (negate player)))
+                         (recur (pt+ pos delta)
+                                (change-hex-array board pos 0)
+                                reserves))
+                       
+                       :else
+                       (recur (pt+ pos delta) board reserves)))))))))))
 
 (defn get-line-taking-orderings
   "Returns a list of [[[prot] take1 take2] newboard newreserves]
@@ -185,31 +228,38 @@
   
 (def list-possible-boards list-possible-boards-opt)
 
-(defmacro past-time?
-  [time]
-  `(let [newtime# (System/nanoTime)]
-     (greater newtime# ~time)))
-
-
 ;; should make this easily changeable... (per menu?; with registering stuf)
 (def expected-max-rank* nil)
 (def move-ranking-func* nil)
 
 (defrecord Heuristic [setup eval])
 
-(defn setup-move-ranking-func!
-  "evalf must take 2 args: gamestate, player, and
-  return a number. setupf does whatever"
-  [lead-heuristic search-func & sfargs]
-  ((:setup lead-heuristic))
-  (def move-ranking-func*
-    (fn [state player]
-      (apply search-func state player (:eval lead-heuristic) sfargs))))
+(let [mrfs (atom {})]
+  (defn setup-move-ranking-func!
+    [player lead-heuristic search-func & sfargs]
+    (swap! mrfs
+           #(assoc % player [(:setup lead-heuristic)
+                              (fn [state player]
+                                (apply search-func state player
+                                       (:eval lead-heuristic) sfargs))])))
+
+  (defn use-move-ranking-func!
+    [player]
+    (let [rr (get @mrfs player)
+          [setupf lmda] rr]
+      (setupf)
+      (def move-ranking-func* lmda))))
+
+
+(def ranks-count (atom (long 0)))
 
 (defn dfr-helper
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
-  `(def ~name ~doc (->Heuristic (fn [] ~@setupexprs)
-                           (fn ^long [^GameState ~evalarg1 ^long ~evalarg2] ~@evalexprs))))
+  `(def ~name ~doc (->Heuristic
+                    (fn [] ~@setupexprs)
+                    (fn ^long [^GameState ~evalarg1 ^long ~evalarg2]
+                      (swap! ranks-count #(inc-1 %))
+                      ~@evalexprs))))
 
 (defmacro def-ranking-function
   "Example input:
@@ -218,23 +268,57 @@
     (:eval [g p] (println \"rankin'\" (* p 20 (random-long -10 10))))
     (:setup [] (initialize-random-float)))
 "
-  [name [key1 [& key1args] & key1exprs] [key2 [& key2args] & key2exprs]]
-  (cond (and (= key1 :setup) (= key2 :eval)
-             (empty? key1args)
-             (= 2 (count key2args)))
-        (dfr-helper name "" key1exprs (first key2args) (second key2args) key2exprs)
-        (and (= key2 :setup) (= key1 :eval)
-             (empty? key2args)
-             (= 2 (count key1args)))
-        (dfr-helper name "" key2exprs (first key1args) (second key1args) key1exprs)
-        :else
-        (throw (IllegalArgumentException. "wrong clauses to def-ranking-function"))))
+  ([name [key1 [& key1args] & key1exprs] [key2 [& key2args] & key2exprs]]
+     `(def-ranking-function ~name ""
+        (~key1 [~@key1args] ~@key1exprs)
+        (~key2 [~@key2args] ~@key2exprs)))
+  ([name docstring [key1 [& key1args] & key1exprs] [key2 [& key2args] & key2exprs]]
+     (cond (and (= key1 :setup) (= key2 :eval)
+                (empty? key1args)
+                (= 2 (count key2args)))
+           (dfr-helper name docstring key1exprs (first key2args) (second key2args) key2exprs)
+           (and (= key2 :setup) (= key1 :eval)
+                (empty? key2args)
+                (= 2 (count key1args)))
+           (dfr-helper name docstring key2exprs (first key1args) (second key1args) key1exprs)
+           :else
+           (throw (IllegalArgumentException. "wrong clauses to def-ranking-function")))))
 
-
-(def timing** true)
-(defmacro
-  timec
-  [expr]
-  (if timing**
-    `(time ~expr)
-    expr))
+(defn print-board
+  [board]
+  ;; I want macrolet ;-)
+  (let [enm (str "0123456789" "abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        transform
+        (str
+         "         j            \n"
+         "      k     A         \n"
+         "   l     7     z      \n"
+         "m     8     i     y   \n"
+         "   9     1     h      \n"
+         "n     2     6     x   \n"
+         "   a     0     g      \n"
+         "o     3     5     w   \n"
+         "   b     4     f      \n"
+         "p     c     e     v   \n"
+         "   q     d     u      \n"
+         "      r     t         \n"
+         "         s            \n")
+        
+        zmap (map list
+                  (map str
+                       enm)
+                  (map
+                   #(case (int (get-hex-array board %))
+                      -2 "="
+                      -1 "-"
+                      0 "."
+                      1 "+"
+                      2 "#")
+                   (range 37)))]
+    (loop [meat transform rk zmap]
+      (if (empty? rk)
+        (println meat)
+        (let [k (ffirst rk)
+              v (second (first rk))]
+          (recur (clojure.string/replace meat k v)
+                 (rest rk)))))))

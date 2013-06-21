@@ -252,19 +252,22 @@
  a default value to return, and a collection
  to apply the function to. If the function's
  value is maximized at an element, return that element."
-  [test default-obj default-val coll]
-  (rand-nth
-   (loop [rcoll coll recv default-val reco (list default-obj)]
-     (if (empty? rcoll)
-       reco
-       (let [f (first rcoll)
-             t (test f)]
-         (cond (> t recv)
-               (recur (rest rcoll) t (list f))
-               (= t recv)
-               (recur (rest rcoll) t (cons f reco))
-               :else
-               (recur (rest rcoll) recv reco)))))))
+  [test default-obj default-val coll disp]
+  (let [best
+        (loop [rcoll coll recv default-val reco (list default-obj)]
+          (if (empty? rcoll)
+            reco
+            (let [f (first rcoll)
+                  t (test f)]
+              (cond (> t recv)
+                    (recur (rest rcoll) t (list f))
+                    (= t recv)
+                    (recur (rest rcoll) t (cons f reco))
+                    :else
+                    (recur (rest rcoll) recv reco)))))]
+    (when disp
+      (println (count best)))
+    (rand-nth best)))
 
 (defn same-sign?
   "Do all arguments have the same sign? (+,0,-)"
@@ -317,9 +320,7 @@
         (when (> r @max)
           (swap! max (constantly r))
           (println r))
-        r)
-      ))
-  )
+        r))))
 
 (defn logf
   [func]
@@ -400,6 +401,28 @@
   "Assumes nil is not a legal first arg"
   [seq]
   `(nil? (first ~seq)))
+
+
+(def timing** false)
+(defmacro
+  timec
+  [expr]
+  (if timing**
+    `(time ~expr)
+    expr))
+
+(defmacro
+  timev
+  [expr y]
+  `(if ~y (time ~expr) ~expr))
+
+
+(defmacro past-time?
+  [time]
+  `(let [newtime# (System/nanoTime)]
+     (greater newtime# ~time)))
+
+
 
 ;;
 ;; Idea 1

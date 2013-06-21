@@ -5,16 +5,18 @@
 ;;
 ;; TODO: next order of business 
 ;;
-;; Get an acceptable heuristic that kinda likes winning. Also,
-;; fix any bugs in the current idr search. It _should_ be minimax eqv.
+;; Look for the nearest todo list;
+;; What other optimizations exist?
+;; 
+;; Killer heuristic
+;; Transp tables
+;; Incremental ranking
+;; Incremental board-lines search
+;; Quiescent search
+;; MTD-f
+;; profiling ;-)
 ;;
-;; how does alpha-beta search work??
-;;
-;;
-;;
-;;
-;;
-;;
+;; We will ignore tournament mode for a while, until the ai can beat us..
 
 ;; action 
 
@@ -26,7 +28,7 @@
       ;; NOTE: need to implement this drying up of moves..
       (if (empty? conts)
         ;; loss
-        (if max? neg-ranking-infinity ranking-infinity)
+        (if max? negative-infinity positive-infinity)
         ;; continue
         (reduce (if max? #(fastmax %1 %2) #(fastmin %1 %2))
                 (map

@@ -5,6 +5,6 @@
 
 (load "core")
 
-(gipf.core/-main)
+(gipf.core/runGUI)
 
 "Ola!"
