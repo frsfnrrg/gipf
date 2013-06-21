@@ -5,7 +5,6 @@ package gipfj;
 // still are minimized, and we do not have interference
 // or synchonization issues.
 
-@SuppressWarnings("unused")
 public class GameCalc {
 
     // These are the weights ... that would, eventually, need
@@ -113,8 +112,8 @@ public class GameCalc {
         return lineFull(b, q, delta);
     }
 
-    private static Line[] listOfLines = getLoL();
-    private static int[][] listOfLinePoints = getLolP(listOfLines);
+    public static Line[] listOfLines = getLoL();
+    public static int[][] listOfLinePoints = getLolP(listOfLines);
 
     private static Line[] getLoL() {
         Line[] lol = new Line[21];

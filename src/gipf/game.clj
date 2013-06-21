@@ -28,7 +28,7 @@
                                (timec (move-ranking-func*
                                       (->GameState board res)
                                       player))]
-                           (println (second move) "->" (- rank current-rank))
+                           ;(println (second move) "->" (- rank current-rank))
                            (direct-visualize-ai-ranking (second move) (- rank current-rank))
                            rank))
                        nil -100000 possible-moves))
@@ -81,16 +81,14 @@
   "Return a new set of reserves."
   [mode]
   (case mode
-    :basic (->Reserves 12 1)
+    :basic (->Reserves 3 1)
     :advanced (->Reserves 18 0)
     :normal (->Reserves 15 3)))
 
 (defn lost?
   [board reserves player mode advm]
-  (empty? (list-possible-boards (->GameState board reserves) player)))
-  ;(println reserves)
-  ;(if (or (= advm :filling) (= mode :basic))
-  ;  (= 0 (get-reserves reserves player))
-   ; (or
-    ; (= 0 (get-reserves reserves player))
-     ;(= 0 (get-gipfs reserves player)))))
+  ;; TODO: make the GameState advm phase aware...; 
+  ;; then allow gipfs to be placed under advm
+  (let [res (incrementally-list-state-continuations (->GameState board reserves) player)]
+    (println "Moves available:" (count res))
+    (empty? res)))
