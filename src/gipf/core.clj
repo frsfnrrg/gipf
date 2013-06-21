@@ -1,6 +1,6 @@
 (ns gipf.core
-  (:gen-class)
-  (:import (gipfj Geometry MathUtil Board GameState Reserves IDRNode GameCalc IncrementalGameCalc)))
+  (:import (gipfj Geometry MathUtil Board GameState Reserves IDRNode GameCalc IncrementalGameCalc))
+  (:gen-class))
 
 ;;;
 ;;; The purpose of this core file
@@ -737,15 +737,7 @@
                              (.dispose ^javax.swing.JFrame window)))))
       (.pack)
       (.setResizable false)
-      (.setVisible true)))
-
-;; TODO: why is this unbound?
-(def -main
-  "See \"GIPF: I play the game\" for details."
-  (fn [& args]
-    (println "MAIN")
-    (runGUI)
-    "MAIN")))
+      (.setVisible true))))
 
 ;; how do we know if this has been run before?
 (defn runSimulation
@@ -753,3 +745,10 @@
   (start-thread
    (simulate mode)))
 
+;; TODO: why is this unbound?
+(defn -main
+  "See \"GIPF: I play the game\" for details."
+  [& args]
+  (println "MAIN")
+  (runGUI)
+  "MAIN")
