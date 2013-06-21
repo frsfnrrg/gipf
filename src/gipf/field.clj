@@ -1,10 +1,6 @@
 (ns gipf.core
     (:import (gipfj Board GameState Reserves IDRNode GameCalc IncrementalGameCalc)))
 
-(def order-distinguishing-pause 0.6) ; sec
-(def ranking-infinity (long 100000))
-(def neg-ranking-infinity (long -100000))
-
 (defrename place-and-shove `GameCalc/placeAndShove 3) 
 (defrename ->GameState `GameState/makeGameState 2)
 (defrename game-state-board `GameState/getBoard 1)
@@ -29,19 +25,9 @@
 (defrename set-value-line-cell-constants `GameCalc/setValueLineCellConstants 5)
 (defrename set-value-cell-constants `GameCalc/setValueCellConstants 5)
 
-(defn from-iterator
-  [^java.util.Iterator i]
-  (if (.hasNext i)
-    (cons (.next i) (lazy-seq (from-iterator i)))))
-
 (defn incrementally-list-state-continuations
   [gamestate player]
   (from-iterator (IncrementalGameCalc. gamestate player)))
-
-    
-    
-    
-  
 
 ;; predicates/extraction
 
@@ -245,7 +231,7 @@
         (throw (IllegalArgumentException. "wrong clauses to def-ranking-function"))))
 
 
-(def timing** false)
+(def timing** true)
 (defmacro
   timec
   [expr]

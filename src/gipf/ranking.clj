@@ -38,27 +38,22 @@
 (def-ranking-function rank-board-hybrid
   (:setup
    []
-   (def expected-max-rank* 2000)
+   (def expected-max-rank* 200)
    ;; mp mg op og rl
-   (set-value-cell-constants 100 300 -100 -300 5))
+   (set-value-cell-constants 10 30 -10 -30 5))
   (:eval
    [gamestate player]
    ;; temp
    (swap! ranks-count inc)
    (let [reserves (game-state-reserves gamestate)
-         antiplayer (negate player)]
-     (cond (losing-reserve? reserves player)
-           -10000
-           (losing-reserve? reserves antiplayer)
-           10000
-           :else
-           (let [gipf-points (subtract
-                              (msquare (get-gipfs reserves player))
-                              (msquare (get-gipfs reserves antiplayer)))
-                 piece-points (subtract (msquare (get-reserves reserves player))
-                                        (msquare (get-reserves reserves antiplayer)))
-                 pos-points (rank-board-org gamestate player)]
-             (add pos-points
-                  (add
-                   (multiply 200 gipf-points)
-                   (multiply 50 piece-points))))))))
+         antiplayer (negate player)
+         gipf-points (subtract
+                      (msquare (get-gipfs reserves player))
+                      (msquare (get-gipfs reserves antiplayer)))
+         piece-points (subtract (msquare (get-reserves reserves player))
+                                (msquare (get-reserves reserves antiplayer)))
+         pos-points (rank-board-org gamestate player)]
+     (add pos-points
+          (add
+           (multiply 20 gipf-points)
+           (multiply 5 piece-points))))))

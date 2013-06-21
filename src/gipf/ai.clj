@@ -138,8 +138,7 @@
 ;;; negamax: rank := (fastmax (map #(negate %) ranks)
 
 ;;;          rank := (negate (fastmin)
-
-(def negative-infinity -1000000000)
+  
 
 (defn abps
   [gamestate owner ranker gp depth bestrank]
@@ -164,8 +163,6 @@
                                    ranker gp
                                    (dec-1 depth)
                                    (negate record)))]
-              ;; (println (apply str (map (constantly ". ") (range (subtract 4 depth))))
-              ;;          nr bestrank)
               (if (greater nr bestrank)
                 nr
                 (recur (rest rem) (fastmax nr record)))))))))
@@ -178,7 +175,7 @@
 (defrecord Node [gamestate owner rank children])
 (defmacro generate-node
   [gamestate owner]
-  `(->Node ~gamestate ~owner 0 (transient {})))
+  `(->Node ~gamestate ~owner 0 {}))
 
 ;; need let over lambda's g!, o! symbols
 (defmacro add-tr!
@@ -195,6 +192,29 @@
   `(let [t# ~thing]
      (expand #(get t# %) (sort (keys t#)))))
 
+(defmacro flag
+  [expr & phrases]
+  `(do
+     (println ~@phrases)
+     ~expr))
+
+(defmacro ablm
+  "Helper macro for alpha-beta pruning.
+  Read the source.
+  Negation is the responsiblity of the user.
+  Read the source.
+  Thank you.
+  Read the source."
+  [feed bestrank [entry record] block]
+  `(loop [rem# ~feed ~record negative-infinity]
+     (if (empty? rem#)
+       ~record
+       (let [~entry (first rem#)
+             q# ~block]
+         (if (greater q# ~bestrank)
+           q#
+           (recur (rest rem#) (fastmax q# ~record)))))))
+
 ;; rankfunc, gp remain constant the entire time....
 (defn idr-ab-s
   [node rankfunc gp cdepth edepth etime bestrank]
@@ -208,33 +228,23 @@
           nchildren (transient {})
           nrank
           (if (equals cdepth edepth)
-            (loop [rem (list-possible-boards gamestate owner)
-                   record negative-infinity]
-              (if (empty? rem)
-                record
-                (let [gs (first rem)
-                      nr (negate (rankfunc gs gp))]
-                  (add-tr! nchildren nr (generate-node gs antiowner))
-                  (if (greater nr bestrank)
-                    record
-                    (recur
-                     (rest rem)
-                     (fastmax nr record))))))
-            (loop [rem (expand-trm ochildren)
-                   record negative-infinity]
-              (if (empty? rem)
-                record
-                (let [child (first rem)
-                      nn (idr-ab-s child rankfunc gp
-                                   (inc-1 cdepth) edepth etime
-                                   (negate record))
-                      nr (negate (:rank nn))]
-                  (add-tr! nchildren nr nn)
-                  (if (greater nr bestrank)
-                    record
-                    (recur
-                     (rest rem)
-                     (fastmax nr record)))))))]
+            (let [rq (incrementally-list-state-continuations gamestate owner)]
+              (if (empty? rq)
+                (if (equals gp owner) negative-infinity positive-infinity)
+                (ablm rq bestrank [gs _]
+                      (let [nr (negate (rankfunc gs gp))]
+                        (add-tr! nchildren nr (generate-node gs antiowner))
+                        nr))))
+            (if (empty? ochildren)
+              (:rank node)
+              (let [rq (expand-trm ochildren)]
+                (ablm rq bestrank [child record]
+                      (let [nn (idr-ab-s child rankfunc gp
+                                         (inc-1 cdepth) edepth etime
+                                         (negate record))
+                            nr (negate (:rank nn))]
+                        (add-tr! nchildren nr nn)
+                        nr)))))]
       ;; children have mutated :-)
       (->Node gamestate owner nrank (persistent! nchildren)))))
 
@@ -243,12 +253,11 @@
 ;; potentially good nodes? Yes, but the ranking add is worth it
 
 (defn idr-ab-ranking
-  "A ranking function"
+  "A ranking function. How good is this board condition for gp, who just moved?"
   [gamestate gp rank-func depth max-time]
-
   (let [endtime (+ (System/nanoTime) (* 1e6 max-time))]
     (loop [nodetree (generate-node gamestate (negate gp)) level (long 0)]
       (if (or (past-time? endtime) (equals level depth))
-        (:rank nodetree)
-        (recur (idr-ab-s nodetree rank-func gp 0 level endtime -10000000)
+        (negate (:rank nodetree))
+        (recur (idr-ab-s nodetree rank-func gp 0 level endtime positive-infinity)
                (inc-1 level))))))

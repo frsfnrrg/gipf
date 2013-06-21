@@ -11,8 +11,6 @@
 (defn hexagonal-number [^long n]
   (+ 1 (* 3 n (dec n))))
 
-(def hex4 (long (hexagonal-number 4)))
-
 (def long-zero (long 0))
 (def long-4 (long 4))
 
@@ -38,3 +36,14 @@
 (defrename fast-even? `MathUtil/evenp 1)
 (defrename fast-odd? `MathUtil/oddp 1)
 
+
+(def positive-infinity 100000000000)
+(def negative-infinity -100000000000)
+
+;; the issue with max/min value is
+;; that they make rollover
+;; exception waaay to common. Why think
+;; about it when you don't have to?
+
+;;java.lang.Long/MAX_VALUE
+;;java.lang.Long/MIN_VALUE

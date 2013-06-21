@@ -4,7 +4,7 @@
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
 
-(setup-move-ranking-func! rank-board-hybrid idr-ab-ranking 6 50)
+(setup-move-ranking-func! rank-board-hybrid idr-ab-ranking 6 100)
 
 (defn compound-ai-move
   [board ^long player ^Reserves reserves adv-phase]
@@ -28,7 +28,7 @@
                                (timec (move-ranking-func*
                                       (->GameState board res)
                                       player))]
-                           ;(println (second move) "->" (- rank current-rank))
+                           ;(println "Rank:" rank)
                            (direct-visualize-ai-ranking (second move) (- rank current-rank))
                            rank))
                        nil -100000 possible-moves))

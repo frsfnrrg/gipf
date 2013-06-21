@@ -101,5 +101,3 @@
                                  radius)) )
                (rest pointsleft))))))
 
-(def arrayfull-of-points (vec (range (hexagonal-number 4))))
-

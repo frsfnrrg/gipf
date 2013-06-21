@@ -75,6 +75,13 @@
              v))
          vec))
 
+
+(defn from-iterator
+  [^java.util.Iterator i]
+  (if (.hasNext i)
+    (cons (.next i) (lazy-seq (from-iterator i)))))
+
+
 (defn getxy "Get value of 2d vector array at position (x, y)" [arr x y]
   (get (get arr x) y))
 (defn getdxy [b pos]
