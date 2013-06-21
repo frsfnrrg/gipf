@@ -284,6 +284,13 @@
            :else
            (throw (IllegalArgumentException. "wrong clauses to def-ranking-function")))))
 
+(defmacro defrankblend
+  "Theoretical way to combine ranking functions, by doing a weighted merge.
+   This would work best if we have definlinables. Remember, Metadata is
+   cheap."
+  [map]
+  `1)
+
 (defn print-board
   [board]
   ;; I want macrolet ;-)

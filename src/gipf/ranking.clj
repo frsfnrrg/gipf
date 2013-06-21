@@ -21,6 +21,10 @@
 ;;
 ;;
 
+(defrename add-weight-arrays `GeneralizedPointWeighting/mergeWeights 4)
+(defrename diag-weight-array `GeneralizedPointWeighting/diagWeights 7)
+(defrename radial-weight-array `GeneralizedPointWeighting/radiusWeights 8)
+(defrename apply-weight-array `GeneralizedPointWeighting/calcVal 3)
 
 (def-ranking-function rank-board-old
   "Why does this suck? It no longer fully applies.
@@ -74,3 +78,27 @@
           (add
            (multiply 20 gipf-points)
            (multiply 5 piece-points))))))
+
+(def-ranking-function rank-not-at-all
+  "Iterates over pieces; ranks by presence on lines, center, etc."
+  (:setup
+   []
+   (def expected-max-rank* 1000))
+  (:eval
+   [gs p]
+   1000))
+
+(def-ranking-function rank-tactical
+  "Iterates over pieces; ranks by presence on lines, center, etc."
+  (:setup
+   []
+   (def expected-max-rank* 1000)
+   ;;                         good -> bad ; strong -> weak
+   (let [diagp (diag-weight-array 5 1 -1 -5   10 8 2)
+         radp (radial-weight-array 5 1 -1 -5   8 4 2 0)
+         res (add-weight-arrays diagp 1 radp 1)]
+     (def rank-tactical-weights res)))
+
+  (:eval
+   [gs p]
+   (apply-weight-array (game-state-board gs) p rank-tactical-weights)))

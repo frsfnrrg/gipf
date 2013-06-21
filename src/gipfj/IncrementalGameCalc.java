@@ -4,7 +4,7 @@ import java.util.Iterator;
 
 public class IncrementalGameCalc implements Iterator<GameState> {
 
-    private final long[][] g1 = new long[3][];
+    private final int[][] g1 = new int[3][];
     private final GameState[] g2 = new GameState[10];
     private final GameState[] g3 = new GameState[3];
     private int plo;
@@ -14,11 +14,11 @@ public class IncrementalGameCalc implements Iterator<GameState> {
     int g2_end;
     int g1_pos;
     int g1_end;
-    long player;
+    int player;
     boolean ready;
     Reserves deccedReserves;
 
-    public IncrementalGameCalc(GameState g, long player) {
+    public IncrementalGameCalc(GameState g, int player) {
         g1_pos = 0;
         g1_end = 0;
         for (GameState q : GameCalc.getLineTakingResults(g, player)) {
@@ -88,7 +88,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
         if (g2_pos == 2) {
             g2_pos = 0;
 
-            long[] orig = g1[g1_pos];
+            int[] orig = g1[g1_pos];
             // now, we analyze a line...
 
             // n will be set anyway
@@ -123,13 +123,15 @@ public class IncrementalGameCalc implements Iterator<GameState> {
             // we don't want to use the same thing twice
             plo++;
 
-            long[] up = orig.clone();
-            long[] down = orig.clone();
+            int[] up = new int[Board.SIZE];
+            System.arraycopy(orig, 0, up, 0, Board.SIZE);
+            int[] down = new int[Board.SIZE];
+            System.arraycopy(orig, 0, down, 0, Board.SIZE);
 
-            long last = player;
+            int last = player;
             for (int j = 0; j < n.length; j++) {
                 int ind = n[j];
-                long v = up[ind];
+                int v = up[ind];
                 up[ind] = last;
                 if (v == 0) {
                     break;
@@ -139,7 +141,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
 
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
-                long v = down[ind];
+                int v = down[ind];
                 down[ind] = last;
                 if (v == 0) {
                     break;

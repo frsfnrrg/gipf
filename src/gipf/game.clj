@@ -1,11 +1,15 @@
 (in-ns 'gipf.core)
 
+;; TODO eventually; test if, at fixed depth, inf time, 
+;; idr-ab and idr actually give the same results.
+;; they should.... if it's coded right
+
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
 (defn setup-ai!
   []
-  (setup-move-ranking-func! 1 rank-board-hybrid idr-ab-ranking 6 100)
-  (setup-move-ranking-func! -1 rank-board-hybrid idr-ab-ranking 6 100))
+  (setup-move-ranking-func! 1 rank-board-hybrid idr-ab-ranking 6 50)
+  (setup-move-ranking-func! -1 rank-tactical idr-ab-ranking 6 50))
 
 (let [dia (atom {:move-newlines false
                  :move-numbers false
@@ -18,7 +22,7 @@
                  :rank-value false
                  :pre-rank-value false
                  :screen-display true
-                 :evaluation-count false
+                 :evaluation-count true
                  :equals-moves false})]
   (defn set-diagnostic-level!
     [key ^Boolean on]
@@ -177,7 +181,7 @@
 
 (defn simulate
   [mode]
-  (setup-move-ranking-func! 1 rank-board-hybrid idr-ab-ranking 6 30)
+  (setup-move-ranking-func! 1 rank-board-simple idr-ab-ranking 6 30)
   (setup-move-ranking-func! -1 rank-board-simple idr-ab-ranking 6 30)
   (println)
   ;; we could run 1000 matches..

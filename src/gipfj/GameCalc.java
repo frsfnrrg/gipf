@@ -10,14 +10,14 @@ public class GameCalc {
     // These are the weights ... that would, eventually, need
     // to be genetically tuned....
 
-    private static long VC_M_PIECE = 15;
-    private static long VC_M_GIPF = 40;
-    private static long VC_O_PIECE = -10;
-    private static long VC_O_GIPF = -50;
-    private static long VC_RADIUS_FALLOFF = 3;
+    private static int VC_M_PIECE = 15;
+    private static int VC_M_GIPF = 40;
+    private static int VC_O_PIECE = -10;
+    private static int VC_O_GIPF = -50;
+    private static int VC_RADIUS_FALLOFF = 3;
 
-    public static void setValueCellConstants(long mp, long mg, long op,
-            long og, long rf) {
+    public static void setValueCellConstants(int mp, int mg, int op, int og,
+            int rf) {
         VC_M_PIECE = mp;
         VC_M_GIPF = mg;
         VC_O_PIECE = op;
@@ -25,10 +25,10 @@ public class GameCalc {
         VC_RADIUS_FALLOFF = rf;
     }
 
-    private static long[] radiusBoard = MathUtil.getHexFloorArray(Board.SIZE);
+    private static int[] radiusBoard = IMath.getHexFloorArray(Board.SIZE);
 
-    public static long valueCell(long value, long player, long radius) {
-        long q = player * value;
+    public static int valueCell(int value, int player, int radius) {
+        int q = player * value;
         if (q > 0) {
             if (q == 1) {
                 return VC_M_PIECE * (VC_RADIUS_FALLOFF - radius);
@@ -46,14 +46,14 @@ public class GameCalc {
         }
     }
 
-    private static long VL_M_PIECE = -3;
-    private static long VL_M_GIPF = 50;
-    private static long VL_O_PIECE = 100;
-    private static long VL_O_GIPF = 500;
-    private static long VL_RADIUS_FALLOFF = 4;
+    private static int VL_M_PIECE = -3;
+    private static int VL_M_GIPF = 50;
+    private static int VL_O_PIECE = 100;
+    private static int VL_O_GIPF = 500;
+    private static int VL_RADIUS_FALLOFF = 4;
 
-    public static void setValueLineCellConstants(long mp, long mg, long op,
-            long og, long rf) {
+    public static void setValueLineCellConstants(int mp, int mg, int op,
+            int og, int rf) {
         VL_M_PIECE = mp;
         VL_M_GIPF = mg;
         VL_O_PIECE = op;
@@ -61,8 +61,8 @@ public class GameCalc {
         VL_RADIUS_FALLOFF = rf;
     }
 
-    public static long valueLineCell(long value, long player, long radius) {
-        long q = player * value;
+    public static int valueLineCell(int value, int player, int radius) {
+        int q = player * value;
         if (q > 0) {
             if (q == 1) {
                 return VL_M_PIECE * (VL_RADIUS_FALLOFF - radius);
@@ -82,38 +82,125 @@ public class GameCalc {
     }
 
     // the thing that was 84.6% cpu...
-    public static long rankBoardOrg(GameState g, long player) {
-        long[] d = g.b.data;
-        long r = 0;
+    public static int rankBoardOrg(GameState g, int player) {
+        int[] d = g.b.data;
+        int r = 0;
         for (int i = 0; i < Board.SIZE; i++) {
             r += valueCell(d[i], player, radiusBoard[i]);
         }
         return r;
     }
 
-    public static boolean lineFull(Board b, long start, long delta) {
-        long le = Geometry.lend(start, delta);
+    private static final int[] rbo1 = { 1, 2, 3, 4, 5, 6 };
+    private static final int[] rbo2 = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+            17, 18 };
+    private static final int[] rbo3 = { 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
+            29, 30, 31, 32, 33, 34, 35, 36 };
+
+    // might be a bit faster than rankBoardOrg1.
+    public static int rankBoardOrg2(GameState g, int player) {
+        int[] d = g.b.data;
+        int r = valueCell(d[0], player, 0);
+        for (int p : rbo3) {
+            r += valueCell(d[p], player, 3);
+        }
+        for (int p : rbo2) {
+            r += valueCell(d[p], player, 2);
+        }
+        for (int p : rbo1) {
+            r += valueCell(d[p], player, 1);
+        }
+        return r;
+    }
+
+    private static final int[] hex3 = { 19, 22, 25, 28, 31, 34 };
+    private static final int[] hex2 = { 7, 9, 11, 13, 15, 17 };
+    private static final int[] hex1 = { 1, 2, 3, 4, 5, 6 };
+
+    public static int rankBoardDiagonals(GameState g, int player) {
+        int[] d = g.b.data;
+        int r = valueDiagCell(d[0], player, 0);
+        for (int p : hex3) {
+            r += valueCell(d[p], player, 3);
+        }
+        for (int p : hex2) {
+            r += valueCell(d[p], player, 2);
+        }
+        for (int p : hex1) {
+            r += valueCell(d[p], player, 1);
+        }
+        return r;
+    }
+
+    // copy paste code is eeeevil..
+
+    private static int VD_M_PIECE = -3;
+    private static int VD_M_GIPF = 50;
+    private static int VD_O_PIECE = 100;
+    private static int VD_O_GIPF = 500;
+    private static int VD_RADIUS_FALLOFF = 4;
+
+    public static void setValueDiagCellConstants(int mp, int mg, int op,
+            int og, int rf) {
+        VD_M_PIECE = mp;
+        VD_M_GIPF = mg;
+        VD_O_PIECE = op;
+        VD_O_GIPF = og;
+        VD_RADIUS_FALLOFF = rf;
+    }
+
+    private static int valueDiagCell(int value, int player, int radius) {
+        int q = player * value;
+        if (q > 0) {
+            if (q == 1) {
+                return VD_M_PIECE * (VD_RADIUS_FALLOFF - radius);
+            } else {
+                // you will not take your own GIPF piece
+                return VD_M_GIPF * (VD_RADIUS_FALLOFF - radius);
+            }
+        } else if (q < 0) {
+            if (q == -1) {
+                return VD_O_PIECE * (VD_RADIUS_FALLOFF - radius);
+            } else {
+                return VD_O_GIPF * (VD_RADIUS_FALLOFF - radius);
+            }
+        } else {
+            return 0;
+        }
+    }
+
+    public static int rankBoardCenter(GameState g, int player) {
+        int[] d = g.b.data;
+        int r = valueCell(0, player, 0);
+        for (int p : rbo1) {
+            r += valueCell(d[p], player, 1);
+        }
+        return r;
+    }
+
+    public static boolean lineFull(Board b, int start, int delta) {
+        int le = Geometry.lend(start, delta);
 
         while (start != le) {
-            if (b.data[(int) start] == 0) {
+            if (b.data[start] == 0) {
                 return false;
             }
             start = Geometry.padd(start, delta);
         }
-        if (b.data[(int) start] == 0) {
+        if (b.data[start] == 0) {
             return false;
         }
         return true;
     }
 
     public static boolean lineFull(Board b, Line l) {
-        long q = Line.getStart(l);
-        long delta = Line.getDelta(l);
+        int q = Line.getStart(l);
+        int delta = Line.getDelta(l);
         return lineFull(b, q, delta);
     }
 
-    public static Line[] listOfLines = getLoL();
-    public static int[][] listOfLinePoints = getLolP(listOfLines);
+    public static final Line[] listOfLines = getLoL();
+    public static final int[][] listOfLinePoints = getLolP(listOfLines);
 
     private static Line[] getLoL() {
         Line[] lol = new Line[21];
@@ -151,14 +238,14 @@ public class GameCalc {
 
         int x = 0;
         for (Line l : lol) {
-            long s = Line.getStart(l);
-            long d = Line.getDelta(l);
+            int s = Line.getStart(l);
+            int d = Line.getDelta(l);
 
-            long e = Geometry.lend(s, d);
-            int length = (int) Geometry.pdistance(e, s);
+            int e = Geometry.lend(s, d);
+            int length = Geometry.pdistance(e, s);
 
             for (int k = 0; k <= length; k++) {
-                buffer[k] = (int) s;
+                buffer[k] = s;
 
                 s = Geometry.padd(s, d);
             }
@@ -180,11 +267,11 @@ public class GameCalc {
 
         for (int xx = 0; xx < 21; xx++) {
             int[] l = listOfLinePoints[xx];
-            long sign = 0;
+            int sign = 0;
             int count = 1;
             int len = l.length;
             for (int kk = 0; kk < len; kk++) {
-                long v = b.data[l[kk]];
+                int v = b.data[l[kk]];
                 if (v == 0 || (v * sign <= 0)) {
                     count = 1;
                     sign = v;
@@ -206,19 +293,19 @@ public class GameCalc {
         return foo;
     }
 
-    public static long rankBoardLines(GameState g, long player) {
-        long r = 0;
-        long[] d = g.b.data;
+    public static int rankBoardLines(GameState g, int player) {
+        int r = 0;
+        int[] d = g.b.data;
 
         for (int xx = 0; xx < 21; xx++) {
             int[] l = listOfLinePoints[xx];
 
-            long sign = 0;
-            long fix = 0;
+            int sign = 0;
+            int fix = 0;
             int count = 1;
             int len = l.length;
             for (int kk = 0; kk < len; kk++) {
-                long v = d[l[kk]];
+                int v = d[l[kk]];
                 if (v == 0 || (sign * v <= 0)) {
                     count = 1;
                     sign = v;
@@ -241,8 +328,8 @@ public class GameCalc {
         return r;
     }
 
-    private static long rankLine(Board b, int[] l, long player) {
-        long r = 0;
+    private static int rankLine(Board b, int[] l, int player) {
+        int r = 0;
 
         for (int xx = 0; xx < l.length; xx++) {
             int loc = l[xx];
@@ -252,15 +339,15 @@ public class GameCalc {
         return r;
     }
 
-    public static long rankLine(Board b, Line l, long player) {
-        long q = Line.getStart(l);
-        long delta = Line.getDelta(l);
-        long le = Geometry.lend(q, delta);
+    public static int rankLine(Board b, Line l, int player) {
+        int q = Line.getStart(l);
+        int delta = Line.getDelta(l);
+        int le = Geometry.lend(q, delta);
 
-        long r = 0;
+        int r = 0;
 
         while (q != le) {
-            int i = (int) q;
+            int i = q;
             r += valueLineCell(b.data[i], player, radiusBoard[i]);
             q = Geometry.padd(q, delta);
 
@@ -278,7 +365,7 @@ public class GameCalc {
 
     private static Line[] buff = new Line[21];
 
-    public static Line[] filterLines(Line[] ls, long player) {
+    public static Line[] filterLines(Line[] ls, int player) {
         int yy = 0;
         for (Line l : ls) {
             if (Line.getSig(l) == player) {
@@ -293,7 +380,7 @@ public class GameCalc {
         return foo;
     }
 
-    public static GameState[] getLineTakingResults(GameState g, long player) {
+    public static GameState[] getLineTakingResults(GameState g, int player) {
         // returns a sequence of stuff like this:
         // ( [[[prot] take1 take2 ...] ...)
         // but typically just:
@@ -316,13 +403,13 @@ public class GameCalc {
         return results;
     }
 
-    private static long[] gicbuf = new long[7];
+    private static int[] gicbuf = new int[7];
 
-    public static long[] getImpactedCells(Board b, long loc, long delta) {
-        long[] d = b.data;
+    public static int[] getImpactedCells(Board b, int loc, int delta) {
+        int[] d = b.data;
         int m = 0;
         while (true) {
-            int ind = (int) loc;
+            int ind = loc;
             gicbuf[m] = loc;
             m++;
             if (d[ind] == 0) {
@@ -332,7 +419,7 @@ public class GameCalc {
             loc = Geometry.padd(loc, delta);
         }
 
-        long[] res = new long[m];
+        int[] res = new int[m];
         System.arraycopy(gicbuf, 0, res, 0, m);
         return res;
     }
@@ -340,17 +427,17 @@ public class GameCalc {
     /*
      * Takes a well adjusted (start radius 3) line as `shove`
      */
-    public static GameState placeAndShove(GameState foo, long player, Line shove) {
-        long[] cdata = foo.b.data.clone();
+    public static GameState placeAndShove(GameState foo, int player, Line shove) {
+        int[] cdata = foo.b.data.clone();
         // yay! I can mutate!
 
-        long q = Line.getStart(shove);
-        long d = Line.getDelta(shove);
+        int q = Line.getStart(shove);
+        int d = Line.getDelta(shove);
 
-        long last = player;
+        int last = player;
         while (true) {
-            int i = (int) q;
-            long v = cdata[i];
+            int i = q;
+            int v = cdata[i];
 
             cdata[i] = last;
 
@@ -369,10 +456,10 @@ public class GameCalc {
     }
 
     private static GameState simpleLineEmpty(GameState curr, Line found,
-            long player) {
+            int player) {
         // basically, over the line we do .... something.
 
-        long[] cdata = curr.b.data.clone();
+        int[] cdata = curr.b.data.clone();
         Reserves rr = curr.r;
 
         // I could, theoretically, have a lookup table
@@ -382,13 +469,13 @@ public class GameCalc {
         // best is one lookup on a large table, then
         // almost no calcs - 1/5th the cost
 
-        long q = Line.getStart(found);
-        long d = Line.getDelta(found);
-        long le = Geometry.lend(q, d);
+        int q = Line.getStart(found);
+        int d = Line.getDelta(found);
+        int le = Geometry.lend(q, d);
 
         while (true) {
-            int i = (int) q;
-            long v = (int) (player * cdata[i]);
+            int i = q;
+            int v = player * cdata[i];
 
             if (v < 0) {
                 cdata[i] = 0;
@@ -418,8 +505,8 @@ public class GameCalc {
 
         int i = 0;
         for (Line l : listOfLines) {
-            long s = Line.getStart(l);
-            long d = Line.getDelta(l);
+            int s = Line.getStart(l);
+            int d = Line.getDelta(l);
             if (!lineFull(b, s, d)) {
                 lb[i] = l;
                 i++;
@@ -436,7 +523,7 @@ public class GameCalc {
 
     private static final GameState[] bgk = new GameState[42];
 
-    private static GameState[] getMoveMakingResults(GameState gs, long player) {
+    private static GameState[] getMoveMakingResults(GameState gs, int player) {
 
         // FORTRAN IN ANY LANGUAGE!
 
@@ -444,7 +531,7 @@ public class GameCalc {
 
         // we iterate over LOL. forwards AND backwards
 
-        long[] orig = gs.b.data;
+        int[] orig = gs.b.data;
         Reserves decced = Reserves.decReserves(gs.r, player);
 
         for (int[] n : listOfLinePoints) {
@@ -463,13 +550,13 @@ public class GameCalc {
                 continue;
             }
 
-            long[] up = orig.clone();
-            long[] down = orig.clone();
+            int[] up = orig.clone();
+            int[] down = orig.clone();
 
-            long last = player;
+            int last = player;
             for (int j = 0; j < n.length; j++) {
                 int ind = n[j];
-                long v = up[ind];
+                int v = up[ind];
                 up[ind] = last;
                 if (v == 0) {
                     break;
@@ -479,7 +566,7 @@ public class GameCalc {
 
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
-                long v = down[ind];
+                int v = down[ind];
                 down[ind] = last;
                 if (v == 0) {
                     break;
@@ -504,7 +591,7 @@ public class GameCalc {
     private static final GameState[] mpm2 = new GameState[120];
     private static final GameState[] mpm3 = new GameState[360];
 
-    public static GameState[] listPossibleBoards(GameState g, long player) {
+    public static GameState[] listPossibleBoards(GameState g, int player) {
 
         int i = 0, j = 0, k = 0;
 

@@ -2,22 +2,22 @@ package gipfj;
 
 public class Geometry {
 
-    private static final int JUMP_1D = (int) MathUtil.hexNum(10);
-    private static final int JUMP_2D = (int) MathUtil.hexNum(7);
-    private static final int RAD_1 = (int) MathUtil.hexNum(2);
+    private static final int JUMP_1D = IMath.hexNum(10);
+    private static final int JUMP_2D = IMath.hexNum(7);
+    private static final int RAD_1 = IMath.hexNum(2);
 
     // core point actions
-    private static long[][] pmult;
-    private static long[][] pdiv;
-    private static long[][] padd;
-    private static long[][] psub;
-    private static long[] pneg;
-    private static long[] prad;
-    private static long[] pdiv4;
-    private static long[] protp60;
-    private static long[] protm60;
+    private static int[][] pmult;
+    private static int[][] pdiv;
+    private static int[][] padd;
+    private static int[][] psub;
+    private static int[] pneg;
+    private static int[] prad;
+    private static int[] pdiv4;
+    private static int[] protp60;
+    private static int[] protm60;
     // line actions
-    private static long[][] lend;
+    private static int[][] lend;
 
     private static Geometry GEOOBJ = new Geometry();
 
@@ -32,26 +32,26 @@ public class Geometry {
         return GEOOBJ;
     }
 
-    // Optimized long-point section: all public
+    // Optimized int-point section: all public
 
     private static void loadTables() {
         System.out.println("Loading geometry jump tables");
         long startTime = System.nanoTime();
 
         // first args do not need be this large...
-        pmult = new long[JUMP_2D][JUMP_2D];
-        pdiv = new long[JUMP_2D][JUMP_2D];
+        pmult = new int[JUMP_2D][JUMP_2D];
+        pdiv = new int[JUMP_2D][JUMP_2D];
 
-        padd = new long[JUMP_2D][JUMP_2D];
-        psub = new long[JUMP_2D][JUMP_2D];
+        padd = new int[JUMP_2D][JUMP_2D];
+        psub = new int[JUMP_2D][JUMP_2D];
 
-        lend = new long[JUMP_2D][RAD_1]; // second arg is a delta
+        lend = new int[JUMP_2D][RAD_1]; // second arg is a delta
 
-        pneg = new long[JUMP_1D];
-        prad = new long[JUMP_1D];
-        pdiv4 = new long[JUMP_1D];
-        protp60 = new long[JUMP_1D];
-        protm60 = new long[JUMP_1D];
+        pneg = new int[JUMP_1D];
+        prad = new int[JUMP_1D];
+        pdiv4 = new int[JUMP_1D];
+        protp60 = new int[JUMP_1D];
+        protm60 = new int[JUMP_1D];
 
         int i, j, k;
         UVPoint pi, pj, pk;
@@ -91,52 +91,52 @@ public class Geometry {
                 1e-6 * (endTime - startTime));
     }
 
-    public static boolean pequals(long a, long b) {
+    public static boolean pequals(int a, int b) {
         return a == b;
     }
 
-    public static long pdistance(long a, long b) {
+    public static int pdistance(int a, int b) {
         return pradius(psubtract(a, b));
     }
 
-    public static long pmultiply(long a, long b) {
-        return pmult[(int) a][(int) b];
+    public static int pmultiply(int a, int b) {
+        return pmult[a][b];
     }
 
-    public static long pdivide(long a, long b) {
-        return pdiv[(int) a][(int) b];
+    public static int pdivide(int a, int b) {
+        return pdiv[a][b];
     }
 
-    public static long padd(long a, long b) {
-        return padd[(int) a][(int) b];
+    public static int padd(int a, int b) {
+        return padd[a][b];
     }
 
-    public static long psubtract(long a, long b) {
-        return psub[(int) a][(int) b];
+    public static int psubtract(int a, int b) {
+        return psub[a][b];
     }
 
-    public static long pnegate(long a) {
-        return pneg[(int) a];
+    public static int pnegate(int a) {
+        return pneg[a];
     }
 
-    public static long pradius(long a) {
-        return prad[(int) a];
+    public static int pradius(int a) {
+        return prad[a];
     }
 
-    public static long pdivide4(long a) {
-        return pdiv4[(int) a];
+    public static int pdivide4(int a) {
+        return pdiv4[a];
     }
 
-    public static long lend(long start, long delta) {
-        return lend[(int) start][(int) delta];
+    public static int lend(int start, int delta) {
+        return lend[start][delta];
     }
 
-    public static long protm60(long i) {
-        return protm60[(int) i];
+    public static int protm60(int i) {
+        return protm60[i];
     }
 
-    public static long protp60(long i) {
-        return protp60[(int) i];
+    public static int protp60(int i) {
+        return protp60[i];
     }
 
     /**
@@ -150,11 +150,11 @@ public class Geometry {
      *            W-Coordinate
      * @return efficient representation
      */
-    public static long pmakePt(long u, long v, long w) {
+    public static int pmakePt(int u, int v, int w) {
         return convertUVPointToLong(makeUVPoint(u, v, w));
     }
 
-    public static String toString(long i) {
+    public static String toString(int i) {
         UVPoint conv = convertLongToUVPoint(i);
         return "<" + String.valueOf(conv.u) + "," + String.valueOf(conv.v)
                 + ">";
@@ -168,18 +168,18 @@ public class Geometry {
     @SuppressWarnings("unused")
     private static XYPoint xyw = new XYPoint(Math.sqrt(3) / 2, .5);
 
-    public static XYPoint convertPtToXY(long in) {
+    public static XYPoint convertPtToXY(int in) {
         UVPoint i = convertLongToUVPoint(in);
         return add(multiply(i.u, xyu), multiply(i.v, xyv));
     }
 
-    public static long convertXYToPt(XYPoint in) {
+    public static int convertXYToPt(XYPoint in) {
         // okay, this version retains some uglyness
 
         // alas, this version is kinda jumpy. Why?
 
-        long u = -Math.round(in.x / 2 + in.y);
-        long v = Math.round(in.x * 2 / Math.sqrt(3));
+        int u = (int) -Math.round(in.x / 2 + in.y);
+        int v = (int) Math.round(in.x * 2 / Math.sqrt(3));
 
         return convertUVPointToLong(new UVPoint(u, v));
     }
@@ -203,10 +203,10 @@ public class Geometry {
     // UV Section; all private
 
     static private class UVPoint {
-        final public long u;
-        final public long v;
+        final public int u;
+        final public int v;
 
-        public UVPoint(long u, long v) {
+        public UVPoint(int u, int v) {
             this.u = u;
             this.v = v;
         }
@@ -228,13 +228,13 @@ public class Geometry {
         return subtract(q, delta);
     }
 
-    private static UVPoint makeUVPoint(long u, long v, long w) {
+    private static UVPoint makeUVPoint(int u, int v, int w) {
         return new UVPoint(u - w, v + w);
     }
 
-    private static long convertUVPointToLong(UVPoint in) {
-        long u = in.u;
-        long v = in.v;
+    private static int convertUVPointToLong(UVPoint in) {
+        int u = in.u;
+        int v = in.v;
 
         if (u == 0 && u == v)
             return 0;
@@ -268,18 +268,18 @@ public class Geometry {
         return -1; // failure
     }
 
-    private static long cvluvph(long layer, long segment, long prog) {
-        return MathUtil.hexNum(layer) + layer * segment + prog;
+    private static int cvluvph(int layer, int segment, int prog) {
+        return IMath.hexNum(layer) + layer * segment + prog;
     }
 
-    private static UVPoint convertLongToUVPoint(long in) {
+    private static UVPoint convertLongToUVPoint(int in) {
         if (in == 0)
             return new UVPoint(0, 0);
 
-        long layer = MathUtil.reverseHexFloor(in);
-        long ring = in - MathUtil.hexNum(layer);
-        long prog = ring % layer;
-        int segment = (int) ((ring - prog) / layer);
+        int layer = IMath.reverseHexFloor(in);
+        int ring = in - IMath.hexNum(layer);
+        int prog = ring % layer;
+        int segment = (ring - prog) / layer;
 
         switch (segment) {
         case 0:
@@ -300,14 +300,14 @@ public class Geometry {
     }
 
     @SuppressWarnings("unused")
-    private static long distance(UVPoint a, UVPoint b) {
+    private static int distance(UVPoint a, UVPoint b) {
         return radius(subtract(a, b));
     }
 
-    private static long radius(UVPoint a) {
+    private static int radius(UVPoint a) {
         // So, I heard you like case work...
-        long u = a.u;
-        long v = a.v;
+        int u = a.u;
+        int v = a.v;
         if (u == v && u == 0)
             return 0;
 
@@ -359,11 +359,11 @@ public class Geometry {
         return new UVPoint(-a.u, -a.v);
     }
 
-    private static UVPoint div(long factor, UVPoint a) {
+    private static UVPoint div(int factor, UVPoint a) {
         return new UVPoint(a.u / factor, a.v / factor);
     }
 
-    private static UVPoint mult(long factor, UVPoint a) {
+    private static UVPoint mult(int factor, UVPoint a) {
         return new UVPoint(a.u * factor, a.v * factor);
     }
 

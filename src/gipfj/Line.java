@@ -2,11 +2,11 @@ package gipfj;
 
 // what clojure interface controls rendering?
 public class Line {
-    private final long start;
-    private final long delta;
-    private final long sig;
+    private final int start;
+    private final int delta;
+    private final int sig;
 
-    private Line(long sig, long start, long delta) {
+    private Line(int sig, int start, int delta) {
         this.start = start;
         this.delta = delta;
         this.sig = sig;
@@ -19,11 +19,11 @@ public class Line {
         // Geometry.toString(this.start), Geometry.toString(this.delta));
     }
 
-    public static Line makeLine(long start, long delta) {
+    public static Line makeLine(int start, int delta) {
         return new Line(0, start, delta);
     }
 
-    public static Line makeSignedLine(long sig, long start, long delta) {
+    public static Line makeSignedLine(int sig, int start, int delta) {
         return new Line(sig, start, delta);
     }
 
@@ -31,22 +31,22 @@ public class Line {
         return new Line(q.sig, Geometry.padd(q.start, q.delta), q.delta);
     }
 
-    public static long getSig(Line q) {
+    public static int getSig(Line q) {
         return q.sig;
     }
 
-    public static long getStart(Line q) {
+    public static int getStart(Line q) {
         return q.start;
     }
 
-    public static long getDelta(Line q) {
+    public static int getDelta(Line q) {
         return q.delta;
     }
 
-    public static boolean onLine(long loc, Line q) {
-        long delta = Geometry.psubtract(loc, q.start);
-        long dist = Geometry.pradius(delta);
-        long approx = Geometry.pmultiply(dist, q.delta);
+    public static boolean onLine(int loc, Line q) {
+        int delta = Geometry.psubtract(loc, q.start);
+        int dist = Geometry.pradius(delta);
+        int approx = Geometry.pmultiply(dist, q.delta);
         return (delta == approx || delta == Geometry.pnegate(approx));
     }
 
@@ -55,7 +55,7 @@ public class Line {
         return (a.start == b.start && a.delta == b.delta && a.sig == b.sig);
     }
 
-    public static Line sign(Line l, long sig) {
+    public static Line sign(Line l, int sig) {
         return new Line(sig, l.start, l.delta);
     }
 }

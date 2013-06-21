@@ -2,7 +2,7 @@ package gipfj;
 
 //
 // Optimization idea: as it stands, 30% of CPU
-// is used by rankBoardOrg. By placing a single long field
+// is used by rankBoardOrg. By placing a single int field
 // onto a board, one could incrementally rank it:
 // 
 // Each board change leads to average 4 cell changes. 
@@ -28,17 +28,17 @@ package gipfj;
 //
 
 public class Board {
-    public static final int SIZE = (int) MathUtil.hexNum(4);
-    public final long[] data;
+    public static final int SIZE = IMath.hexNum(4);
+    public final int[] data;
 
     private Board() {
-        data = new long[SIZE];
+        data = new int[SIZE];
         for (int i = 0; i < SIZE; i++) {
             data[i] = 0;
         }
     }
 
-    public Board(long[] nd) {
+    public Board(int[] nd) {
         data = nd;
     }
 
@@ -46,8 +46,8 @@ public class Board {
         return new Board();
     }
 
-    public static long get(Board b, long loc) {
-        return b.data[(int) loc];
+    public static int get(Board b, int loc) {
+        return b.data[loc];
     }
 
     public static boolean equals(Board a, Board b) {
@@ -62,16 +62,16 @@ public class Board {
         return eq;
     }
 
-    public static Board change(Board b, long loc, long val) {
+    public static Board change(Board b, int loc, int val) {
         // so what if we allocate a lot?
-        long[] nd = new long[SIZE];
+        int[] nd = new int[SIZE];
         System.arraycopy(b.data, 0, nd, 0, SIZE);
-        nd[(int) loc] = val;
+        nd[loc] = val;
         return new Board(nd);
     }
 
-    public static long countItem(Board b, long item) {
-        long c = 0;
+    public static int countItem(Board b, int item) {
+        int c = 0;
         int i;
         for (i = 0; i < SIZE; i++) {
             if (b.data[i] == item)

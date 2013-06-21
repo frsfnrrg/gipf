@@ -1,5 +1,6 @@
 (ns gipf.core
-  (:import (gipfj Geometry MathUtil Board GameState Reserves IDRNode GameCalc IncrementalGameCalc))
+  (:import (gipfj Geometry MathUtil Board GameState Reserves Line
+             IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting))
   (:gen-class))
 
 ;;;
@@ -753,3 +754,5 @@
       (runSimulation "normal")
       (runGUI))
   "MAIN")
+
+(println "Loaded < core >")

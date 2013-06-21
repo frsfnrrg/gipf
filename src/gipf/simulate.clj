@@ -4,5 +4,4 @@
 
 (load "core")
 
-(let []
-  (gipf.core/runSimulation :normal))
+(gipf.core/runSimulation :normal)
