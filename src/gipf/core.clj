@@ -661,16 +661,14 @@
                              (update-game (list [:state :advanced]
                                                 [:state :new]))))
 
-    ;; the new-game situation is ugly. threads aren't killed?
+    ;; we do not call a new game, in case the player wants to switch
+    ;; ai on
     (set-on-state-change! iai-one
                           (fn [s]
-                            (update-game (list [:state :player-ai 1 s]))
-                            (update-game (list [:state :new]))))
-
+                            (update-game (list [:state :player-ai 1 s]))))
     (set-on-state-change! iai-two
                           (fn [s]
-                            (update-game (list [:state :player-ai -1 s]
-                                               [:state :new]))))
+                            (update-game (list [:state :player-ai -1 s]))))
     
     (doto (javax.swing.ButtonGroup.)
       (.add mode-basic)

@@ -24,6 +24,11 @@
 (defrename set-value-line-cell-constants `GameCalc/setValueLineCellConstants 5)
 (defrename set-value-cell-constants `GameCalc/setValueCellConstants 5)
 
+(defrename add-weight-arrays `GeneralizedPointWeighting/mergeWeights 4)
+(defrename diag-weight-array `GeneralizedPointWeighting/diagWeights 7)
+(defrename radial-weight-array `GeneralizedPointWeighting/radiusWeights 8)
+(defrename apply-weight-array `GeneralizedPointWeighting/calcVal 3)
+
 (defn incrementally-list-state-continuations
   [gamestate player]
   (from-iterator (IncrementalGameCalc. gamestate player)))
@@ -261,6 +266,8 @@
                       (swap! ranks-count #(inc-1 %))
                       ~@evalexprs))))
 
+;; TODO: find some means of transferring data across functions;
+;; so structures made in eval can be used in setup. Or just (let [] (def-ranking-function?))
 (defmacro def-ranking-function
   "Example input:
 

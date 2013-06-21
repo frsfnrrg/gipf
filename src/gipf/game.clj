@@ -9,7 +9,7 @@
 (defn setup-ai!
   []
   (setup-move-ranking-func! 1 rank-board-hybrid idr-ab-ranking 6 50)
-  (setup-move-ranking-func! -1 rank-tactical idr-ab-ranking 6 50))
+  (setup-move-ranking-func! -1 rank-board-hybrid idr-ab-ranking 6 50))
 
 (let [dia (atom {:move-newlines false
                  :move-numbers false
@@ -110,7 +110,6 @@
        [(pt 0 -3 0) m]
        [(pt 0 0 -3) (- m)]))))
 
-
 (defn new-reserves
   "Return a new set of reserves."
   [mode]
@@ -118,6 +117,10 @@
     :basic (->Reserves 3 1)
     :advanced (->Reserves 18 0)
     :normal (->Reserves 15 3)))
+
+(defn new-gamestate
+  [mode]
+  (->GameState (new-board mode) (new-reserves mode)))
 
 (defn lost?
   [board reserves player mode advm]
