@@ -15,8 +15,16 @@
                                         ; everything should be explicitly passed into these
 
 (defmacro defrename
+  "WARNING: do not layer this like so:
+
+  (defn foo [a b] 1)
+  (defrename oink foo 2)
+
+  Clojure hangs- no error messages, no nothing.
+
+"
   [new old numargs]
-  (let [args (map #(gensym (str "expr" %)) (range numargs))]
+  (let [args (map (fn [_] (gensym)) (range numargs))]
     `(defmacro ~new [~@args]
        `(~~old ~~@args))))
 

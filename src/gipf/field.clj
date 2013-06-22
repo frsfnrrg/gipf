@@ -33,6 +33,8 @@
   [gamestate player]
   (from-iterator (IncrementalGameCalc. gamestate player)))
 
+(def lazy-next-gamestates incrementally-list-state-continuations)
+
 ;; predicates/extraction
 
 (defn get-lines-of-four
@@ -244,9 +246,9 @@
     [player lead-heuristic search-func & sfargs]
     (swap! mrfs
            #(assoc % player [(:setup lead-heuristic)
-                              (fn [state player]
-                                (apply search-func state player
-                                       (:eval lead-heuristic) sfargs))])))
+                             (fn [state player]
+                               (apply search-func state player
+                                      (:eval lead-heuristic) sfargs))])))
 
   (defn use-move-ranking-func!
     [player]
@@ -266,8 +268,6 @@
                       (swap! ranks-count #(inc-1 %))
                       ~@evalexprs))))
 
-;; TODO: find some means of transferring data across functions;
-;; so structures made in eval can be used in setup. Or just (let [] (def-ranking-function?))
 (defmacro def-ranking-function
   "Example input:
 
@@ -290,13 +290,6 @@
            (dfr-helper name docstring key2exprs (first key1args) (second key1args) key1exprs)
            :else
            (throw (IllegalArgumentException. "wrong clauses to def-ranking-function")))))
-
-(defmacro defrankblend
-  "Theoretical way to combine ranking functions, by doing a weighted merge.
-   This would work best if we have definlinables. Remember, Metadata is
-   cheap."
-  [map]
-  `1)
 
 (defn print-board
   [board]

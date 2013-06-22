@@ -88,4 +88,10 @@ public class Reserves {
         }
     }
 
+    public static boolean equiv(Reserves a, Reserves b) {
+        return (a == b) ||
+            ((a.p1 == b.p1) && (a.p2 == b.p2) &&
+                (a.g1 == b.g1) && (a.g2 == a.g2));        
+    }
+
 }

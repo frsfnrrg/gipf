@@ -64,13 +64,14 @@
              (multiply 5 piece-points)))))))
 
 (def-ranking-function rank-not-at-all
-  "Iterates over pieces; ranks by presence on lines, center, etc."
+  "This is the null heuristic; note that good rankings still
+   come from win/loss"
   (:setup
    []
-   (def expected-max-rank* 1000))
+   (def expected-max-rank* (divide positive-infinity 2)))
   (:eval
    [gs p]
-   1000))
+   0))
 
 (def-ranking-function rank-tactical
   "Iterates over pieces; ranks by presence on lines, center, etc.

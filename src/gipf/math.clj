@@ -35,6 +35,10 @@
 (defrename less `MathUtil/less 2)
 (defrename fast-even? `MathUtil/evenp 1)
 (defrename fast-odd? `MathUtil/oddp 1)
+(defmacro greater-equals [a b]
+  `(not (less ~a ~b)))
+(defmacro less-equals [a b]
+  `(not (greater ~a ~b)))
 
 
 (def positive-infinity 100000000000)

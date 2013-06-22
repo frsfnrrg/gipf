@@ -8,29 +8,32 @@
 ;; and the rest of the game... Yeah. Right.
 (defn setup-ai!
   []
-  (setup-move-ranking-func! 1 rank-board-hybrid idr-ab-ranking 6 50)
-  (setup-move-ranking-func! -1 rank-board-hybrid idr-ab-ranking 6 50))
+  (setup-move-ranking-func! 1 rank-board-hybrid
+                            idr-ab-ranking 6 100)
+  (setup-move-ranking-func! -1 rank-board-hybrid
+                            quiescent-ab-search simple-quiet 3 7 3))
 
-(let [dia (atom {:move-newlines false
+(let [dia (atom {:move-newlines true
                  :move-numbers false
                  :match-result true
-                 :total-time false
+                 :total-time true
                  :incremental-time false
                  :moves-available false
-                 :reserve-status false
+                 :reserve-status true
                  :board-snapshot true
-                 :rank-value false
-                 :pre-rank-value false
+                 :rank-value true
+                 :pre-rank-value true
                  :screen-display true
                  :evaluation-count true
-                 :equals-moves false})]
+                 :equals-moves false
+                 :pre-calc-message true})]
   (defn set-diagnostic-level!
     [key ^Boolean on]
     (swap! dia (fn [a] (assoc a key on))))
   (defn get-diagnostic-level
     [key]
     (get @dia key))
- (defmacro ond
+  (defmacro ond
     [key & actions]
     `(when (get-diagnostic-level ~key)
        ~@actions)))
@@ -39,6 +42,8 @@
   [board ^long player ^Reserves reserves adv-phase]
 
   (use-move-ranking-func! player)
+  (ond :pre-calc-message
+       (println "Beginning move"))
   
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode. Should we? I do not think so..
@@ -51,19 +56,19 @@
         current-rank (move-ranking-func* (->GameState board reserves) player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
         optimal (timev (rand-best
-                       (fn [[move [board res]]]
-                         (let [rank
-                               (timev (move-ranking-func*
-                                      (->GameState board res)
-                                      player)
-                                      (get-diagnostic-level :incremental-time))]
-                           (ond :rank-value
-                                (println "Rank:" rank))
-                           (ond :screen-display
-                                (direct-visualize-ai-ranking (second move) (- rank current-rank)))
-                           rank))
-                       nil -100000 possible-moves
-                       (get-diagnostic-level :equal-moves))
+                        (fn [[move [board res]]]
+                          (let [rank
+                                (timev (move-ranking-func*
+                                        (->GameState board res)
+                                        player)
+                                       (get-diagnostic-level :incremental-time))]
+                            (ond :rank-value
+                                 (println "Rank:" rank))
+                            (ond :screen-display
+                                 (direct-visualize-ai-ranking (second move) (- rank current-rank)))
+                            rank))
+                        nil -100000 possible-moves
+                        (get-diagnostic-level :equal-moves))
                        (get-diagnostic-level :total-time)
                        )
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
@@ -71,7 +76,7 @@
          (println "Nodes evaluated:" @ranks-count))
     ;; best would be, until mouse is moved...
     ;; note positive sig
-    
+
     [c1 (sign-line m degree) c2]))
 
 
@@ -171,7 +176,7 @@
                  player mode md)
         (do
           (ond :match-result
-            (println "Player" (negate player) "won"))
+               (println "Player" (negate player) "won"))
           (negate player))
         (let [ng (next-move gamestate player md)]
           (ond :reserve-status
@@ -184,8 +189,10 @@
 
 (defn simulate
   [mode]
-  (setup-move-ranking-func! 1 rank-board-simple idr-ab-ranking 6 30)
-  (setup-move-ranking-func! -1 rank-board-simple idr-ab-ranking 6 30)
+  (setup-move-ranking-func! 1 rank-board-hybrid
+                            idr-ab-ranking 6 100)
+  (setup-move-ranking-func! -1 rank-board-hybrid
+                            quiescent-ab-search simple-quiet 2 5 1)
   (println)
   ;; we could run 1000 matches..
   (loop [count 0  win1 0 win2 0]

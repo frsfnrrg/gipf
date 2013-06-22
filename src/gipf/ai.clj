@@ -263,3 +263,83 @@
         (negate (:rank nodetree))
         (recur (idr-ab-s nodetree rank-func gp 0 level endtime positive-infinity)
                (inc-1 level))))))
+
+
+
+;; theoretically could make this return a number; if 0, quiet, if
+;; positive, boost interest that many turns
+(defn simple-quiet
+  "True when nothing interesting happened (piece taken)"
+  [oldgs newgs]
+  (eqv-reserves (game-state-reserves oldgs) (game-state-reserves newgs)))
+
+;; if depth <= iboost; test quiescence; if true, set to iboost.
+;; once depth == 0 and tranquil, heuristic;
+
+;; increment level always; force heuristic when levelcap is reached;
+
+;; another thing to think about; moves are taken infrequently,
+;; so one might have a chunked interest boost
+
+;; WARNING: 
+
+(defn quiescent-ab-search
+  "Goal: to unify alpha-beta and quiescent search.
+  Depth: min depth to search
+  Levelcap: max depth to search.
+  IBoost: how much further to go until quiet
+"
+  [gamestate good-player rank-func quiet-func depth levelcap iboost]
+  (letfn [(qab [gamestate owner depth level best-rank]
+            (if (or (equals depth 0) (equals level levelcap))
+              (rank-func gamestate good-player)
+              (let [subs (incrementally-list-state-continuations gamestate owner)]
+                (if (empty? subs)
+                  negative-infinity
+                  (ablm subs best-rank [ngs record]
+                        (negate (if (or (greater-equals depth iboost)
+                                        (quiet-func ngs gamestate))
+                                  (qab ngs (negate owner) (dec-1 depth)
+                                       (inc-1 level) (negate record))
+                                  (qab ngs (negate owner) iboost
+                                       (inc-1 level) (negate record)))))))))]
+    (negate (qab gamestate (negate good-player) depth 0 positive-infinity))))
+
+;;; Negascout (as per wikipedia); deeper than ab.
+;;; do this eventually - 6 ply is easy already
+
+;;; function pvs(node, depth, α, β, color)
+;;;   if node is a terminal node or depth = 0
+;;;      return color × the heuristic value of node
+;;;   for each child of node
+;;;      score := -pvs(child, depth-1, -α-1, -α, -color)(* search with a null window *)
+;;;      if α < score < β and child is not first child (* if it failed high,
+;;;          score := -pvs(child, depth-1, -β, -α, -color) do a full re-search *)
+;;       α := max(α, score)
+;;;      if α ≥ β
+;;;          break       (* beta cut-off *)
+;;; return α
+
+;; killer heuristic - needs cross tree communication - use let-bound
+;; atom? or pass it around... (thread-safer)
+
+;; also: zobrist hashing, for fast, noncolliding moves.
+;; - give each piece at a location a bitstring;
+;; xor all full locations. Do this incrementally, in the gamestate...
+
+
+;; function MTDF(root, f, d)
+;;    g := f
+;;    upperBound := +∞
+;;    lowerBound := -∞
+;;    while lowerBound < upperBound
+;;       if g = lowerBound then 
+;;           β := g+1 
+;;       else 
+;;           β := g
+;;       g := AlphaBetaWithMemory(root, β-1, β, d)
+;;    if g < β then
+;;       upperBound := g 
+;;    else
+;;       lowerBound := g
+;;    return g
