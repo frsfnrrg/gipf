@@ -48,22 +48,6 @@ public class Reserves {
         return new Reserves(p, p, 0, 0, g, g);
     }
 
-    public static Reserves incReserves(Reserves r, long player) {
-        if (player > 0) {
-            return new Reserves(r.p1 + 1, r.p2, r.o1, r.o2, r.g1, r.g2);
-        } else {
-            return new Reserves(r.p1, r.p2 + 1, r.o1, r.o2, r.g1, r.g2);
-        }
-    }
-
-    public static Reserves decReserves(Reserves r, long player) {
-        if (player > 0) {
-            return new Reserves(r.p1 - 1, r.p2, r.o1, r.o2, r.g1, r.g2);
-        } else {
-            return new Reserves(r.p1, r.p2 - 1, r.o1, r.o2, r.g1, r.g2);
-        }
-    }
-
     public static long getReserves(Reserves r, long player) {
         if (player > 0) {
             return r.p1;
@@ -72,19 +56,19 @@ public class Reserves {
         }
     }
 
-    public static Reserves decGipfs(Reserves r, long player) {
+    public static long getPieces(Reserves r, long player) {
         if (player > 0) {
-            return new Reserves(r.p1, r.p2, r.o1, r.o2, r.g1 - 1, r.g2);
+            return r.o1;
         } else {
-            return new Reserves(r.p1, r.p2, r.o1, r.o2, r.g1, r.g2 - 1);
+            return r.o2;
         }
     }
 
-    public static Reserves incGipfs(Reserves r, long player) {
+    public static long getTotalPieces(Reserves r, long player) {
         if (player > 0) {
-            return new Reserves(r.p1, r.p2, r.o1, r.o2, r.g1 + 1, r.g2);
+            return r.o1 + r.p1;
         } else {
-            return new Reserves(r.p1, r.p2, r.o1, r.o2, r.g1, r.g2 + 1);
+            return r.o1 + r.p1;
         }
     }
 
@@ -128,5 +112,36 @@ public class Reserves {
     public static boolean wasTaken(Reserves a, Reserves b) {
         return (a.g1 == b.g1) && (a.g2 == b.g2)
                 && ((a.o1 + a.p1) == (b.o1 + b.p1));
+    }
+
+    public static Reserves change(Reserves r, int player,
+            int delta_reserve_pieces, int delta_board_pieces,
+            int delta_board_gipfs) {
+        return r.applyDelta(player, delta_reserve_pieces, delta_board_pieces,
+                delta_board_gipfs);
+    }
+
+    /**
+     * This exists for internal use only
+     * 
+     * @param in
+     * @param player
+     * @param del_reserve_pieces
+     *            Change in pieces in reserve
+     * @param del_board_pieces
+     *            Change in pieces on board
+     * @param del_board_gipfs
+     *            Change in GIPF pieces on board
+     * @return
+     */
+    public Reserves applyDelta(int player, int delta_reserve_pieces,
+            int delta_board_pieces, int delta_board_gipfs) {
+        if (player > 0) {
+            return new Reserves(p1 + delta_reserve_pieces, p2, o1
+                    + delta_board_pieces, o2, g1 + delta_board_gipfs, g2);
+        } else {
+            return new Reserves(p1, p2 + delta_reserve_pieces, o1, o2
+                    + delta_board_pieces, g1, g2 + delta_board_gipfs);
+        }
     }
 }

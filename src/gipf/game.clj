@@ -39,7 +39,7 @@
        ~@actions)))
 
 (defn compound-ai-move
-  [board ^long player ^Reserves reserves adv-phase]
+  [board player ^Reserves reserves adv-phase]
 
   (use-move-ranking-func! player)
   (ond :pre-calc-message
@@ -48,7 +48,7 @@
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode. Should we? I do not think so..
   (swap! ranks-count (constantly 0)) 
-  (let [pieces-left (get-reserves reserves player)
+  (let [pieces-left (get-pieces-in-reserve reserves player)
         possible-moves (shuffle
                         (list-possible-moves-and-board board reserves player))
         ngipfs (count-over-hex-array board (* 2 player))
@@ -131,7 +131,7 @@
   [board reserves player mode advm]
   ;; TODO: make the GameState advm phase aware...; 
   ;; then allow gipfs to be placed under advm
-  (let [res (incrementally-list-state-continuations (->GameState board reserves) player)]
+  (let [res (lazy-next-gamestates (->GameState board reserves) player)]
     (ond :moves-available
          (println "Moves available:" (count res)))
     (empty? res)))
@@ -183,7 +183,7 @@
                (println "->" (game-state-reserves gamestate)))
           (ond :board-snapshot
                (print-board (game-state-board gamestate)))
-          (recur ng (negate player) (inc-1 counter)))))))
+          (recur ng (MathUtil/lnegate player) (MathUtil/linc counter)))))))
 
 (def number-of-trials 1)
 

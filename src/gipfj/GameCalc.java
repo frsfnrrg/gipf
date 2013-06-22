@@ -7,177 +7,6 @@ package gipfj;
 
 public class GameCalc {
 
-    // These are the weights ... that would, eventually, need
-    // to be genetically tuned....
-
-    private static int VC_M_PIECE = 15;
-    private static int VC_M_GIPF = 40;
-    private static int VC_O_PIECE = -10;
-    private static int VC_O_GIPF = -50;
-    private static int VC_RADIUS_FALLOFF = 3;
-
-    public static void setValueCellConstants(int mp, int mg, int op, int og,
-            int rf) {
-        VC_M_PIECE = mp;
-        VC_M_GIPF = mg;
-        VC_O_PIECE = op;
-        VC_O_GIPF = og;
-        VC_RADIUS_FALLOFF = rf;
-    }
-
-    private static int[] radiusBoard = IMath.getHexFloorArray(Board.SIZE);
-
-    public static int valueCell(int value, int player, int radius) {
-        int q = player * value;
-        if (q > 0) {
-            if (q == 1) {
-                return VC_M_PIECE * (VC_RADIUS_FALLOFF - radius);
-            } else {
-                return VC_M_GIPF * (VC_RADIUS_FALLOFF - radius);
-            }
-        } else if (q < 0) {
-            if (q == -1) {
-                return VC_O_PIECE * (VC_RADIUS_FALLOFF - radius);
-            } else {
-                return VC_O_GIPF * (VC_RADIUS_FALLOFF - radius);
-            }
-        } else {
-            return 0;
-        }
-    }
-
-    private static int VL_M_PIECE = -3;
-    private static int VL_M_GIPF = 50;
-    private static int VL_O_PIECE = 100;
-    private static int VL_O_GIPF = 500;
-    private static int VL_RADIUS_FALLOFF = 4;
-
-    public static void setValueLineCellConstants(int mp, int mg, int op,
-            int og, int rf) {
-        VL_M_PIECE = mp;
-        VL_M_GIPF = mg;
-        VL_O_PIECE = op;
-        VL_O_GIPF = og;
-        VL_RADIUS_FALLOFF = rf;
-    }
-
-    public static int valueLineCell(int value, int player, int radius) {
-        int q = player * value;
-        if (q > 0) {
-            if (q == 1) {
-                return VL_M_PIECE * (VL_RADIUS_FALLOFF - radius);
-            } else {
-                // you will not take your own GIPF piece
-                return VL_M_GIPF * (VL_RADIUS_FALLOFF - radius);
-            }
-        } else if (q < 0) {
-            if (q == -1) {
-                return VL_O_PIECE * (VL_RADIUS_FALLOFF - radius);
-            } else {
-                return VL_O_GIPF * (VL_RADIUS_FALLOFF - radius);
-            }
-        } else {
-            return 0;
-        }
-    }
-
-    // the thing that was 84.6% cpu...
-    public static int rankBoardOrg(GameState g, int player) {
-        int[] d = g.b.data;
-        int r = 0;
-        for (int i = 0; i < Board.SIZE; i++) {
-            r += valueCell(d[i], player, radiusBoard[i]);
-        }
-        return r;
-    }
-
-    private static final int[] rbo1 = { 1, 2, 3, 4, 5, 6 };
-    private static final int[] rbo2 = { 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-            17, 18 };
-    private static final int[] rbo3 = { 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-            29, 30, 31, 32, 33, 34, 35, 36 };
-
-    // might be a bit faster than rankBoardOrg1.
-    public static int rankBoardOrg2(GameState g, int player) {
-        int[] d = g.b.data;
-        int r = valueCell(d[0], player, 0);
-        for (int p : rbo3) {
-            r += valueCell(d[p], player, 3);
-        }
-        for (int p : rbo2) {
-            r += valueCell(d[p], player, 2);
-        }
-        for (int p : rbo1) {
-            r += valueCell(d[p], player, 1);
-        }
-        return r;
-    }
-
-    private static final int[] hex3 = { 19, 22, 25, 28, 31, 34 };
-    private static final int[] hex2 = { 7, 9, 11, 13, 15, 17 };
-    private static final int[] hex1 = { 1, 2, 3, 4, 5, 6 };
-
-    public static int rankBoardDiagonals(GameState g, int player) {
-        int[] d = g.b.data;
-        int r = valueDiagCell(d[0], player, 0);
-        for (int p : hex3) {
-            r += valueCell(d[p], player, 3);
-        }
-        for (int p : hex2) {
-            r += valueCell(d[p], player, 2);
-        }
-        for (int p : hex1) {
-            r += valueCell(d[p], player, 1);
-        }
-        return r;
-    }
-
-    // copy paste code is eeeevil..
-
-    private static int VD_M_PIECE = -3;
-    private static int VD_M_GIPF = 50;
-    private static int VD_O_PIECE = 100;
-    private static int VD_O_GIPF = 500;
-    private static int VD_RADIUS_FALLOFF = 4;
-
-    public static void setValueDiagCellConstants(int mp, int mg, int op,
-            int og, int rf) {
-        VD_M_PIECE = mp;
-        VD_M_GIPF = mg;
-        VD_O_PIECE = op;
-        VD_O_GIPF = og;
-        VD_RADIUS_FALLOFF = rf;
-    }
-
-    private static int valueDiagCell(int value, int player, int radius) {
-        int q = player * value;
-        if (q > 0) {
-            if (q == 1) {
-                return VD_M_PIECE * (VD_RADIUS_FALLOFF - radius);
-            } else {
-                // you will not take your own GIPF piece
-                return VD_M_GIPF * (VD_RADIUS_FALLOFF - radius);
-            }
-        } else if (q < 0) {
-            if (q == -1) {
-                return VD_O_PIECE * (VD_RADIUS_FALLOFF - radius);
-            } else {
-                return VD_O_GIPF * (VD_RADIUS_FALLOFF - radius);
-            }
-        } else {
-            return 0;
-        }
-    }
-
-    public static int rankBoardCenter(GameState g, int player) {
-        int[] d = g.b.data;
-        int r = valueCell(0, player, 0);
-        for (int p : rbo1) {
-            r += valueCell(d[p], player, 1);
-        }
-        return r;
-    }
-
     public static boolean lineFull(Board b, int start, int delta) {
         int le = Geometry.lend(start, delta);
 
@@ -293,72 +122,6 @@ public class GameCalc {
         return foo;
     }
 
-    public static int rankBoardLines(GameState g, int player) {
-        int r = 0;
-        int[] d = g.b.data;
-
-        for (int xx = 0; xx < 21; xx++) {
-            int[] l = listOfLinePoints[xx];
-
-            int sign = 0;
-            int fix = 0;
-            int count = 1;
-            int len = l.length;
-            for (int kk = 0; kk < len; kk++) {
-                int v = d[l[kk]];
-                if (v == 0 || (sign * v <= 0)) {
-                    count = 1;
-                    sign = v;
-                } else {
-                    count++;
-                }
-
-                if (count == 4) {
-                    fix = sign;
-                    break;
-                }
-            }
-
-            // most will not pass this test
-            if (fix != 0) {
-                r += rankLine(g.b, l, fix);
-            }
-        }
-
-        return r;
-    }
-
-    private static int rankLine(Board b, int[] l, int player) {
-        int r = 0;
-
-        for (int xx = 0; xx < l.length; xx++) {
-            int loc = l[xx];
-            r += valueLineCell(b.data[loc], player, radiusBoard[loc]);
-        }
-
-        return r;
-    }
-
-    public static int rankLine(Board b, Line l, int player) {
-        int q = Line.getStart(l);
-        int delta = Line.getDelta(l);
-        int le = Geometry.lend(q, delta);
-
-        int r = 0;
-
-        while (q != le) {
-            int i = q;
-            r += valueLineCell(b.data[i], player, radiusBoard[i]);
-            q = Geometry.padd(q, delta);
-
-            if (q == le) {
-                break;
-            }
-        }
-
-        return r;
-    }
-
     public static String toString(Board b) {
         return "<board ...>";
     }
@@ -451,8 +214,8 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        return new GameState(new Board(cdata), Reserves.decReserves(foo.r,
-                player));
+        return new GameState(new Board(cdata), foo.r.applyDelta(player, -1, 1,
+                0));
     }
 
     private static GameState simpleLineEmpty(GameState curr, Line found,
@@ -480,11 +243,11 @@ public class GameCalc {
             if (v < 0) {
                 cdata[i] = 0;
                 if (v == -2) {
-                    rr = Reserves.decGipfs(rr, -player);
+                    rr = rr.applyDelta(-player, 0, 0, -1);
                 }
             } else if (v == 1) {
                 cdata[i] = 0;
-                rr = Reserves.incReserves(rr, player);
+                rr = rr.applyDelta(player, 1, -1, 0);
             }
 
             if (q == le) {
@@ -495,30 +258,6 @@ public class GameCalc {
         }
 
         return new GameState(new Board(cdata), rr);
-    }
-
-    private final static Line[] lb = new Line[42];
-
-    public static Line[] getOpenMoves(Board b) {
-        // these are set 1 back; basically the list of lines
-        // and its mirrors
-
-        int i = 0;
-        for (Line l : listOfLines) {
-            int s = Line.getStart(l);
-            int d = Line.getDelta(l);
-            if (!lineFull(b, s, d)) {
-                lb[i] = l;
-                i++;
-                lb[i] = Line.makeLine(Geometry.lend(s, d), Geometry.pnegate(d));
-                i++;
-            }
-        }
-
-        Line[] foo = new Line[i];
-        System.arraycopy(lb, 0, foo, 0, i);
-
-        return foo;
     }
 
     private static final GameState[] bgk = new GameState[42];
@@ -532,7 +271,7 @@ public class GameCalc {
         // we iterate over LOL. forwards AND backwards
 
         int[] orig = gs.b.data;
-        Reserves decced = Reserves.decReserves(gs.r, player);
+        Reserves decced = gs.r.applyDelta(player, -1, 1, 0);
 
         for (int[] n : listOfLinePoints) {
             // question: iterate twice, or allocate and discard?

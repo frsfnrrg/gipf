@@ -16,7 +16,13 @@
 ;; MTD-f
 ;; profiling ;-)
 ;;
-;; We will ignore tournament mode for a while, until the ai can beat us..
+;; We will ignore tournament mode for a while, until the ai can beat
+;; us..
+
+;;
+;; REMEMBER: in qab, 25% of the time is (empty?);
+;; I think we should do our iterators explicitly....
+;;
 
 ;; action 
 
@@ -124,7 +130,7 @@
       (if (or (past-time? endtime) (equals level depth))
         (do
           (idr-node-rank nodetree))
-        (recur (idr-sub nodetree 0 level endtime rank-func player) (inc-1 level))))))
+        (recur (idr-sub nodetree 0 level endtime rank-func player) (MathUtil/linc level))))) )
 
 ;;
 ;; Negamax search:
@@ -207,12 +213,12 @@
   Read the source.
   Thank you.
   Read the source."
-  [feed bestrank [entry record] block]
+  [feed bestrank [entry record] & block]
   `(loop [rem# ~feed ~record negative-infinity]
      (if (empty? rem#)
        ~record
        (let [~entry (first rem#)
-             q# ~block]
+             q# (do ~@block)]
          (if (greater q# ~bestrank)
            q#
            (recur (rest rem#) (fastmax q# ~record)))))))
@@ -230,7 +236,7 @@
           nchildren (transient {})
           nrank
           (if (equals cdepth edepth)
-            (let [rq (incrementally-list-state-continuations gamestate owner)]
+            (let [rq (lazy-next-gamestates gamestate owner)]
               (if (empty? rq)
                 (if (equals gp owner) negative-infinity positive-infinity)
                 (ablm rq bestrank [gs _]
@@ -258,11 +264,11 @@
   "A ranking function. How good is this board condition for gp, who just moved?"
   [gamestate gp rank-func depth max-time]
   (let [endtime (+ (System/nanoTime) (* 1e6 max-time))]
-    (loop [nodetree (generate-node gamestate (negate gp)) level (long 0)]
+    (loop [nodetree (generate-node gamestate (negate gp)) level 0]
       (if (or (past-time? endtime) (equals level depth))
         (negate (:rank nodetree))
         (recur (idr-ab-s nodetree rank-func gp 0 level endtime positive-infinity)
-               (inc-1 level))))))
+               (MathUtil/linc level))))))
 
 
 
@@ -293,7 +299,7 @@
   (letfn [(qab [gamestate owner depth level best-rank]
             (if (or (equals depth 0) (equals level levelcap))
               (rank-func gamestate good-player)
-              (let [subs (incrementally-list-state-continuations gamestate owner)]
+              (let [subs (lazy-next-gamestates gamestate owner)]
                 (if (empty? subs)
                   negative-infinity
                   (ablm subs best-rank [ngs record]
@@ -325,7 +331,9 @@
 
 ;; also: zobrist hashing, for fast, noncolliding moves.
 ;; - give each piece at a location a bitstring;
-;; xor all full locations. Do this incrementally, in the gamestate...
+;; xor all full locations. Do this incrementally
+;; , in the gamestate...
+
 
 
 ;; function MTDF(root, f, d)

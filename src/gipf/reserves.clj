@@ -1,13 +1,19 @@
 (ns gipf.core)
 
-(defrename ->Reserves `Reserves/makeReserves 2)
-(defrename inc-reserves `Reserves/incReserves 2)
-(defrename dec-reserves `Reserves/decReserves 2)
-(defrename get-reserves `Reserves/getReserves 2)
-(defrename inc-gipfs `Reserves/incGipfs 2)
-(defrename dec-gipfs `Reserves/decGipfs 2)
-(defrename get-gipfs `Reserves/getGipfs 2)
-(defrename eqv-reserves `Reserves/equiv 2)
-(defrename was-taken? `Reserves/wasTaken 2)
+(definline ->Reserves [r p] `( Reserves/makeReserves ~r ~p))
+(definline get-gipfs-on-board [r p] 
+  `( Reserves/getGipfs ~r ~p))
+(definline get-pieces-on-board [r p] 
+  `( Reserves/getPieces ~r ~p))
+(definline get-pieces-in-reserve [r p] 
+  `( Reserves/getReserves ~r ~p))
+(definline get-total-pieces [r p] 
+  `( Reserves/getTotalPieces ~r ~p))
+(definline reserve-delta
+  [res player d-rpieces d-bpieces d-gipfs]
+  `(Reserves/change ~res ~player ~d-rpieces ~d-bpieces ~d-gipfs))
+(definline eqv-reserves [r p] `( Reserves/equiv ~r ~p))
+(definline was-taken? [r p] `( Reserves/wasTaken ~r ~p))
+(definline losing-reserve? [r p] `(Reserves/losingReserve ~r ~p))
 
 (def null-reserves (->Reserves 0 0))

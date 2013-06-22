@@ -4,7 +4,7 @@
 
 (defn sqrt [x] (java.lang.Math/sqrt x))
 
-;; could use defrename
+;; could use definline
 (defn abs [^long x] (java.lang.Math/abs x))
 
 ;; MathUtil has a faster version
@@ -21,24 +21,26 @@
    :else 0))
 
 
-(defrename add `MathUtil/add 2)
-(defrename equals `MathUtil/equals 2)
-(defrename multiply `MathUtil/multiply 2)
-(defrename divide `MathUtil/divide 2)
-(defrename subtract `MathUtil/subtract 2)
-(defrename inc-1 `MathUtil/inc 1)
-(defrename dec-1 `MathUtil/dec 1)
-(defrename negate `MathUtil/negate 1)
-(defrename fastmax `MathUtil/max 2)
-(defrename fastmin `MathUtil/min 2)
-(defrename greater `MathUtil/greater 2)
-(defrename less `MathUtil/less 2)
-(defrename fast-even? `MathUtil/evenp 1)
-(defrename fast-odd? `MathUtil/oddp 1)
-(defmacro greater-equals [a b]
-  `(not (less ~a ~b)))
-(defmacro less-equals [a b]
-  `(not (greater ~a ~b)))
+(definline add [a b]`( MathUtil/ladd ~a ~b))
+(definline equals [a b]`( MathUtil/lequals ~a ~b))
+(definline multiply [a b]`( MathUtil/lmultiply ~a ~b))
+(definline divide [a b]`( MathUtil/ldivide ~a ~b))
+(definline subtract [a b]`( MathUtil/lsubtract ~a ~b))
+(definline fastmax [a b]`( MathUtil/lmax ~a ~b))
+(definline fastmin [a b]`( MathUtil/lmin ~a ~b))
+(definline greater [a b] `( MathUtil/lgreater ~a ~b))
+(definline less [a b] `( MathUtil/lless ~a ~b))
+
+(definline inc-1 [a] `(MathUtil/linc ~a) )
+(definline dec-1 [a] `(MathUtil/ldec ~a))
+(definline negate [a] `( MathUtil/lnegate ~a))
+(definline fast-even? [a] `( MathUtil/levenp ~a))
+(definline fast-odd? [a] `( MathUtil/loddp ~a))
+
+(definline greater-equals [a b]
+  `(MathUtil/lgreaterEquals ~a ~b))
+(definline less-equals [a b]
+  `(MathUtil/llesserEquals ~a ~b))
 
 
 (def positive-infinity 100000000000)

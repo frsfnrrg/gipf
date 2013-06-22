@@ -1,20 +1,21 @@
-(ns gipf.core
-  (:import (gipfj Geometry MathUtil Line)))
+(ns gipf.core)
 
 ;;; POINTS
 
-(defrename pt-radius `Geometry/pradius 1)
-(defrename pt= `Geometry/pequals 2)
-(defrename pt-dist `Geometry/pdistance 2)
-(defrename pt-neg `Geometry/pnegate 1)
-(defrename pt-sub `Geometry/psubtract 2)
-(defrename pt+ `Geometry/padd 2)
-(defrename pt* `Geometry/pmultiply 2)
-(defrename pt-div `Geometry/pdivide 2)
-(defrename pt-div-4 `Geometry/pdivide4 1)
-(defrename pt-rot+60 `Geometry/protp60 1)
-(defrename pt-rot-60 `Geometry/protm60 1)
-(defrename pt `Geometry/pmakePt 3)
+(definline pt-radius [a] `( Geometry/pradius ~a))
+(definline pt-neg [a]`( Geometry/pnegate ~a))
+(definline pt-div-4 [a]`( Geometry/pdivide4 ~a))
+(definline pt-rot+60 [a]`( Geometry/protp60 ~a))
+(definline pt-rot-60 [a]`( Geometry/protm60 ~a))
+
+(definline pt-sub [a b]`( Geometry/psubtract ~a ~b))
+(definline pt= [a b]`( Geometry/pequals ~a ~b))
+(definline pt-dist [a b]`( Geometry/pdistance ~a ~b))
+(definline pt+ [a b]`( Geometry/padd ~a ~b))
+(definline pt* [a b]`( Geometry/pmultiply ~a ~b))
+(definline pt-div [a b]`( Geometry/pdivide ~a ~b))
+
+(definline pt [a b c]`( Geometry/pmakePt ~a ~b ~c))
 
 (defn pt-
   ([p] (pt-neg p))
@@ -55,23 +56,27 @@
 
 ;;; LINES
 
-(defrename ->Line `Line/makeLine 2)
-(defrename ->SignedLine `Line/makeSignedLine 3)
-(defrename on-line? `Line/onLine 2)
-(defrename line= `Line/equals 2)
-(defrename line-start `Line/getStart 1)
-(defrename line-delta `Line/getDelta 1)
-(defrename line-sig `Line/getSig 1)
+(definline ->SignedLine [a b c] `(Line/makeSignedLine ~a ~b ~c))
 
-(defrename get-line-limit-point `Geometry/lend 2)
+(definline get-line-limit-point [a b] `( Geometry/lend ~a ~b))
+(definline sign-line [a b] `( Line/sign ~a ~b))
+(definline ->Line [a b] `( Line/makeLine ~a ~b))
+(definline on-line? [a b] `( Line/onLine ~a ~b))
+(definline line= [a b] `( Line/equals ~a ~b))
 
-(defrename advance-line `Line/advanceLine 1)
-(defrename sign-line `Line/sign 2)
+(definline line-start [a]  `( Line/getStart ~a))
+(definline line-delta [a]`( Line/getDelta ~a))
+(definline line-sig [a]`( Line/getSig ~a))
+(definline advance-line [a]`( Line/advanceLine ~a))
 
-(defrename make-hex-array `Board/makeBoard 0)
-(defrename get-hex-array `Board/get 2)
-(defrename change-hex-array `Board/change 3)
-(defrename count-over-hex-array `Board/countItem 2)
+;;; BOARD
+
+(definline change-hex-array [a b c] `(Board/change ~a ~b ~c))
+
+(definline get-hex-array [a b] `( Board/get ~a ~b))
+(definline count-over-hex-array [a b] `( Board/countItem ~a ~b))
+
+(definline make-hex-array [] `(Board/makeBoard))
 
 (def unit-ring-points-cycled
   (list (pt 1 0 0) (pt 0 1 0) (pt 0 0 1) (pt -1 0 0) (pt 0 -1 0) (pt 0 0 -1) (pt 1 0 0)))

@@ -1,39 +1,31 @@
 (ns gipf.core)
 
-(defrename place-and-shove `GameCalc/placeAndShove 3) 
-(defrename ->GameState `GameState/makeGameState 2)
-(defrename game-state-board `GameState/getBoard 1)
-(defrename game-state-reserves `GameState/getReserves 1)
+(definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
+(definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
+(definline game-state-board [gs] `(GameState/getBoard ~gs))
+(definline game-state-reserves [gs] `(GameState/getReserves ~gs))
 
-(defrename row-full? `GameCalc/lineFull 3)
+(definline row-full? [b s e] `(GameCalc/lineFull ~b ~s ~e))
 
-(defrename value-cell `GameCalc/valueCell 3)
-(defrename rank-board-org `GameCalc/rankBoardOrg 2)
-(defrename rank-line `GameCalc/rankLine 3)
-(defrename rank-board-lines `GameCalc/rankBoardLines 2)
+(definline make-idr-node [a b c] `( IDRNode/makeIDRNode ~a ~b ~c))
+(definline idr-node-update [a b c] `( IDRNode/updateIDRNode ~a ~b ~c))
+(definline idr-node-gamestate [a] `( IDRNode/getGameState ~a))
+(definline idr-node-player [a] `( IDRNode/getPlayer ~a))
+(definline idr-node-rank [a] `( IDRNode/getRank ~a))
+(definline idr-node-children [a] `( IDRNode/getChildren ~a))
 
-(defrename make-idr-node `IDRNode/makeIDRNode 3)
-(defrename idr-node-update `IDRNode/updateIDRNode 3)
-(defrename idr-node-gamestate `IDRNode/getGameState 1)
-(defrename idr-node-player `IDRNode/getPlayer 1)
-(defrename idr-node-rank `IDRNode/getRank 1)
-(defrename idr-node-children `IDRNode/getChildren 1)
+(definline add-weight-arrays [aa aw ba bw]
+  `(GeneralizedPointWeighting/mergeWeights ~aa ~aw ~ba ~bw))
+(definline diag-weight-array [mg mp op og c d e]
+  `(GeneralizedPointWeighting/diagWeights ~mg ~mp ~op ~og ~c ~d ~e))
+(definline radial-weight-array [mg mp op og r0 r1 r2 r3]
+  `(GeneralizedPointWeighting/radiusWeights ~mg ~mp ~op ~og ~r0 ~r1 ~r2 ~r3))
+(definline apply-weight-array [b p ar]
+  `(GeneralizedPointWeighting/calcVal ~b ~p ~ar))
 
-(defrename losing-reserve? `Reserves/losingReserve 2)
-
-(defrename set-value-line-cell-constants `GameCalc/setValueLineCellConstants 5)
-(defrename set-value-cell-constants `GameCalc/setValueCellConstants 5)
-
-(defrename add-weight-arrays `GeneralizedPointWeighting/mergeWeights 4)
-(defrename diag-weight-array `GeneralizedPointWeighting/diagWeights 7)
-(defrename radial-weight-array `GeneralizedPointWeighting/radiusWeights 8)
-(defrename apply-weight-array `GeneralizedPointWeighting/calcVal 3)
-
-(definline incrementally-list-state-continuations
+(definline lazy-next-gamestates
   [gamestate player]
   `(from-iterator (IncrementalGameCalc. ~gamestate ~player)))
-
-(def lazy-next-gamestates incrementally-list-state-continuations)
 
 ;; predicates/extraction
 
@@ -112,20 +104,16 @@
                        (if (equals 2 (abs val))
                          (recur (pt+ pos delta)
                                 (change-hex-array board pos 0)
-                                (dec-gipfs
-                                 (inc-reserves
-                                  (inc-reserves reserves player)
-                                  player)
-                                 player))
+                                (reserve-delta reserves player 2 0 -1))
                          (recur (pt+ pos delta)
                                 (change-hex-array board pos 0)
-                                (inc-reserves reserves player)))
+                                (reserve-delta reserves player 1 -1 0)))
 
                        (not (equals val 0))
                        (if (equals 2 (abs val))
                          (recur (pt+ pos delta)
                                 (change-hex-array board pos 0)
-                                (dec-gipfs reserves (negate player)))
+                                (reserve-delta reserves (negate player) 0 -1 0))
                          (recur (pt+ pos delta)
                                 (change-hex-array board pos 0)
                                 reserves))
@@ -158,11 +146,18 @@
                    [bpr bb brr]
                   
                    (case (int (multiply (get-hex-array bb cur) player))
-                     (-2 -1) ;; opponent
+                     -2
                      (recur (pt+ cur delta)
                             bpr
                             (change-hex-array bb cur 0)
-                            brr)
+                            (reserve-delta brr (negate player)
+                              0 0 -1))
+                     -1 ;; opponent
+                     (recur (pt+ cur delta)
+                            bpr
+                            (change-hex-array bb cur 0)
+                            (reserve-delta brr (negate player)
+                              0 -1 0))
                      0
                      (recur (pt+ cur delta)
                             bpr bb brr)
@@ -170,7 +165,7 @@
                      (recur (pt+ cur delta)
                             bpr
                             (change-hex-array bb cur 0)
-                            (inc-reserves brr player))
+                            (reserve-delta brr player 1 -1 0))
                      2 ;; save own gipfs
                      (do
                        (recur (pt+ cur delta)
@@ -190,10 +185,6 @@
 (defn get-line-taking-results
   [gamestate player]
   (vec (GameCalc/getLineTakingResults gamestate player)))
-
-(defn fget-open-moves
-  [board]
-  (vec (GameCalc/getOpenMoves board)))
 
 (defn list-possible-moves-and-board
   "Like list-possible-boards, just returns the moves along with the boards.
@@ -264,7 +255,7 @@
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
   `(def ~name ~doc (->Heuristic
                     (fn [] ~@setupexprs)
-                    (fn ^long [^GameState ~evalarg1 ^long ~evalarg2]
+                    (fn ~name ^long [^GameState ~evalarg1 ^long ~evalarg2]
                       (swap! ranks-count #(inc-1 %))
                       ~@evalexprs))))
 

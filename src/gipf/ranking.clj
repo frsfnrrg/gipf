@@ -32,10 +32,10 @@
    (let [reserves (game-state-reserves gamestate)
          antiplayer (negate player)]
      (let [gipf-points (subtract
-                        (get-gipfs reserves player)
-                        (get-gipfs reserves antiplayer))
-           piece-points (subtract (get-reserves reserves player)
-                                  (get-reserves reserves antiplayer))]
+                        (get-gipfs-on-board reserves player)
+                        (get-gipfs-on-board reserves antiplayer))
+           piece-points (subtract (get-total-pieces reserves player)
+                                  (get-total-pieces reserves antiplayer))]
        (add
         (multiply 20 gipf-points)
         (multiply 5 piece-points))))))
@@ -44,27 +44,25 @@
   (def-ranking-function rank-board-hybrid
     (:setup
      []
-     (def expected-max-rank* 200)
-     ;; mp mg op og rl
-     (set-value-cell-constants 10 30 -10 -30 5))
+     (def expected-max-rank* 200))
     (:eval
      [gamestate player]
      ;; temp
      (let [reserves (game-state-reserves gamestate)
            antiplayer (negate player)
            gipf-points (subtract
-                        (msquare (get-gipfs reserves player))
-                        (msquare (get-gipfs reserves antiplayer)))
-           piece-points (subtract (msquare (get-reserves reserves player))
-                                  (msquare (get-reserves reserves antiplayer)))
-           pos-points (apply-weight-array (game-state-board gamestate) player weighting-board)]
+                        (msquare (get-gipfs-on-board reserves player))
+                        (msquare (get-gipfs-on-board reserves antiplayer)))
+           piece-points (subtract (msquare (get-total-pieces reserves player))
+                                  (msquare (get-total-pieces reserves antiplayer)))
+           pos-points (long (apply-weight-array (game-state-board gamestate) player weighting-board))]
        (add pos-points
             (add
              (multiply 20 gipf-points)
              (multiply 5 piece-points)))))))
 
 (def-ranking-function rank-not-at-all
-  "This is the null heuristic; note that good rankings still
+  "This is the null heuristic; note that rankings still
    come from win/loss"
   (:setup
    []

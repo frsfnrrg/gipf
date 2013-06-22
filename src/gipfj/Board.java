@@ -2,7 +2,7 @@ package gipfj;
 
 //
 // Optimization idea: as it stands, 30% of CPU
-// is used by rankBoardOrg. By placing a single int field
+// is used by rankBoardOrg. By placing a single Integer field
 // onto a board, one could incrementally rank it:
 // 
 // Each board change leads to average 4 cell changes. 
@@ -20,6 +20,22 @@ package gipfj;
 // as well as number of pieces in own/opp's reserve
 // can't change
 //
+// Update: Outdated? The faster ranking is now ~1% CPU; 
+// empty?/casts outweigh it
+//
+//
+
+//
+// Hashing of board positions: it is natural to do this incrementally.
+// How?
+//
+// PieceXLoc -> component; less than SIZE things hashed; introduction/removal
+//                         of pieces could be a problem??; 
+// LocXType -> component; total SIZE things hashed together
+//
+//
+// For a transposition table, the GameState hash is (board hash ^ reserve hash)
+//
 
 //
 // Additional note: if we ever want to use any degree of parallel
@@ -27,6 +43,7 @@ package gipfj;
 // a set of buffers for each thread...
 //
 
+@SuppressWarnings("unused")
 public class Board {
     public static final int SIZE = IMath.hexNum(4);
     public final int[] data;
@@ -78,5 +95,26 @@ public class Board {
                 c++;
         }
         return c;
+    }
+
+    private static final byte[][][] hashArray = makeHashArray();
+
+    private static byte[][][] makeHashArray() {
+        // to make hashing as efficient as possible,
+        // what should this array of piece-pos/pos-piece
+        // combos look like?
+
+        byte[][][] r = new byte[SIZE][][];
+        return r;
+    }
+
+    /**
+     * 
+     * This is deliberately simple.
+     * 
+     */
+    @Override
+    public String toString() {
+        return "[board]";
     }
 }

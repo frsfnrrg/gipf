@@ -35,7 +35,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
 
         this.player = player;
 
-        deccedReserves = Reserves.decReserves(g.r, player);
+        deccedReserves = g.r.applyDelta(player, -1, 1, 0);
 
         plo = 0;
         g2_pos = 2;

@@ -3,6 +3,8 @@
              IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting))
   (:gen-class))
 
+(set! *warn-on-reflection* true)
+
 ;;;
 ;;; The purpose of this core file
 ;;; is to hold all of the ugly coordination
@@ -12,21 +14,7 @@
 ;;; or abstractions
 ;;;
 
-                                        ; everything should be explicitly passed into these
-
-(defmacro defrename
-  "WARNING: do not layer this like so:
-
-  (defn foo [a b] 1)
-  (defrename oink foo 2)
-
-  Clojure hangs- no error messages, no nothing.
-
-"
-  [new old numargs]
-  (let [args (map (fn [_] (gensym)) (range numargs))]
-    `(defmacro ~new [~@args]
-       `(~~old ~~@args))))
+;; everything should be explicitly passed into these
 
 (defmacro llload
   [name]
@@ -102,41 +90,20 @@
 
 (defn get-pieces-left
   [player]
-  (get-reserves reserve-pieces* player))
+  (get-pieces-in-reserve reserve-pieces* player))
 
 (defn draw-pieces-left!
   [player]
   (let [i (player->index player)
         c (get piece-colors i)
-        v (get-reserves reserve-pieces* player)]
+        v (get-pieces-in-reserve reserve-pieces* player)]
     (if (= i 0)
       (draw-text-centered-at! (xy 100 700) (str v) c)
       (draw-text-centered-at! (xy 700 700) (str v) c))))
 
-(defn dec-pieces-left!
-  "Decreases the number of pieces left for the player by 1."
-  [player]
-  (let [n (dec-reserves reserve-pieces* player)]
-    (def reserve-pieces* n))
-  (draw-pieces-left! player))
-
-(defn inc-pieces-left!
-  [player]
-  "Increases the number of pieces left for the player by 1"
-  (let [n (inc-reserves reserve-pieces* player)]
-    (def reserve-pieces* n))
-  (draw-pieces-left! player))
-
-(defn dec-gipfs-left!
-  "Decreases the number of pieces left for the player by 1."
-  [player]
-  (let [n (dec-gipfs reserve-pieces* player)]
-    (def reserve-pieces* n)))
-
-(defn inc-gipfs-left!
-  [player]
-  "Increases the number of pieces left for the player by 1"
-  (let [n (inc-gipfs reserve-pieces* player)]
+(defn change-reserves!
+  [player d-rpieces d-bpieces d-gipfs]
+  (let [n (reserve-delta reserve-pieces* player d-rpieces d-bpieces d-gipfs)]
     (def reserve-pieces* n)))
 
 (defn draw-lines-at-loc!
@@ -228,12 +195,12 @@
       (let [val (get-hex-array board* cur)]
         (when-not (or (= val 0) (protected? cur))
           (if (same-sign? val current-player*)
-            (do (when (= 2 (abs val))
-                  (inc-pieces-left! current-player*)
-                  (dec-gipfs-left! current-player*))
-                (inc-pieces-left! current-player*))
-            (when (= 2 (abs val))
-              (dec-gipfs-left! (- current-player*))))
+            (if (= 2 (abs val))
+                (change-reserves! current-player* 2 0 -1)
+                (change-reserves! current-player* 1 -1 0))
+            (if (= 2 (abs val))
+              (change-reserves! (- current-player*) 0 0 -1)
+              (change-reserves! (- current-player*) 0 -1 0)))
           
           (def board* (change-hex-array board* cur 0)))
         (redraw-loc! cur)
@@ -288,8 +255,8 @@
                  (/ placed-cell-value* 2))]
     
     (if (= (abs target) 2)
-      (inc-pieces-left! (sign placed-cell-value*))
-      (dec-pieces-left! (sign placed-cell-value*)))
+      (change-reserves! (sign placed-cell-value*) -1 -1 1)
+      (change-reserves! (sign placed-cell-value*) 1 1 -1))
 
     (def placed-cell-value* target)
     
@@ -520,9 +487,10 @@
 
   (if (and (= mode* :advanced) (= (get-adv-phase) :filling))
     (do (place-piece! loc (* 2 current-player*))
-        (dec-pieces-left! current-player*))
-    (place-piece! loc current-player*))
-  (dec-pieces-left! current-player*)
+        (change-reserves! current-player* -2 0 1))
+    (do
+      (place-piece! loc current-player*)
+      (change-reserves! current-player* -1 1 0)))
   (def selected* loc)
   (redraw-loc! loc)
   (draw-highlight! loc)
@@ -547,9 +515,9 @@
         advline (advance-line move)]
     (when (and (= (get-adv-phase) :filling) (= degree 1))
       (set-adv-phase! :playing))
-    (when (= degree 2)
-      (dec-pieces-left! current-player*))
-    (dec-pieces-left! current-player*)
+    (if (= degree 2)
+      (change-reserves! current-player* -2 0 1)
+      (change-reserves! current-player* -1 -1 0))
     (move-piece! (line-start advline) (line-delta advline) (* current-player* degree)))
 
   ;; clear
@@ -632,7 +600,6 @@
 
 (defn runGUI
   []
-  (println "Loading gui")
   (let [window (javax.swing.JFrame. "GIPF")
         menubar (javax.swing.JMenuBar.)
         mode-basic (javax.swing.JRadioButtonMenuItem. "Basic")

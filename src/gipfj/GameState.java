@@ -5,11 +5,19 @@ package gipfj;
  * TODO: eventually, once we have stuff like MTD-f/killer/transposition tables
  * 
  * Add support for tournament style, by adding two "mode" fields to the
- * GameState, i.e, if said player can place Gipfs. We do not need that in
+ * GameState, i.e, if said player can place GIPFs. We do not need that in
  * reserves or Board; though board *could* use a hash field
  * 
- * 
  * sorted out,
+ * 
+ * TODO: maybe even short term:
+ * 
+ * I never see a GameState without the player who was responsible for it; It
+ * would be much easier to wrap that in as well...
+ * 
+ * However, rank-board is a counter example - that player was not responsible.
+ * Whatever. Less work is better than more work.
+ * 
  * 
  * @author msto
  * 

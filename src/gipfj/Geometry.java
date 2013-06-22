@@ -19,7 +19,7 @@ public class Geometry {
     // line actions
     private static int[][] lend;
 
-    private static Geometry GEOOBJ = new Geometry();
+    private static final Geometry GEOOBJ = new Geometry();
 
     private Geometry() {
         loadTables();
