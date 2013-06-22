@@ -271,7 +271,7 @@
 (defn simple-quiet
   "True when nothing interesting happened (piece taken)"
   [oldgs newgs]
-  (eqv-reserves (game-state-reserves oldgs) (game-state-reserves newgs)))
+  (was-taken? (game-state-reserves oldgs) (game-state-reserves newgs)))
 
 ;; if depth <= iboost; test quiescence; if true, set to iboost.
 ;; once depth == 0 and tranquil, heuristic;

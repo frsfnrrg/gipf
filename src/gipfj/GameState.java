@@ -1,5 +1,19 @@
 package gipfj;
 
+/**
+ * 
+ * TODO: eventually, once we have stuff like MTD-f/killer/transposition tables
+ * 
+ * Add support for tournament style, by adding two "mode" fields to the
+ * GameState, i.e, if said player can place Gipfs. We do not need that in
+ * reserves or Board; though board *could* use a hash field
+ * 
+ * 
+ * sorted out,
+ * 
+ * @author msto
+ * 
+ */
 public class GameState {
     public final Board b;
     public final Reserves r;

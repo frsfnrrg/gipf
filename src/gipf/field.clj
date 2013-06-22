@@ -29,9 +29,9 @@
 (defrename radial-weight-array `GeneralizedPointWeighting/radiusWeights 8)
 (defrename apply-weight-array `GeneralizedPointWeighting/calcVal 3)
 
-(defn incrementally-list-state-continuations
+(definline incrementally-list-state-continuations
   [gamestate player]
-  (from-iterator (IncrementalGameCalc. gamestate player)))
+  `(from-iterator (IncrementalGameCalc. ~gamestate ~player)))
 
 (def lazy-next-gamestates incrementally-list-state-continuations)
 

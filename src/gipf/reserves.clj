@@ -8,5 +8,6 @@
 (defrename dec-gipfs `Reserves/decGipfs 2)
 (defrename get-gipfs `Reserves/getGipfs 2)
 (defrename eqv-reserves `Reserves/equiv 2)
+(defrename was-taken? `Reserves/wasTaken 2)
 
 (def null-reserves (->Reserves 0 0))
