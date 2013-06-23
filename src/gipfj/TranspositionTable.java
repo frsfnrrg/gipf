@@ -25,7 +25,7 @@ public class TranspositionTable {
      */
     public TranspositionTable(int pool, int size) {
         poolsize = 1 << pool;
-        store = new KVPair[poolsize][];
+        store = new byte[poolsize][][];
         // store is initialized null
         startsize = 1 << size;
         elemsize = 0;
@@ -62,27 +62,27 @@ public class TranspositionTable {
             index = 2 * index;
         }
 
-        KVPair[] bucket = store[index];
+        byte[][] bucket = store[index];
         if (bucket == null) {
             // System.out.format("nullbucket @%d\n", index);
             misscount++;
             return null;
         }
-        for (KVPair elem : bucket) {
+        for (byte[] elem : bucket) {
             if (elem == null) {
                 break;
             }
 
             byte[] a = in.getData();
-            byte[] b = elem.data;
 
-            if (a.length != b.length) {
+            if (a.length != elem.length) {
                 continue;
             }
 
             boolean c = false;
-            for (int i = 0; i < a.length; i++) {
-                if (a[i] != b[i]) {
+            // we skip the first 4 (0,1,2,3) as these hold the rank
+            for (int i = 4; i < a.length; i++) {
+                if (a[i] != elem[i]) {
                     c = true;
                     break;
                 }
@@ -93,7 +93,7 @@ public class TranspositionTable {
             } else {
                 // it matches
                 hitcount++;
-                return (long) elem.rank;
+                return (long) bytesToInt(elem);
             }
         }
         misscount++;
@@ -154,11 +154,14 @@ public class TranspositionTable {
             index = 2 * index;
         }
 
-        KVPair[] bucket = store[index];
+        byte[] dat = in.getData();
+        intToBytes(dat, (int) rank);
+
+        byte[][] bucket = store[index];
         if (bucket == null) {
             // System.out.format("creating @%d\n", index);
-            bucket = new KVPair[startsize];
-            bucket[0] = new KVPair(in, (int) rank);
+            bucket = new byte[startsize][];
+            bucket[0] = dat;
             store[index] = bucket;
         } else {
             // we could make additions cheaper by changing KVPair[] to
@@ -170,16 +173,17 @@ public class TranspositionTable {
             // - faster, given expected log increase in size
             int size = bucket.length;
             if (bucket[size - 1] != null) {
-                KVPair[] n = new KVPair[size * 2];
+                byte[][] n = new byte[size * 2][];
                 System.arraycopy(bucket, 0, n, 0, size);
-                n[size] = new KVPair(in, (int) rank);
+                n[size] = dat;
+                ;
                 store[index] = n;
                 // System.out.format("expanding @%d\n", index);
                 // expand
             } else {
                 for (int i = size - 2; i >= 0; i--) {
                     if (bucket[i] != null) {
-                        bucket[i + 1] = new KVPair(in, (int) rank);
+                        bucket[i + 1] = dat;
                         break;
                     }
                 }
@@ -189,7 +193,7 @@ public class TranspositionTable {
     }
 
     public void clear() {
-        store = new KVPair[poolsize][];
+        store = new byte[poolsize][][];
         elemsize = 0;
 
         double ratio = 100.0 * hitcount / (hitcount + misscount);
@@ -204,17 +208,7 @@ public class TranspositionTable {
 
     private final int startsize;
 
-    private static class KVPair {
-        public KVPair(Compressed item, int rank) {
-            this.data = item.getData();
-            this.rank = rank;
-        }
-
-        public final byte[] data;
-        public int rank;
-    }
-
-    private KVPair[][] store;
+    private byte[][][] store;
 
     // STATIC ACCESS METHODS
 

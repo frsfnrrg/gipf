@@ -29,16 +29,18 @@ public class CompressedSGS implements Compressed {
         // 47 bytes. As pure byte[], we have 43 bytes... But it is trivial to
         // change over.
 
+        // FIRST 4 BYTES ARE RESERVED FOR TRANSP TABLE USE
+
         int[] bd = g.b.data;
-        data = new byte[27];
+        data = new byte[4 + 27];
         for (int i = 0; i < Board.SIZE; i++) {
             int pos = i * 5 + bd[i] + 2;// range 0 -> 184
             // set pos to 1
             int seg = pos / 8;
-            data[seg] ^= 1 << (pos - seg);
+            data[4 + seg] ^= 1 << (pos - seg);
         }
         if (player > 0) {
-            data[23] ^= 1 << 1; // bit at 185
+            data[4 + 23] ^= 1 << 1; // bit at 185
         }
         // reserves: bits 186 -> 215
 
@@ -52,7 +54,7 @@ public class CompressedSGS implements Compressed {
                 int indx = start + k;
                 int seg = indx / 8;
                 if (tp) {
-                    data[seg] ^= 1 << (indx - seg);
+                    data[4 + seg] ^= 1 << (indx - seg);
                 }
             }
         }
@@ -66,7 +68,7 @@ public class CompressedSGS implements Compressed {
 
     public boolean equals(CompressedSGS other) {
         byte[] opp = other.data;
-        for (int i = 0; i < data.length; i++) {
+        for (int i = 4; i < data.length; i++) {
             if (opp[i] != data[i]) {
                 return false;
             }
