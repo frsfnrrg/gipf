@@ -5,6 +5,9 @@ package gipfj;
  * 
  */
 public class GeneralizedPointWeighting {
+    private GeneralizedPointWeighting() {
+    }
+
     //
     // The optimal? (is this really fastest?) weighted point-system:
     // User sends in two long[SIZE][5] with weights;
@@ -100,6 +103,63 @@ public class GeneralizedPointWeighting {
         return rel;
     }
 
+    private final static int[] astar2 = { 7, 9, 11, 13, 15, 17, };
+    private final static int[] amid2 = { 8, 10, 12, 14, 16, 18 };
+    private final static int[] astar3 = { 19, 22, 25, 28, 31, 34 };
+    private final static int[] amid3 = { 20, 21, 23, 24, 26, 27, 29, 30, 32,
+            33, 35, 36 };
+
+    /**
+     * 
+     * Rank each position on the board with a weight.
+     * 
+     * Pass these into totalControl for use with calcVal;
+     * 
+     */
+    public static int[] totalControlSubLevel(int center, int r1, int star2,
+            int mid2, int star3, int mid3) {
+        int[] r = new int[Board.SIZE];
+        r[0] = center;
+        for (int p : ar1) {
+            r[p] = r1;
+        }
+        for (int p : astar2) {
+            r[p] = star2;
+        }
+        for (int p : amid2) {
+            r[p] = mid2;
+        }
+        for (int p : astar3) {
+            r[p] = star3;
+        }
+        for (int p : amid3) {
+            r[p] = mid3;
+        }
+
+        return r;
+    }
+
+    /**
+     * 
+     * Given four layers, as made from totalControlSubLevel, Generate a
+     * comprehensive weighting array. This is for crazy freaks.
+     * 
+     * @param pg
+     * @param pp
+     * @param ng
+     * @param np
+     * @return
+     */
+    public static int[][] totalControl(int[] pg, int[] pp, int[] ng, int[] np) {
+        int[] nulllayer = new int[Board.SIZE];
+        for (int q = 0; q < Board.SIZE; q++) {
+            nulllayer[q] = 0;
+        }
+
+        int[][] rr = { ng, np, nulllayer, pp, pg };
+        return rr;
+    }
+
     /**
      * Does a weighted linear merge of the two arrays. Does not modify
      * arguments.
@@ -126,8 +186,10 @@ public class GeneralizedPointWeighting {
      * Given a weighted array, a player-perspective, and a Board, rank that
      * board. Just read the source, will you?
      * 
+     * We pass in long for optimization
+     * 
      * <pre>
-     * public static int calcVal(Board b, int player, int[][] weights) {
+     * public static long calcVal(Board b, long player, int[][] weights) {
      *      int r = 0;
      *      int[] d = b.data;
      *      for (int i = 0; i &lt; Board.SIZE; i++) {
@@ -141,11 +203,11 @@ public class GeneralizedPointWeighting {
      * @param weights
      * @return
      */
-    public static int calcVal(Board b, int player, int[][] weights) {
+    public static long calcVal(Board b, long player, int[][] weights) {
         int r = 0;
         int[] d = b.data;
         for (int i = 0; i < Board.SIZE; i++) {
-            r += weights[i][d[i] * player + 2];
+            r += weights[i][d[i] * (int) player + 2];
         }
         return r;
     }

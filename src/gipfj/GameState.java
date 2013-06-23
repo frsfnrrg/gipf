@@ -44,6 +44,11 @@ public class GameState {
     }
 
     @Override
+    public int hashCode() {
+        return b.hashCode() ^ r.hashCode();
+    }
+
+    @Override
     public String toString() {
         return "{" + b.toString() + " " + r.toString() + "}";
     }

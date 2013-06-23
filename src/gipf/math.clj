@@ -43,8 +43,8 @@
   `(MathUtil/llesserEquals ~a ~b))
 
 
-(def positive-infinity 100000000000)
-(def negative-infinity -100000000000)
+(def positive-infinity Ranking/POS_INF)
+(def negative-infinity Ranking/NEG_INF)
 
 ;; the issue with max/min value is
 ;; that they make rollover

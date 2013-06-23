@@ -1,5 +1,7 @@
 package gipfj;
 
+import java.util.Random;
+
 /*
  * Gipf count: how many are on the board
  * Piece count: how many are in reserve.
@@ -9,12 +11,16 @@ package gipfj;
  *  
  */
 public class Reserves {
-    private final long p1;
-    private final long p2;
-    private final long o1;
-    private final long o2;
-    private final long g1;
-    private final long g2;
+    public final long p1;
+    public final long p2;
+    public final long o1;
+    public final long o2;
+    public final long g1;
+    public final long g2;
+
+    public final static int MAX_CAPACITY = 18;
+
+    private final int hashCode;
 
     /**
      * 
@@ -35,11 +41,53 @@ public class Reserves {
         this.g2 = g2;
         this.o1 = o1;
         this.o2 = o2;
+        hashCode = calcHashCode(p1, p2, g1, g2, o1, o2);
+    }
+
+    public Reserves(long p1, long p2, long o1, long o2, long g1, long g2, int hc) {
+        this.p1 = p1;
+        this.p2 = p2;
+        this.g1 = g1;
+        this.g2 = g2;
+        this.o1 = o1;
+        this.o2 = o2;
+        hashCode = hc;
+    }
+
+    private final int[][] hashArray = makeHashArray();
+
+    private int calcHashCode(long p1, long p2, long g1, long g2, long o1,
+            long o2) {
+
+        // debug on crash
+        // System.out.format("%d, %d, %d, %d, %d, %d\n", p1, p2, o1, o2, g1,
+        // g2);
+
+        int r = hashArray[0][(int) p1];
+        r ^= hashArray[1][(int) p2];
+        r ^= hashArray[2][(int) o1];
+        r ^= hashArray[3][(int) o2];
+        r ^= hashArray[4][(int) g1];
+        r ^= hashArray[5][(int) g2];
+
+        return r;
+    }
+
+    private int[][] makeHashArray() {
+        int[][] a = new int[6][MAX_CAPACITY];
+        Random rng = new Random(7987897987987897L);
+        for (int z = 0; z < a.length; z++) {
+            for (int q = 0; q < a[z].length; q++) {
+                a[z][q] = rng.nextInt();
+            }
+        }
+        return a;
     }
 
     @Override
     public String toString() {
-        return String.format("reserves %d %d : %d %d", p1, p2, g1, g2);
+        return String.format("reserves r %d %d : p %d %d : g %d %d", p1, p2,
+                o1, o2, g1, g2);
     }
 
     // Statics...
@@ -122,7 +170,7 @@ public class Reserves {
     }
 
     /**
-     * This exists for internal use only
+     * Change reserve amounts
      * 
      * @param in
      * @param player
@@ -143,5 +191,23 @@ public class Reserves {
             return new Reserves(p1, p2 + delta_reserve_pieces, o1, o2
                     + delta_board_pieces, g1, g2 + delta_board_gipfs);
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return hashCode;
+    }
+
+    /**
+     * Same as equiv
+     * 
+     * @param a
+     * @param b
+     * @return
+     */
+    public static boolean equalNHC(Reserves a, Reserves b) {
+        return (a == b)
+                || ((a.p1 == b.p1) && (a.p2 == b.p2) && (a.g1 == b.g1)
+                        && (a.g2 == a.g2) && (a.o1 == b.o1) && (a.o2 == a.o2));
     }
 }

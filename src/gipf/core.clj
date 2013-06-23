@@ -1,6 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
-             IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting))
+             IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
+             Ranking))
   (:gen-class))
 
 (set! *warn-on-reflection* true)
@@ -517,7 +518,7 @@
       (set-adv-phase! :playing))
     (if (= degree 2)
       (change-reserves! current-player* -2 0 1)
-      (change-reserves! current-player* -1 -1 0))
+      (change-reserves! current-player* -1 1 0))
     (move-piece! (line-start advline) (line-delta advline) (* current-player* degree)))
 
   ;; clear

@@ -8,15 +8,15 @@ public class IncrementalGameCalc implements Iterator<GameState> {
     private final GameState[] g2 = new GameState[10];
     private final GameState[] g3 = new GameState[3];
     private int plo;
-    int g3_pos;
-    int g3_end;
-    int g2_pos;
-    int g2_end;
-    int g1_pos;
-    int g1_end;
-    int player;
-    boolean ready;
-    Reserves deccedReserves;
+    private int g3_pos;
+    private int g3_end;
+    private int g2_pos;
+    private int g1_pos;
+    private int g1_end;
+    private int player;
+    private boolean ready;
+    private Reserves deccedReserves;
+    private int origHash;
 
     public IncrementalGameCalc(GameState g, int player) {
         g1_pos = 0;
@@ -35,6 +35,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
 
         this.player = player;
 
+        origHash = g.b.hashCode;
         deccedReserves = g.r.applyDelta(player, -1, 1, 0);
 
         plo = 0;
@@ -127,11 +128,15 @@ public class IncrementalGameCalc implements Iterator<GameState> {
             System.arraycopy(orig, 0, up, 0, Board.SIZE);
             int[] down = new int[Board.SIZE];
             System.arraycopy(orig, 0, down, 0, Board.SIZE);
+            int hcu = origHash;
+            int hcd = origHash;
 
             int last = player;
             for (int j = 0; j < n.length; j++) {
                 int ind = n[j];
                 int v = up[ind];
+                hcu ^= Board.hashArray[ind][v + 2]
+                        ^ Board.hashArray[ind][last + 2];
                 up[ind] = last;
                 if (v == 0) {
                     break;
@@ -139,9 +144,12 @@ public class IncrementalGameCalc implements Iterator<GameState> {
                 last = v;
             }
 
+            last = player;
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
                 int v = down[ind];
+                hcd ^= Board.hashArray[ind][v + 2]
+                        ^ Board.hashArray[ind][last + 2];
                 down[ind] = last;
                 if (v == 0) {
                     break;
@@ -149,8 +157,8 @@ public class IncrementalGameCalc implements Iterator<GameState> {
                 last = v;
             }
 
-            g2[0] = new GameState(new Board(up), deccedReserves);
-            g2[1] = new GameState(new Board(down), deccedReserves);
+            g2[0] = new GameState(new Board(up, hcu), deccedReserves);
+            g2[1] = new GameState(new Board(down, hcd), deccedReserves);
         }
 
         GameState result = g2[g2_pos];

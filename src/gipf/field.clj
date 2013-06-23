@@ -1,4 +1,6 @@
-(ns gipf.core)
+(ns gipf.core
+  (:import (gipfj Geometry MathUtil Board GameState Reserves Line
+                  IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -22,6 +24,29 @@
   `(GeneralizedPointWeighting/radiusWeights ~mg ~mp ~op ~og ~r0 ~r1 ~r2 ~r3))
 (definline apply-weight-array [b p ar]
   `(GeneralizedPointWeighting/calcVal ~b ~p ~ar))
+(definline total-weight-sub-array [center r1 star2 mid2 star3 mid3]
+  `(GeneralizedPointWeighting/totalControlSubLevel ~center ~r1 ~star2 ~mid2 ~star3 ~mid3))
+(definline total-weight-array [pg pp np ng]
+  `(GeneralizedPointWeighting/totalControl ~pg ~pp ~np ~ng))
+
+(definline weighted-add-2 [va ca vb cb]
+  `(Ranking/weightedAdd ~va ~ca ~vb ~cb))
+(definline weighted-add-3 [va ca vb cb vc cc]
+  `(Ranking/weightedAdd ~va ~ca ~vb ~cb ~vc ~cc))
+(definline weighted-add-4 [va ca vb cb vc cc vd cd]
+  `(Ranking/weightedAdd ~va ~ca ~vb ~cb ~vc ~cc ~vd ~cd))
+
+(definline balance-normalize [good bad]
+  `(Ranking/balanceNormalize ~good ~bad))
+
+(definline reserve-diff-linear [r p gipfs pieces store]
+  `(Ranking/reserveLinearDiff ~r ~p ~gipfs ~pieces ~store))
+(definline reserve-diff-quadratic [r p gipfs pieces store]
+  `(Ranking/reserveQuadDiff ~r ~p ~gipfs ~pieces ~store))
+(definline reserve-diff-cubic [r p gipfs pieces store]
+  `(Ranking/reserveCubicDiff ~r ~p ~gipfs ~pieces ~store))
+
+
 
 (definline lazy-next-gamestates
   [gamestate player]
@@ -255,7 +280,7 @@
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
   `(def ~name ~doc (->Heuristic
                     (fn [] ~@setupexprs)
-                    (fn ~name ^long [^GameState ~evalarg1 ^long ~evalarg2]
+                    (fn ~name [~evalarg1 ~evalarg2]
                       (swap! ranks-count #(inc-1 %))
                       ~@evalexprs))))
 

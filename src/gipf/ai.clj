@@ -1,4 +1,6 @@
-(ns gipf.core)
+(ns gipf.core
+  (:import (gipfj IncrementalGameCalc GameState TranspositionTable SignedGameState)))
+
 
 ;; AI.clj
 
@@ -18,11 +20,6 @@
 ;;
 ;; We will ignore tournament mode for a while, until the ai can beat
 ;; us..
-
-;;
-;; REMEMBER: in qab, 25% of the time is (empty?);
-;; I think we should do our iterators explicitly....
-;;
 
 ;; action 
 
@@ -130,7 +127,7 @@
       (if (or (past-time? endtime) (equals level depth))
         (do
           (idr-node-rank nodetree))
-        (recur (idr-sub nodetree 0 level endtime rank-func player) (MathUtil/linc level))))) )
+        (recur (idr-sub nodetree 0 level endtime rank-func player) (inc-1 level))))) )
 
 ;;
 ;; Negamax search:
@@ -146,7 +143,7 @@
 ;;; negamax: rank := (fastmax (map #(negate %) ranks)
 
 ;;;          rank := (negate (fastmin)
-  
+
 
 (defn abps
   [gamestate owner ranker gp depth bestrank]
@@ -190,10 +187,10 @@
   [thing index val]
   `(let [th# ~thing
          existing# (get th# ~index)]
-    (if existing#
-      (assoc! th# ~index
-              (cons ~val existing#))
-      (assoc! th# ~index (list ~val)))))
+     (if existing#
+       (assoc! th# ~index
+               (cons ~val existing#))
+       (assoc! th# ~index (list ~val)))))
 
 (defmacro expand-trm
   [thing]
@@ -222,6 +219,19 @@
          (if (greater q# ~bestrank)
            q#
            (recur (rest rem#) (fastmax q# ~record)))))))
+
+(defmacro ablmi
+  "Like ablm, just that it takes a java.util.Iterator as its feed"
+  [iterator bestrank [entry record] & block]
+  `(let [^java.util.Iterator it# ~iterator]
+     (loop [~record negative-infinity]
+       (if (.hasNext it#)
+         (let [~entry (.next it#)
+               q# (do ~@block)]
+           (if (greater q# ~bestrank)
+             q#
+             (recur (fastmax q# ~record))))
+         ~record))))
 
 ;; rankfunc, gp remain constant the entire time....
 (defn idr-ab-s
@@ -268,7 +278,7 @@
       (if (or (past-time? endtime) (equals level depth))
         (negate (:rank nodetree))
         (recur (idr-ab-s nodetree rank-func gp 0 level endtime positive-infinity)
-               (MathUtil/linc level))))))
+               (inc-1 level))))))
 
 
 
@@ -293,23 +303,70 @@
   "Goal: to unify alpha-beta and quiescent search.
   Depth: min depth to search
   Levelcap: max depth to search.
-  IBoost: how much further to go until quiet
-"
+  IBoost: how much further to go until quiet"
   [gamestate good-player rank-func quiet-func depth levelcap iboost]
   (letfn [(qab [gamestate owner depth level best-rank]
             (if (or (equals depth 0) (equals level levelcap))
               (rank-func gamestate good-player)
-              (let [subs (lazy-next-gamestates gamestate owner)]
-                (if (empty? subs)
-                  negative-infinity
-                  (ablm subs best-rank [ngs record]
-                        (negate (if (or (greater-equals depth iboost)
-                                        (quiet-func ngs gamestate))
-                                  (qab ngs (negate owner) (dec-1 depth)
-                                       (inc-1 level) (negate record))
-                                  (qab ngs (negate owner) iboost
-                                       (inc-1 level) (negate record)))))))))]
+              (let [subs (IncrementalGameCalc. gamestate owner)]
+                (if (.hasNext subs)
+                  (ablmi subs best-rank [ngs record]
+                         (negate (if (or (greater-equals depth iboost)
+                                         (quiet-func ngs gamestate))
+                                   (qab ngs (negate owner) (dec-1 depth)
+                                        (inc-1 level) (negate record))
+                                   (qab ngs (negate owner) iboost
+                                        (inc-1 level) (negate record)))))
+                  negative-infinity))))]
     (negate (qab gamestate (negate good-player) depth 0 positive-infinity))))
+
+(definline make-signed-gamestate
+  [gamestate player]
+  `(SignedGameState/makeSignedGameState ~gamestate ~player))
+(definline make-transp-table
+  [size]
+  `(TranspositionTable/makeTranspTable ~size))
+(definline get-transp-table
+  [table key]
+  `(TranspositionTable/getVal ~table ~key))
+(definline add-transp-table
+  [table key val]
+  `(TranspositionTable/addKeyVal ~table ~key ~val))
+(definline size-transp-table
+  [table]
+  `(TranspositionTable/count ~table))
+
+
+;; question: should we shove the movetable out to java?
+;; it is a big, ugly, mutable thingy.
+(let [movetable (make-transp-table 100000)]
+  (defn qab-transp
+    [gamestate good-player rank-func quiet-func depth levelcap iboost]
+    ;(println "ent")
+    (letfn [(qab [gamestate owner depth level best-rank]
+              (if (or (equals depth 0) (equals level levelcap))
+                (rank-func gamestate good-player)
+                (let [subs (IncrementalGameCalc. gamestate owner)]
+                  (if (.hasNext subs)
+                    (ablmi subs best-rank [ngs record]
+                           (let [key (make-signed-gamestate ngs good-player)
+                                 lrnk (get-transp-table movetable key)]
+                             (if lrnk
+                               lrnk
+                               (let [rr (negate (if (or (greater-equals depth iboost)
+                                                      (quiet-func ngs gamestate))
+                                                  (qab ngs (negate owner) (dec-1 depth)
+                                                    (inc-1 level) (negate record))
+                                                  (qab ngs (negate owner) iboost
+                                                    (inc-1 level) (negate record))))]
+                                 (add-transp-table movetable key rr)
+                                 rr))))
+
+                    negative-infinity))))]
+      (let [result (negate
+                     (qab gamestate (negate good-player) depth 0 positive-infinity))]
+        (println "Nodes stored:" (size-transp-table movetable))
+        result))))
 
 ;;; Negascout (as per wikipedia); deeper than ab.
 ;;; do this eventually - 6 ply is easy already
@@ -336,6 +393,8 @@
 
 
 
+;; MTDF works best with quantized heuristics
+
 ;; function MTDF(root, f, d)
 ;;    g := f
 ;;    upperBound := +∞
@@ -351,3 +410,12 @@
 ;;    else
 ;;       lowerBound := g
 ;;    return g
+
+;;
+;; Still more ideas: the back/forth between moves, as demonstrated
+;; by the heuristic, can throw off iterative deepening, as it prunes
+;; too early. One can convert this into two-depth idr, which could
+;; be smoother...
+;;
+;;
+;;

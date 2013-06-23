@@ -1,4 +1,5 @@
-(ns gipf.core)
+(ns gipf.core
+  (:import (gipfj Ranking)))
 
 ;; Notably...
 ;;
@@ -29,16 +30,8 @@
    (def expected-max-rank* 80))
   (:eval
    [gamestate player]
-   (let [reserves (game-state-reserves gamestate)
-         antiplayer (negate player)]
-     (let [gipf-points (subtract
-                        (get-gipfs-on-board reserves player)
-                        (get-gipfs-on-board reserves antiplayer))
-           piece-points (subtract (get-total-pieces reserves player)
-                                  (get-total-pieces reserves antiplayer))]
-       (add
-        (multiply 20 gipf-points)
-        (multiply 5 piece-points))))))
+   (reserve-diff-linear (game-state-reserves gamestate)
+     player 20 5 5)))
 
 (let [weighting-board (radial-weight-array 30 10 -10 -30 5 4 3 2)]
   (def-ranking-function rank-board-hybrid
@@ -46,20 +39,13 @@
      []
      (def expected-max-rank* 200))
     (:eval
-     [gamestate player]
-     ;; temp
-     (let [reserves (game-state-reserves gamestate)
-           antiplayer (negate player)
-           gipf-points (subtract
-                        (msquare (get-gipfs-on-board reserves player))
-                        (msquare (get-gipfs-on-board reserves antiplayer)))
-           piece-points (subtract (msquare (get-total-pieces reserves player))
-                                  (msquare (get-total-pieces reserves antiplayer)))
-           pos-points (long (apply-weight-array (game-state-board gamestate) player weighting-board))]
-       (add pos-points
-            (add
-             (multiply 20 gipf-points)
-             (multiply 5 piece-points)))))))
+     [gamestate p]
+     
+     (let [player (long p) ;; otherwise cljr does two longcasts
+           reserves (game-state-reserves gamestate)]
+       (weighted-add-2
+         5 (reserve-diff-quadratic reserves player 4 1 1)
+         1 (apply-weight-array (game-state-board gamestate) player weighting-board))))))
 
 (def-ranking-function rank-not-at-all
   "This is the null heuristic; note that rankings still
@@ -71,19 +57,24 @@
    [gs p]
    0))
 
-(def-ranking-function rank-tactical
-  "Iterates over pieces; ranks by presence on lines, center, etc.
-   Ultimately dumb; however, it is more efficient than using
-   rank-board-org, and shows more power."
-  (:setup
-   []
-   (def expected-max-rank* 100)
-   ;;                         good -> bad ; strong -> weak
-   (let [diagp (diag-weight-array 5 1 -1 -5   10 8 2)
-         radp (radial-weight-array 5 1 -1 -5   8 4 2 0)
-         res (add-weight-arrays diagp 1 radp 1)]
-     (def rank-tactical-weights res)))
+(let [diagp (diag-weight-array 5 1 -1 -5   10 8 2)
+      radp (radial-weight-array 5 1 -1 -5   8 4 2 0)
+      rank-tactical-weights (add-weight-arrays diagp 1 radp 1)]
+  (def-ranking-function rank-tactical
+    "Iterates over pieces; ranks by presence on lines, center, etc.
+     Ultimately dumb; however, it is more efficient than using
+     rank-board-org, and shows more power."
+    (:setup
+      []
+      (def expected-max-rank* 100))
+    (:eval
+      [gs p]
+      (apply-weight-array (game-state-board gs) p rank-tactical-weights))))
 
-  (:eval
-   [gs p]
-   (apply-weight-array (game-state-board gs) p rank-tactical-weights)))
+(def-ranking-function rank-gf1
+  "Should be identical to Gipf for One's ranking function."
+  (:setup []
+    (def expected-max-rank* positive-infinity))
+  (:eval [gamestate player]
+    ;; calls a literal translate of gf1's strategy.
+    (Ranking/gf1Rank gamestate player)))

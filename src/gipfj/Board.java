@@ -1,5 +1,7 @@
 package gipfj;
 
+import java.util.Random;
+
 //
 // Optimization idea: as it stands, 30% of CPU
 // is used by rankBoardOrg. By placing a single Integer field
@@ -43,20 +45,22 @@ package gipfj;
 // a set of buffers for each thread...
 //
 
-@SuppressWarnings("unused")
 public class Board {
     public static final int SIZE = IMath.hexNum(4);
     public final int[] data;
+    public final int hashCode;
 
     private Board() {
         data = new int[SIZE];
         for (int i = 0; i < SIZE; i++) {
             data[i] = 0;
         }
+        hashCode = recalcHashCode();
     }
 
-    public Board(int[] nd) {
+    public Board(int[] nd, int hash) {
         data = nd;
+        hashCode = hash;
     }
 
     public static Board makeBoard() {
@@ -83,8 +87,10 @@ public class Board {
         // so what if we allocate a lot?
         int[] nd = new int[SIZE];
         System.arraycopy(b.data, 0, nd, 0, SIZE);
+        int nhash = b.hashCode ^ hashArray[loc][val + 2]
+                ^ hashArray[loc][nd[loc] + 2];
         nd[loc] = val;
-        return new Board(nd);
+        return new Board(nd, nhash);
     }
 
     public static int countItem(Board b, int item) {
@@ -97,15 +103,73 @@ public class Board {
         return c;
     }
 
-    private static final byte[][][] hashArray = makeHashArray();
+    private int recalcHashCode() {
+        int hc = hashArray[0][data[0] + 2];
+        for (int k = 1; k < SIZE; k++) {
+            hc ^= hashArray[k][data[k] + 2];
+        }
 
-    private static byte[][][] makeHashArray() {
-        // to make hashing as efficient as possible,
-        // what should this array of piece-pos/pos-piece
-        // combos look like?
+        return hc;
+    }
 
-        byte[][][] r = new byte[SIZE][][];
+    public static final int[][] hashArray = makeHashArray();
+
+    private static int[][] makeHashArray() {
+        Random rand = new Random(-6786871167745675445L);
+
+        // 185 vectors, 32 dimensions.
+        // Overdetermined. Still, 192 bits = 24 bytes
+        // for a perfect hash... (thing)
+
+        int[][] r = new int[SIZE][5];
+        // fill with random ints
+        for (int z = 0; z < SIZE; z++) {
+            // is this justified? at least, the empty
+            // board has hash 0.
+
+            // hmm. none of the zeros coincide.
+            // case: a piece moves one. the new loc changes hash,
+            // the old loc changes hash...
+
+            // well, 0 for empty means only one ^= is needed
+            // when a 0 cell is filled - which happens
+            // at the end of every push...
+
+            // If we really need cycles..
+
+            r[z][0] = rand.nextInt();
+            r[z][1] = rand.nextInt();
+            r[z][2] = rand.nextInt();// can this be 0 ??
+            r[z][3] = rand.nextInt();
+            r[z][4] = rand.nextInt();
+        }
+
         return r;
+    }
+
+    /**
+     * Collision resolution only:
+     * 
+     * Are these (same hashed) boards actually equal?
+     * 
+     * @param a
+     * @param b
+     * @return
+     */
+    public static Boolean equalsNHC(Board a, Board b) {
+        int[] da = a.data;
+        int[] db = b.data;
+        for (int i = 0; i < SIZE; i++) {
+            if (da[i] != db[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return hashCode;
     }
 
     /**
@@ -115,6 +179,6 @@ public class Board {
      */
     @Override
     public String toString() {
-        return "[board]";
+        return "[board " + Integer.toHexString(hashCode) + "]";
     }
 }

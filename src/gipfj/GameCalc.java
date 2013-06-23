@@ -109,7 +109,11 @@ public class GameCalc {
                 }
 
                 if (count == 4) {
-                    gblres[found] = Line.sign(listOfLines[xx], sign);
+                    if (sign > 0) {
+                        gblres[found] = Line.sign(listOfLines[xx], 1);
+                    } else {
+                        gblres[found] = Line.sign(listOfLines[xx], -1);
+                    }
                     found++;
                     break;
                 }
@@ -191,18 +195,20 @@ public class GameCalc {
      * Takes a well adjusted (start radius 3) line as `shove`
      */
     public static GameState placeAndShove(GameState foo, int player, Line shove) {
-        int[] cdata = foo.b.data.clone();
+        int[] cdata = new int[Board.SIZE];
+        System.arraycopy(foo.b.data, 0, cdata, 0, Board.SIZE);
         // yay! I can mutate!
 
         int q = Line.getStart(shove);
         int d = Line.getDelta(shove);
 
+        int hc = foo.b.hashCode;
+
         int last = player;
         while (true) {
-            int i = q;
-            int v = cdata[i];
-
-            cdata[i] = last;
+            int v = cdata[q];
+            hc ^= Board.hashArray[q][v + 2] ^ Board.hashArray[q][last + 2];
+            cdata[q] = last;
 
             // should occur before radius == 4
             if (v == 0) {
@@ -214,16 +220,18 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        return new GameState(new Board(cdata), foo.r.applyDelta(player, -1, 1,
-                0));
+        return new GameState(new Board(cdata, hc), foo.r.applyDelta(player, -1,
+                1, 0));
     }
 
     private static GameState simpleLineEmpty(GameState curr, Line found,
             int player) {
         // basically, over the line we do .... something.
 
-        int[] cdata = curr.b.data.clone();
+        int[] cdata = new int[Board.SIZE];
+        System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
         Reserves rr = curr.r;
+        int hc = curr.b.hashCode;
 
         // I could, theoretically, have a lookup table
         // of qq[hex4][hex1] -> int[up to 7].
@@ -237,16 +245,20 @@ public class GameCalc {
         int le = Geometry.lend(q, d);
 
         while (true) {
-            int i = q;
-            int v = player * cdata[i];
-
+            int v = player * cdata[q];
+            // System.out.format("v: %d p:%d d:%d d:%d q:%d %s\n", v, player,
+            // cdata[q], d, q, rr.toString());
             if (v < 0) {
-                cdata[i] = 0;
+                cdata[q] = 0;
+                hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][v + 2];
                 if (v == -2) {
                     rr = rr.applyDelta(-player, 0, 0, -1);
+                } else {
+                    rr = rr.applyDelta(-player, 0, -1, 0);
                 }
             } else if (v == 1) {
-                cdata[i] = 0;
+                hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][3];
+                cdata[q] = 0;
                 rr = rr.applyDelta(player, 1, -1, 0);
             }
 
@@ -257,7 +269,7 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        return new GameState(new Board(cdata), rr);
+        return new GameState(new Board(cdata, hc), rr);
     }
 
     private static final GameState[] bgk = new GameState[42];
@@ -289,13 +301,19 @@ public class GameCalc {
                 continue;
             }
 
-            int[] up = orig.clone();
-            int[] down = orig.clone();
+            int hcu = gs.b.hashCode;
+            int hcd = gs.b.hashCode;
+            int[] up = new int[Board.SIZE];
+            System.arraycopy(orig, 0, up, 0, Board.SIZE);
+            int[] down = new int[Board.SIZE];
+            System.arraycopy(orig, 0, down, 0, Board.SIZE);
 
             int last = player;
             for (int j = 0; j < n.length; j++) {
                 int ind = n[j];
                 int v = up[ind];
+                hcu ^= Board.hashArray[ind][v + 2]
+                        ^ Board.hashArray[ind][last + 2];
                 up[ind] = last;
                 if (v == 0) {
                     break;
@@ -306,6 +324,8 @@ public class GameCalc {
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
                 int v = down[ind];
+                hcd ^= Board.hashArray[ind][v + 2]
+                        ^ Board.hashArray[ind][last + 2];
                 down[ind] = last;
                 if (v == 0) {
                     break;
@@ -313,9 +333,9 @@ public class GameCalc {
                 last = v;
             }
 
-            bgk[mm] = new GameState(new Board(up), decced);
+            bgk[mm] = new GameState(new Board(up, hcu), decced);
             mm++;
-            bgk[mm] = new GameState(new Board(down), decced);
+            bgk[mm] = new GameState(new Board(down, hcd), decced);
             mm++;
         }
 

@@ -11,17 +11,17 @@
   (setup-move-ranking-func! 1 rank-board-hybrid
                             idr-ab-ranking 6 100)
   (setup-move-ranking-func! -1 rank-board-hybrid
-                            quiescent-ab-search simple-quiet 3 7 3))
+                            qab-transp simple-quiet 3 7 3))
 
 (let [dia (atom {:move-newlines true
                  :move-numbers false
                  :match-result true
                  :total-time true
-                 :incremental-time false
+                 :incremental-time true
                  :moves-available false
                  :reserve-status true
                  :board-snapshot true
-                 :rank-value true
+                 :rank-value false
                  :pre-rank-value true
                  :screen-display true
                  :evaluation-count true
@@ -39,11 +39,14 @@
        ~@actions)))
 
 (defn compound-ai-move
-  [board player ^Reserves reserves adv-phase]
+  [board player reserves adv-phase]
 
   (use-move-ranking-func! player)
   (ond :pre-calc-message
        (println "Beginning move"))
+  
+  (println reserves 'RES)
+  
   
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode. Should we? I do not think so..
@@ -183,7 +186,7 @@
                (println "->" (game-state-reserves gamestate)))
           (ond :board-snapshot
                (print-board (game-state-board gamestate)))
-          (recur ng (MathUtil/lnegate player) (MathUtil/linc counter)))))))
+          (recur ng (negate player) (inc counter)))))))
 
 (def number-of-trials 1)
 
