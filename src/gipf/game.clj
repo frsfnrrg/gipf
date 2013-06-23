@@ -44,6 +44,8 @@
   (use-move-ranking-func! player)
   (ond :pre-calc-message
        (println "Beginning move"))
+
+  (clear-transp!)
   
   (println reserves 'RES)
   

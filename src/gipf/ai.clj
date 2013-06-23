@@ -336,12 +336,23 @@
   [table]
   `(TranspositionTable/count ~table))
 
+;; OH NO! now the ranking algorithms require setup/teardown..
+;; but hey - setup/teardown only occur at end..
 
 ;; question: should we shove the movetable out to java?
 ;; it is a big, ugly, mutable thingy.
 (let [movetable (make-transp-table 100000)]
+  (defn clear-transp!
+    []
+    (TranspositionTable/flush movetable))
+  
   (defn qab-transp
     [gamestate good-player rank-func quiet-func depth levelcap iboost]
+
+    ;; Fundamental downside: movetable would grow indefinately...
+    ;; idea: clear it before every complete move...
+    ;;
+    
     ;(println "ent")
     (letfn [(qab [gamestate owner depth level best-rank]
               (if (or (equals depth 0) (equals level levelcap))
