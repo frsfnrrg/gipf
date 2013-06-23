@@ -29,7 +29,7 @@ public class TranspositionTable {
         // store is initialized null
         startsize = 1 << size;
         elemsize = 0;
-        poolexp = (32 - pool) + 1;
+        poolexp = (32 - pool);
         hitcount = 0;
         misscount = 0;
     }
@@ -57,7 +57,7 @@ public class TranspositionTable {
     public Long get(Compressed in) {
         int index = in.hashCode() >> poolexp;
         if (index < 0) {
-            index = -2 * index + 1;
+            index = -2 * index - 1;
         } else {
             index = 2 * index;
         }
@@ -149,7 +149,7 @@ public class TranspositionTable {
     public void add(Compressed in, long rank) {
         int index = in.hashCode() >> poolexp;
         if (index < 0) {
-            index = -2 * index + 1;
+            index = -2 * index - 1;
         } else {
             index = 2 * index;
         }

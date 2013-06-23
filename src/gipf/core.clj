@@ -293,8 +293,7 @@
       end-ai-action-thread! (fn [key]
                               (swap! ai-action-threads
                                      #(assoc % key
-                                             [(first (get % key)) false]))
-                              (future-cancel (first (get @ai-action-threads key))))
+                                             [(first (get % key)) false])))
       get-next-key-num (let [kn (atom 0)]
                          (fn []
                            (swap! kn inc)
@@ -307,7 +306,8 @@
           p current-player*
           rp reserve-pieces*
           key (get-next-key-num)
-          fut (future
+          fut (proxy [java.lang.Thread] []
+                (run []
                 (try
                   (let [action (compound-ai-move b p rp (get-adv-phase))]
                     (busy-doing-important-stuff 1.0)
@@ -317,10 +317,10 @@
                       (println "aborting move" key)))
                   (catch java.lang.Exception e
                     (.printStackTrace e)))
-                (remove-ai-action-thread! key))]
+                (remove-ai-action-thread! key)))]
       (add-ai-action-thread!
        key
-       fut)))
+       (doto fut (.start)))))
 
   (defn interrupt-ai-threads!
     []

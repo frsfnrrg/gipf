@@ -326,6 +326,9 @@
   [gamestate player]
   `(CompressedSGS/compress ~gamestate ~player))
 (definline make-transp-table
+  "Advised coefficients: pool exponent large - 20, 22; array exponent small 0 or 1.
+  I do not know how much it costs to do an equality comparison...
+  At 10^6 nodes, the pool is filled with mainly 1-4 items, log style."
   [poole buckete]
   `(TranspositionTable. ~poole ~buckete))
 (definline get-transp-table
@@ -344,9 +347,7 @@
 ;; OH NO! now the ranking algorithms require setup/teardown..
 ;; but hey - setup/teardown only occur at end..
 
-;; question: should we shove the movetable out to java?
-;; it is a big, ugly, mutable thingy.
-(let [movetable (make-transp-table 18 1)]
+(let [movetable (make-transp-table 20 1)]
   (defn clear-transp!
     []
     (flush-transp-table movetable))
