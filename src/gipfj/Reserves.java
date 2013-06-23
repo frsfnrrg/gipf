@@ -11,16 +11,15 @@ import java.util.Random;
  *  
  */
 public class Reserves {
-    public final long p1;
-    public final long p2;
-    public final long o1;
-    public final long o2;
-    public final long g1;
-    public final long g2;
+    public final int p1;
+    public final int p2;
+    public final int o1;
+    public final int o2;
+    public final int g1;
+    public final int g2;
+    public final int hashCode;
 
     public final static int MAX_CAPACITY = 18;
-
-    private final int hashCode;
 
     /**
      * 
@@ -34,7 +33,7 @@ public class Reserves {
      *            GIPF pieces on board
      * @param g2
      */
-    public Reserves(long p1, long p2, long o1, long o2, long g1, long g2) {
+    public Reserves(int p1, int p2, int o1, int o2, int g1, int g2) {
         this.p1 = p1;
         this.p2 = p2;
         this.g1 = g1;
@@ -44,7 +43,7 @@ public class Reserves {
         hashCode = calcHashCode(p1, p2, g1, g2, o1, o2);
     }
 
-    public Reserves(long p1, long p2, long o1, long o2, long g1, long g2, int hc) {
+    public Reserves(int p1, int p2, int o1, int o2, int g1, int g2, int hc) {
         this.p1 = p1;
         this.p2 = p2;
         this.g1 = g1;
@@ -54,26 +53,25 @@ public class Reserves {
         hashCode = hc;
     }
 
-    private final int[][] hashArray = makeHashArray();
+    private final static int[][] hashArray = makeHashArray();
 
-    private int calcHashCode(long p1, long p2, long g1, long g2, long o1,
-            long o2) {
+    private int calcHashCode(int p1, int p2, int g1, int g2, int o1, int o2) {
 
         // debug on crash
         // System.out.format("%d, %d, %d, %d, %d, %d\n", p1, p2, o1, o2, g1,
         // g2);
 
-        int r = hashArray[0][(int) p1];
-        r ^= hashArray[1][(int) p2];
-        r ^= hashArray[2][(int) o1];
-        r ^= hashArray[3][(int) o2];
-        r ^= hashArray[4][(int) g1];
-        r ^= hashArray[5][(int) g2];
+        int r = hashArray[0][p1];
+        r ^= hashArray[1][p2];
+        r ^= hashArray[2][o1];
+        r ^= hashArray[3][o2];
+        r ^= hashArray[4][g1];
+        r ^= hashArray[5][g2];
 
         return r;
     }
 
-    private int[][] makeHashArray() {
+    private static int[][] makeHashArray() {
         int[][] a = new int[6][MAX_CAPACITY];
         Random rng = new Random(7987897987987897L);
         for (int z = 0; z < a.length; z++) {
@@ -93,7 +91,7 @@ public class Reserves {
     // Statics...
 
     public static Reserves makeReserves(long p, long g) {
-        return new Reserves(p, p, 0, 0, g, g);
+        return new Reserves((int) p, (int) p, 0, 0, (int) g, (int) g);
     }
 
     public static long getReserves(Reserves r, long player) {
@@ -128,7 +126,7 @@ public class Reserves {
         }
     }
 
-    public static boolean losingReserve(Reserves r, long player) {
+    public static boolean losingReserve(Reserves r, int player) {
         if (player > 0) {
             return (r.p1 <= 0) || (r.g1 <= 0);
         } else {

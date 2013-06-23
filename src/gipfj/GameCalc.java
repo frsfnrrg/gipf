@@ -321,6 +321,7 @@ public class GameCalc {
                 last = v;
             }
 
+            last = player;
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
                 int v = down[ind];

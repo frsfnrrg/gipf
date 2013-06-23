@@ -1,5 +1,7 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc GameState TranspositionTable SignedGameState)))
+  (:import (gipfj IncrementalGameCalc
+             GameState TranspositionTable
+             SignedGameState CompressedSGS)))
 
 
 ;; AI.clj
@@ -322,29 +324,32 @@
 
 (definline make-signed-gamestate
   [gamestate player]
-  `(SignedGameState/makeSignedGameState ~gamestate ~player))
+  `(CompressedSGS/compress ~gamestate ~player))
 (definline make-transp-table
-  [size]
-  `(TranspositionTable/makeTranspTable ~size))
+  [poole buckete]
+  `(TranspositionTable. ~poole ~buckete))
 (definline get-transp-table
   [table key]
-  `(TranspositionTable/getVal ~table ~key))
+  `(TranspositionTable/tget ~table ~key))
 (definline add-transp-table
   [table key val]
-  `(TranspositionTable/addKeyVal ~table ~key ~val))
+  `(TranspositionTable/tadd ~table ~key ~val))
 (definline size-transp-table
   [table]
-  `(TranspositionTable/count ~table))
+  `(TranspositionTable/tsize ~table))
+(definline flush-transp-table
+  [table]
+  `(TranspositionTable/tclear ~table))
 
 ;; OH NO! now the ranking algorithms require setup/teardown..
 ;; but hey - setup/teardown only occur at end..
 
 ;; question: should we shove the movetable out to java?
 ;; it is a big, ugly, mutable thingy.
-(let [movetable (make-transp-table 100000)]
+(let [movetable (make-transp-table 18 1)]
   (defn clear-transp!
     []
-    (TranspositionTable/flush movetable))
+    (flush-transp-table movetable))
   
   (defn qab-transp
     [gamestate good-player rank-func quiet-func depth levelcap iboost]
@@ -355,6 +360,9 @@
     
     ;(println "ent")
     (letfn [(qab [gamestate owner depth level best-rank]
+              ;;(when (equals level 1)
+              ;;  (println "SIZE:" (size-transp-table movetable)))
+              
               (if (or (equals depth 0) (equals level levelcap))
                 (rank-func gamestate good-player)
                 (let [subs (IncrementalGameCalc. gamestate owner)]
