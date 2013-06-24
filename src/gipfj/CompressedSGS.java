@@ -2,62 +2,15 @@ package gipfj;
 
 public class CompressedSGS implements Compressed {
     private final int hc;
-    private final byte[] data;
+    private byte[] data;
+    private final boolean p;
+    private final GameState g;
 
-    // overhead; 4 bytes !
     public CompressedSGS(GameState g, long player) {
-        // our goal: to shrink this data as small as possible...,
-        // while keeping all detail
+        this.p = (player > 0);
+        this.g = g;
 
-        // data:
-        // board: 37*5 bits : 185
-        // player: 1 bit : 186
-        // reserves: 5,5,4,5,5,4 : 28 bits; 214
-        // 214/8 = 26.75 - 2 bits free!
-
-        // but.. reserves: log2(18*18*9*18*18*9) = 23.019550008653873
-        // 24 bits;
-        // 186 + 24 = 210; 210 % 8 = 2 ;-(
-        // 4 bytes hash
-
-        // aside:
-        // "optimal" board, for all possible states: log2(5^37) - 86 bits
-        // so 110 -> 14 bytes; as byte[], 12 + 24 = 36 bytes, maybe 40 to pad it
-        // mod 8
-
-        // total 27+4+4(class overhead) + 12 (byte[] overhead)
-        // 47 bytes. As pure byte[], we have 43 bytes... But it is trivial to
-        // change over.
-
-        // FIRST 4 BYTES ARE RESERVED FOR TRANSP TABLE USE
-
-        int[] bd = g.b.data;
-        data = new byte[4 + 27];
-        for (int i = 0; i < Board.SIZE; i++) {
-            int pos = i * 5 + bd[i] + 2;// range 0 -> 184
-            // set pos to 1
-            int seg = pos / 8;
-            data[4 + seg] ^= 1 << (pos - seg);
-        }
-        if (player > 0) {
-            data[4 + 23] ^= 1 << 1; // bit at 185
-        }
-        // reserves: bits 186 -> 215
-
-        // each of the fields in the reserve is given 5 bits, to fill things out
-        Reserves r = g.r;
-        int[] rq = { r.g1, r.g2, r.o1, r.o2, r.p1, r.p2 };
-        for (int i = 0; i < 6; i++) {
-            int start = 186 + i * 5;
-            for (int k = 0; k < 5; k++) {
-                boolean tp = (0 == (rq[i] & (1 << k)) >> k);
-                int indx = start + k;
-                int seg = indx / 8;
-                if (tp) {
-                    data[4 + seg] ^= 1 << (indx - seg);
-                }
-            }
-        }
+        data = null;
 
         hc = g.b.hashCode ^ g.r.hashCode ^ (int) player;
     }
@@ -78,6 +31,40 @@ public class CompressedSGS implements Compressed {
 
     @Override
     public byte[] getData() {
+        if (data == null) {
+            // Theoretically, one could get almost perfect compression
+            // via 1:1. Perfect only recognizes possible states ;-)
+
+            // FIRST 4 BYTES ARE RESERVED FOR TRANSP TABLE USE
+
+            int[] bd = g.b.data;
+            data = new byte[4 + 27];
+            for (int i = 0; i < Board.SIZE; i++) {
+                int pos = i * 5 + bd[i] + 2;// range 0 -> 184
+                int seg = pos / 8;
+                data[4 + seg] ^= 1 << (pos - seg);
+            }
+            if (p) {
+                data[4 + 23] ^= 1 << 1; // bit at 185
+            }
+            // reserves: bits 186 -> 215
+
+            // each of the fields in the reserve is given 5 bits, to fill things
+            // out
+            Reserves r = g.r;
+            int[] rq = { r.g1, r.g2, r.o1, r.o2, r.p1, r.p2 };
+            for (int i = 0; i < 6; i++) {
+                int start = 186 + i * 5;
+                for (int k = 0; k < 5; k++) {
+                    boolean tp = (0 == (rq[i] & (1 << k)) >> k);
+                    int indx = start + k;
+                    int seg = indx / 8;
+                    if (tp) {
+                        data[4 + seg] ^= 1 << (indx - seg);
+                    }
+                }
+            }
+        }
         return data;
     }
 

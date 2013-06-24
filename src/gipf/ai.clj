@@ -345,9 +345,9 @@
   `(TranspositionTable/tclear ~table))
 
 ;; OH NO! now the ranking algorithms require setup/teardown..
-;; but hey - setup/teardown only occur at end..
+;; (especially to avoid statically loading this monster)
 
-(let [movetable (make-transp-table 20 1)]
+(let [movetable (make-transp-table 23 1)]
   (defn clear-transp!
     []
     (flush-transp-table movetable))

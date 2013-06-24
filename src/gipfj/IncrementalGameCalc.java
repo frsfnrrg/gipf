@@ -18,7 +18,8 @@ public class IncrementalGameCalc implements Iterator<GameState> {
     private Reserves deccedReserves;
     private int origHash;
 
-    public IncrementalGameCalc(GameState g, int player) {
+    public IncrementalGameCalc(GameState g, long p) {
+        this.player = (int) p;
         g1_pos = 0;
         g1_end = 0;
         for (GameState q : GameCalc.getLineTakingResults(g, player)) {
@@ -32,8 +33,6 @@ public class IncrementalGameCalc implements Iterator<GameState> {
             ready = false;
             return;
         }
-
-        this.player = player;
 
         origHash = g.b.hashCode;
         deccedReserves = g.r.applyDelta(player, -1, 1, 0);

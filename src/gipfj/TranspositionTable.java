@@ -12,6 +12,7 @@ public class TranspositionTable {
     private final int poolsize;
     private int hitcount;
     private int misscount;
+    private int collcount;
 
     /**
      * Pool is the exponent for pool size; pool 8 -> 64 size Size is the
@@ -30,8 +31,11 @@ public class TranspositionTable {
         startsize = 1 << size;
         elemsize = 0;
         poolexp = (32 - pool);
+
+        // I want macros, to optionally turn these guys off
         hitcount = 0;
         misscount = 0;
+        collcount = 0;
     }
 
     /**
@@ -64,16 +68,15 @@ public class TranspositionTable {
 
         byte[][] bucket = store[index];
         if (bucket == null) {
-            // System.out.format("nullbucket @%d\n", index);
             misscount++;
             return null;
         }
+
+        byte[] a = in.getData();
         for (byte[] elem : bucket) {
             if (elem == null) {
                 break;
             }
-
-            byte[] a = in.getData();
 
             if (a.length != elem.length) {
                 continue;
@@ -84,6 +87,7 @@ public class TranspositionTable {
             for (int i = 4; i < a.length; i++) {
                 if (a[i] != elem[i]) {
                     c = true;
+                    collcount++;
                     break;
                 }
             }
@@ -93,7 +97,9 @@ public class TranspositionTable {
             } else {
                 // it matches
                 hitcount++;
-                return (long) bytesToInt(elem);
+                return (long) ((0xFF & elem[0]) << 24)
+                        | ((0xFF & elem[1]) << 16) | ((0xFF & elem[2]) << 8)
+                        | (0xFF & elem[3]);
             }
         }
         misscount++;
@@ -106,35 +112,8 @@ public class TranspositionTable {
      * @param in
      * @param rank
      */
-    public void change(Compressed in, long rank) {
+    public void change(Compressed in, int rank) {
 
-    }
-
-    /**
-     * Reads an int from the first four bytes of data.
-     * 
-     * @param data
-     * @return
-     */
-    private int bytesToInt(byte[] data) {
-
-        return ((0xFF & data[0]) << 24) | ((0xFF & data[1]) << 16)
-                | ((0xFF & data[2]) << 8) | (0xFF & data[3]);
-    }
-
-    /**
-     * Changes the first four bytes of data to the value of the int.
-     * 
-     * @param data
-     * @return
-     */
-    private void intToBytes(byte[] data, int g) {
-        // [sign b7 b6 b5 b4 b3 b2 b1] []
-
-        data[0] = (byte) (g >> 24);
-        data[1] = (byte) (g >> 16);
-        data[2] = (byte) (g >> 8);
-        data[3] = (byte) (g >> 0);
     }
 
     /**
@@ -146,7 +125,7 @@ public class TranspositionTable {
      * @param in
      * @param rank
      */
-    public void add(Compressed in, long rank) {
+    public void add(Compressed in, int rank) {
         int index = in.hashCode() >> poolexp;
         if (index < 0) {
             index = -2 * index - 1;
@@ -155,11 +134,13 @@ public class TranspositionTable {
         }
 
         byte[] dat = in.getData();
-        intToBytes(dat, (int) rank);
+        dat[0] = (byte) (rank >> 24);
+        dat[1] = (byte) (rank >> 16);
+        dat[2] = (byte) (rank >> 8);
+        dat[3] = (byte) (rank >> 0);
 
         byte[][] bucket = store[index];
         if (bucket == null) {
-            // System.out.format("creating @%d\n", index);
             bucket = new byte[startsize][];
             bucket[0] = dat;
             store[index] = bucket;
@@ -176,10 +157,7 @@ public class TranspositionTable {
                 byte[][] n = new byte[size * 2][];
                 System.arraycopy(bucket, 0, n, 0, size);
                 n[size] = dat;
-                ;
                 store[index] = n;
-                // System.out.format("expanding @%d\n", index);
-                // expand
             } else {
                 for (int i = size - 2; i >= 0; i--) {
                     if (bucket[i] != null) {
@@ -196,14 +174,26 @@ public class TranspositionTable {
         store = new byte[poolsize][][];
         elemsize = 0;
 
-        double ratio = 100.0 * hitcount / (hitcount + misscount);
+        double hr = 100.0 * hitcount / (hitcount + misscount);
+        double cr = 100.0 * collcount / (hitcount + misscount);
 
-        System.out.format(
-                "Clearing. Hits: %d. Misses: %d. Hit percentage: %f %%\n",
-                hitcount, misscount, ratio);
+        // at poolexp 21, 938K items, we have a 22.3% collision rate..
+        // Woah.
+
+        System.out
+                .format("Clearing. Hits: %d. Misses: %d. Collisions: %d. Hit rate: %f %%. Collision rate: %f %%\n",
+                        hitcount, misscount, collcount, hr, cr);
         hitcount = 0;
         misscount = 0;
-        // let gc do its work.
+        collcount = 0;
+
+        // let GC do its work.
+        System.gc();
+    }
+
+    public void analyze() {
+        // gather stats about the
+
     }
 
     private final int startsize;
@@ -216,8 +206,41 @@ public class TranspositionTable {
         return t.getSize();
     }
 
+    private static int memcnt = 0;
+    private static boolean lockdown = false;
+
+    // these two constants should be chosen so that, MCI additions
+    // will not pass the MDT, within a nice safety factor.
+    public static final int MEMORY_DANGER_THRESHOLD = (1 << 24);
+    public static final int MEMORY_CHECK_INTERVAL = 10000;
+
     public static void tadd(TranspositionTable t, Compressed in, long rank) {
-        t.add(in, rank);
+        memcnt++;
+        if (memcnt == MEMORY_CHECK_INTERVAL) {
+            memcnt = 0;
+
+            if (lockdown) {
+                System.out.println("*** Checking memory situation ***");
+            }
+
+            if ((Runtime.getRuntime().maxMemory()
+                    - Runtime.getRuntime().totalMemory() < MEMORY_DANGER_THRESHOLD)
+                    && Runtime.getRuntime().freeMemory() < MEMORY_DANGER_THRESHOLD) {
+                System.out
+                        .format("***WARNING*** OOM APPROACHING!!! free %d : total %d : max %d\n",
+                                Runtime.getRuntime().freeMemory(), Runtime
+                                        .getRuntime().totalMemory(), Runtime
+                                        .getRuntime().maxMemory());
+                lockdown = true;
+                return;
+            } else {
+                lockdown = false;
+            }
+        }
+
+        if (lockdown == false) {
+            t.add(in, (int) rank);
+        }
     }
 
     public static Object tget(TranspositionTable t, Compressed in) {
