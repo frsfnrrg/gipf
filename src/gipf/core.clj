@@ -724,6 +724,7 @@
 (defn -main
   "See \"GIPF: I play the game\" for details."
   [& args]
+  (prn "recieved args:" args)
   (if (some #(.equals "--sim" %) args)
       (runSimulation "normal")
       (runGUI))

@@ -9,7 +9,7 @@
 (defn setup-ai!
   []
   (setup-move-ranking-func! 1 rank-board-hybrid
-                            idr-ab-ranking 6 100)
+                            quiescent-ab-search simple-quiet 3 7 3)
   (setup-move-ranking-func! -1 rank-board-hybrid
                             qab-transp simple-quiet 3 7 3))
 
@@ -17,16 +17,16 @@
                  :move-numbers false
                  :match-result true
                  :total-time true
-                 :incremental-time true
+                 :incremental-time false
                  :moves-available false
-                 :reserve-status true
-                 :board-snapshot true
+                 :reserve-status false
+                 :board-snapshot false
                  :rank-value false
-                 :pre-rank-value true
+                 :pre-rank-value false
                  :screen-display true
                  :evaluation-count true
                  :equals-moves false
-                 :pre-calc-message true})]
+                 :pre-calc-message false})]
   (defn set-diagnostic-level!
     [key ^Boolean on]
     (swap! dia (fn [a] (assoc a key on))))
@@ -45,9 +45,7 @@
   (ond :pre-calc-message
        (println "Beginning move"))
 
-  (clear-transp!)
-  
-  (println reserves 'RES)
+ (println reserves 'RES)
   
   
   ;; we assume the opening strategy ignores the gipfiness when in
@@ -77,6 +75,7 @@
                        (get-diagnostic-level :total-time)
                        )
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
+    (clear-transp!)
     (ond :evaluation-count
          (println "Nodes evaluated:" @ranks-count))
     ;; best would be, until mouse is moved...
@@ -192,18 +191,72 @@
 
 (def number-of-trials 1)
 
+(defn move-comparison-trial
+  "Requires players to be awesome. No, wait."
+  [lambda1 lambda2]
+  (loop [gamestate (new-gamestate :normal)
+         player 1
+         counter 0]
+    (ond :move-newlines
+         (println))
+    (ond :move-numbers
+         (println (str "Move #: " counter "; Player " player)))
+    (if (lost? (game-state-board gamestate)
+               (game-state-reserves gamestate)
+               player
+               :normal
+               :playing)
+      (negate player)
+      (let [m1 (do
+                 (lambda1 player)
+                 (compound-ai-move (game-state-board gamestate)
+                                   player
+                                   (game-state-reserves gamestate)
+                                   :playing))
+            g1 (do-linemoves (place-and-shove (do-linemoves gamestate
+                                                            player
+                                                            (first m1))
+                                              player
+                                              (advance-line (second m1)))
+                             player
+                             (third m1))
+            m2 (do
+                 (lambda2 player)
+                 (compound-ai-move (game-state-board gamestate)
+                                   player
+                                   (game-state-reserves gamestate)
+                                   :playing))
+            g2 (do-linemoves (place-and-shove (do-linemoves gamestate
+                                                            player
+                                                            (first m2))
+                                              player
+                                              (advance-line (second m2)))
+                             player
+                             (third m2))]
+        (println "ai +1:" m1)
+        (println "ai -1:" m2)
+        (if (> player 0)
+          (recur g1 (negate player) (inc counter))
+          (recur g2 (negate player) (inc counter)))))))
+
 (defn simulate
   [mode]
   (setup-move-ranking-func! 1 rank-board-hybrid
-                            idr-ab-ranking 6 100)
+                            qab-transp simple-quiet 3 7 2)
   (setup-move-ranking-func! -1 rank-board-hybrid
-                            quiescent-ab-search simple-quiet 2 5 1)
+                            quiescent-ab-search simple-quiet 3 7 2)
   (println)
-  ;; we could run 1000 matches..
-  (loop [count 0  win1 0 win2 0]
-    (if (>= count number-of-trials)
-      (println "Winner ratio: 1:" win1 "-1:" win2)
-      (let [r (run-match mode)]
-        (if (= r 1)
-          (recur (inc count) (inc win1) win2)
-          (recur (inc count)  win1 (inc win2)))))))
+  (move-comparison-trial #(setup-move-ranking-func! % rank-gf1
+                                                   qab-transp simple-quiet 3 7 2)
+                         #(setup-move-ranking-func! % rank-gf1
+                                                   quiescent-ab-search simple-quiet 3 7 2))
+
+  (when false
+    ;; we could run 1000 matches..
+    (loop [count 0  win1 0 win2 0]
+      (if (>= count number-of-trials)
+        (println "Winner ratio: 1:" win1 "-1:" win2)
+        (let [r (run-match mode)]
+          (if (= r 1)
+            (recur (inc count) (inc win1) win2)
+            (recur (inc count)  win1 (inc win2))))))))

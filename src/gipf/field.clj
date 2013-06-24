@@ -1,6 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
-                  IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting)))
+                  IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
+                  LTranspTable CompressedSGS)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -46,11 +47,33 @@
 (definline reserve-diff-cubic [r p gipfs pieces store]
   `(Ranking/reserveCubicDiff ~r ~p ~gipfs ~pieces ~store))
 
-
-
 (definline lazy-next-gamestates
   [gamestate player]
   `(from-iterator (IncrementalGameCalc. ~gamestate ~player)))
+
+(definline make-transp-table
+  "Advised coefficients: pool exponent large - 20, 22; array exponent small 0 or 1.
+  I do not know how much it costs to do an equality comparison...
+  At 10^6 nodes, the pool is filled with mainly 1-4 items, log style."
+  [poole]
+  `(LTranspTable/tmake ~poole))
+(definline get-transp-table
+  [table key]
+  `(LTranspTable/tget ~table ~key))
+(definline add-transp-table
+  [table key val]
+  `(LTranspTable/tadd ~table ~key ~val))
+(definline size-transp-table
+  [table]
+  `(LTranspTable/tsize ~table))
+(definline flush-transp-table
+  [table]
+  `(LTranspTable/tclear ~table))
+
+(definline make-signed-gamestate
+  [gamestate player]
+  `(CompressedSGS/compress ~gamestate ~player))
+
 
 ;; predicates/extraction
 
@@ -345,3 +368,23 @@
               v (second (first rk))]
           (recur (clojure.string/replace meat k v)
                  (rest rk)))))))
+
+;;
+;;
+;; (def-search
+;;   (:setup []
+;;     (export foo 1)
+;;   (:teardown [] 
+;;     (analyze foo)
+;;     )
+;;   (:run [& args]
+;;      (* foo foo)
+;;         ))
+;;
+;; ... macro recursively macroexpands its subitems...
+;; ... macro throws if you try to bind foo in any way.. (let/blah)
+;;
+;;  -> (let [foo @foo#]
+;;       (fn [blargh] ooog)
+;;       )
+;;

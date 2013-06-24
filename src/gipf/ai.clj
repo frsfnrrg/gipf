@@ -1,7 +1,8 @@
 (ns gipf.core
   (:import (gipfj IncrementalGameCalc
-             GameState TranspositionTable
-             SignedGameState CompressedSGS)))
+                  GameState TranspositionTable
+                  SignedGameState CompressedSGS
+                  LTranspTable)))
 
 
 ;; AI.clj
@@ -299,8 +300,6 @@
 ;; another thing to think about; moves are taken infrequently,
 ;; so one might have a chunked interest boost
 
-;; WARNING: 
-
 (defn quiescent-ab-search
   "Goal: to unify alpha-beta and quiescent search.
   Depth: min depth to search
@@ -322,32 +321,14 @@
                   negative-infinity))))]
     (negate (qab gamestate (negate good-player) depth 0 positive-infinity))))
 
-(definline make-signed-gamestate
-  [gamestate player]
-  `(CompressedSGS/compress ~gamestate ~player))
-(definline make-transp-table
-  "Advised coefficients: pool exponent large - 20, 22; array exponent small 0 or 1.
-  I do not know how much it costs to do an equality comparison...
-  At 10^6 nodes, the pool is filled with mainly 1-4 items, log style."
-  [poole buckete]
-  `(TranspositionTable. ~poole ~buckete))
-(definline get-transp-table
-  [table key]
-  `(TranspositionTable/tget ~table ~key))
-(definline add-transp-table
-  [table key val]
-  `(TranspositionTable/tadd ~table ~key ~val))
-(definline size-transp-table
-  [table]
-  `(TranspositionTable/tsize ~table))
-(definline flush-transp-table
-  [table]
-  `(TranspositionTable/tclear ~table))
 
 ;; OH NO! now the ranking algorithms require setup/teardown..
 ;; (especially to avoid statically loading this monster)
 
-(let [movetable (make-transp-table 23 1)]
+;; the large table is actually worth it - low collision rates are
+;; imperative.
+;; size 23 :: 8*10^6 entries, 32 MB. Access is still fast.
+(let [movetable (make-transp-table 23)]
   (defn clear-transp!
     []
     (flush-transp-table movetable))
@@ -359,7 +340,7 @@
     ;; idea: clear it before every complete move...
     ;;
     
-    ;(println "ent")
+                                        ;(println "ent")
     (letfn [(qab [gamestate owner depth level best-rank]
               ;;(when (equals level 1)
               ;;  (println "SIZE:" (size-transp-table movetable)))
@@ -368,24 +349,31 @@
                 (rank-func gamestate good-player)
                 (let [subs (IncrementalGameCalc. gamestate owner)]
                   (if (.hasNext subs)
-                    (ablmi subs best-rank [ngs record]
-                           (let [key (make-signed-gamestate ngs good-player)
-                                 lrnk (get-transp-table movetable key)]
-                             (if lrnk
-                               lrnk
-                               (let [rr (negate (if (or (greater-equals depth iboost)
-                                                      (quiet-func ngs gamestate))
-                                                  (qab ngs (negate owner) (dec-1 depth)
-                                                    (inc-1 level) (negate record))
-                                                  (qab ngs (negate owner) iboost
-                                                    (inc-1 level) (negate record))))]
-                                 (add-transp-table movetable key rr)
-                                 rr))))
-
+                    (if (less level 5)
+                      (ablmi subs best-rank [ngs record]
+                             (let [key (make-signed-gamestate ngs good-player)
+                                   lrnk (get-transp-table movetable key)]
+                               (if lrnk
+                                 lrnk
+                                 (let [rr (negate (if (or (greater-equals depth iboost)
+                                                          (quiet-func ngs gamestate))
+                                                    (qab ngs (negate owner) (dec-1 depth)
+                                                         (inc-1 level) (negate record))
+                                                    (qab ngs (negate owner) iboost
+                                                         (inc-1 level) (negate record))))]
+                                   (add-transp-table movetable key rr)
+                                   rr))))
+                      (ablmi subs best-rank [ngs record]
+                             (negate (if (or (greater-equals depth iboost)
+                                             (quiet-func ngs gamestate))
+                                       (qab ngs (negate owner) (dec-1 depth)
+                                            (inc-1 level) (negate record))
+                                       (qab ngs (negate owner) iboost
+                                            (inc-1 level) (negate record))))))
                     negative-infinity))))]
       (let [result (negate
-                     (qab gamestate (negate good-player) depth 0 positive-infinity))]
-        (println "Nodes stored:" (size-transp-table movetable))
+                    (qab gamestate (negate good-player) depth 0 positive-infinity))]
+;        (println "Nodes stored:" (size-transp-table movetable))
         result))))
 
 ;;; Negascout (as per wikipedia); deeper than ab.
@@ -406,10 +394,20 @@
 ;; killer heuristic - needs cross tree communication - use let-bound
 ;; atom? or pass it around... (thread-safer)
 
-;; also: zobrist hashing, for fast, noncolliding moves.
-;; - give each piece at a location a bitstring;
-;; xor all full locations. Do this incrementally
-;; , in the gamestate...
+(defn cls-ab-search
+  "I never actually did alpha beta with the min-max idea.
+   Notably - alpha, beta are not symmetric. Other ab - qab, idr-ab, blah
+   Were. Is this costing us??"
+  [gamestate player rank-func depth]
+  (letfn [(rec [gamestate owner depth alpha beta max?]
+            ;; just simple alpha beta..
+
+
+            
+
+            )]
+    (rec gamestate (negate player) depth negative-infinity positive-infinity false)))
+
 
 
 
