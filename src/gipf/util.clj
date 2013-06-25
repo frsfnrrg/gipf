@@ -422,6 +422,73 @@
   `(let [newtime# (System/nanoTime)]
      (greater newtime# ~time)))
 
+(defn nested-map
+  [func coll]
+  ((if (vector? coll)
+     mapv
+     map)
+   (fn [elem] (if (coll? elem)
+                   (nested-map func elem)
+                   (func elem)))
+       coll))
+
+(defn alternating
+  [& colls]
+  (let [size (count colls)]
+    (loop [built [] ind (long 0) rugula (vec colls)]
+      (let [t (get rugula ind)]
+        (if (empty? t)
+          built
+          (let [ick (let [ikk (inc-1 ind)]
+                      (if (= ikk size)
+                        0
+                        ikk))]
+            (recur (conj built (first t))
+                   ick
+                   (assoc rugula ind (rest t)))))))))
+
+(defn cph
+  "Return the "
+  [ind reps target]
+  (let [repmap (apply hash-map (flatten (map
+                                   (fn [k] [(first k) (nth k ind)]) reps)))]
+    ;; return the target with replacements a la repmap
+    (cons `do
+          (nested-map
+           (fn [symb]
+             (let [g (get repmap symb)]
+               (if (nil? g)
+                 symb
+                 g)))
+           target))))
+
+(defmacro case-pattern
+  "Example:
+
+  (case-pattern [foo true false]
+                [fig 1 2
+                 dog 2 3
+                 funk 3 4]
+    (* fig (+ dog (* func func))))
+
+  goes to
+
+  (case foo
+    true
+    (do
+       (* 1 (+ 2 (* 3 3))))
+    false
+    (do
+       (* 2 (+ 3 (* 4 4)))))
+
+  WARNING: macro is dumb; it does not recognize
+  let or other macros."
+  [[det & options] [& bindings] & block]
+  (let [size (inc (count options))
+        bblocks (partition size bindings)
+        caseitems (map #(cph % bblocks block) (range 1 size))
+        mg (alternating options caseitems)]
+    `(case ~det ~@mg)))
 
 
 ;;

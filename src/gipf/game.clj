@@ -6,12 +6,6 @@
 
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
-(defn setup-ai!
-  []
-  (setup-move-ranking-func! 1 rank-board-hybrid
-                            quiescent-ab-search simple-quiet 3 7 3)
-  (setup-move-ranking-func! -1 rank-board-hybrid
-                            qab-transp simple-quiet 3 7 3))
 
 (let [dia (atom {:move-newlines true
                  :move-numbers false
@@ -22,7 +16,7 @@
                  :reserve-status false
                  :board-snapshot false
                  :rank-value false
-                 :pre-rank-value false
+                 :pre-rank-value true
                  :screen-display true
                  :evaluation-count true
                  :equals-moves false
@@ -191,6 +185,16 @@
 
 (def number-of-trials 1)
 
+(defn mct-effect-move
+  [gamestate player move]
+  (do-linemoves (place-and-shove (do-linemoves gamestate
+                                               player
+                                               (first move))
+                                 player
+                                 (advance-line (second move)))
+                player
+                (third move)))
+
 (defn move-comparison-trial
   "Requires players to be awesome. No, wait."
   [lambda1 lambda2]
@@ -213,50 +217,52 @@
                                    player
                                    (game-state-reserves gamestate)
                                    :playing))
-            g1 (do-linemoves (place-and-shove (do-linemoves gamestate
-                                                            player
-                                                            (first m1))
-                                              player
-                                              (advance-line (second m1)))
-                             player
-                             (third m1))
+            g1 (mct-effect-move gamestate player m1)
             m2 (do
                  (lambda2 player)
                  (compound-ai-move (game-state-board gamestate)
                                    player
                                    (game-state-reserves gamestate)
                                    :playing))
-            g2 (do-linemoves (place-and-shove (do-linemoves gamestate
-                                                            player
-                                                            (first m2))
-                                              player
-                                              (advance-line (second m2)))
-                             player
-                             (third m2))]
+            g2 (mct-effect-move gamestate player m2)]
         (println "ai +1:" m1)
         (println "ai -1:" m2)
         (if (> player 0)
           (recur g1 (negate player) (inc counter))
           (recur g2 (negate player) (inc counter)))))))
 
-(defn simulate
-  [mode]
-  (setup-move-ranking-func! 1 rank-board-hybrid
-                            qab-transp simple-quiet 3 7 2)
-  (setup-move-ranking-func! -1 rank-board-hybrid
-                            quiescent-ab-search simple-quiet 3 7 2)
-  (println)
-  (move-comparison-trial #(setup-move-ranking-func! % rank-gf1
-                                                   qab-transp simple-quiet 3 7 2)
-                         #(setup-move-ranking-func! % rank-gf1
-                                                   quiescent-ab-search simple-quiet 3 7 2))
+(let [smrf! setup-move-ranking-func!
+      qab-transp-gf1-light #(smrf! % rank-gf1 qab-transp simple-quiet 3 7 2)
+      qab-gf1-light #(smrf! % rank-gf1 quiescent-ab-search simple-quiet 3 7 2)
+      cab-hybrid-light #(smrf! % rank-board-hybrid cls-ab-search 3 negative-infinity positive-infinity)
+      nab-hybrid-light #(smrf! % rank-board-hybrid abprune 3)
+      qab-hybrid-medium #(smrf! % rank-board-hybrid
+                                quiescent-ab-search simple-quiet 3 7 3)
+      qab-transp-hybrid-medium #(smrf! % rank-board-hybrid
+                                       qab-transp simple-quiet 3 7 3)
+      
+      ]
 
-  (when false
-    ;; we could run 1000 matches..
-    (loop [count 0  win1 0 win2 0]
-      (if (>= count number-of-trials)
-        (println "Winner ratio: 1:" win1 "-1:" win2)
-        (let [r (run-match mode)]
-          (if (= r 1)
-            (recur (inc count) (inc win1) win2)
-            (recur (inc count)  win1 (inc win2))))))))
+  (defn setup-ai!
+    []
+    (cab-hybrid-light 1)
+    (nab-hybrid-light -1))
+ 
+ (defn simulate
+    [mode type]
+    (println)
+    (case type
+      :mct
+      (move-comparison-trial cab-hybrid-light
+                             cab-hybrid-light)
+      :comp
+      (do
+        (cab-hybrid-light 1)
+        (nab-hybrid-light -1)
+        (loop [count 0  win1 0 win2 0]
+          (if (>= count number-of-trials)
+            (println "Winner ratio: 1:" win1 "-1:" win2)
+            (let [r (run-match mode)]
+              (if (= r 1)
+                (recur (inc count) (inc win1) win2)
+                (recur (inc count)  win1 (inc win2))))))))))

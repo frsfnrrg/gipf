@@ -716,9 +716,9 @@
 
 ;; how do we know if this has been run before?
 (defn runSimulation
-  [mode]
+  [mode type]
   (start-thread
-   (simulate mode)))
+   (simulate mode type)))
 
 ;; TODO: why is this unbound?
 (defn -main
@@ -726,7 +726,7 @@
   [& args]
   (prn "recieved args:" args)
   (if (some #(.equals "--sim" %) args)
-      (runSimulation "normal")
+      (runSimulation :normal :mct)
       (runGUI))
   "MAIN")
 

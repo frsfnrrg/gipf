@@ -282,12 +282,13 @@
 
 (let [mrfs (atom {})]
   (defn setup-move-ranking-func!
-    [player lead-heuristic search-func & sfargs]
+    [player ^Heuristic lead-heuristic search-func & sfargs]
     (swap! mrfs
-           #(assoc % player [(:setup lead-heuristic)
-                             (fn [state player]
-                               (apply search-func state player
-                                      (:eval lead-heuristic) sfargs))])))
+             #(assoc % player [(:setup lead-heuristic)
+                               (fn [state player]
+                                 (apply search-func state player
+                                        (:eval lead-heuristic) sfargs))])))
+
 
   (defn use-move-ranking-func!
     [player]
@@ -301,7 +302,10 @@
 
 (defn dfr-helper
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
-  `(def ~name ~doc (->Heuristic
+  ;; odd behavior: (instance? Heuristic %) only always works if the Heuristic
+  ;; was made using the (Heuristic. ) method, not the (->Heuristic
+  ;; map) method. Whatever
+  `(def ~name ~doc (Heuristic.
                     (fn [] ~@setupexprs)
                     (fn ~name [~evalarg1 ~evalarg2]
                       (swap! ranks-count #(inc-1 %))

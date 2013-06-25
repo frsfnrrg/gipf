@@ -4,5 +4,5 @@
 
 (load "core")
 
-(gipf.core/runSimulation :normal)
+(gipf.core/runSimulation :normal :mct)
 

@@ -394,19 +394,62 @@
 ;; killer heuristic - needs cross tree communication - use let-bound
 ;; atom? or pass it around... (thread-safer)
 
+;; oooh. nice macro idea.
+;;
+;; (mnmx max? [[bind1 max1 min1]
+;;             [bind1 max1 min1]]
+;;   (block stuff))
+;;
+;; does a starting split, two paths, replace as needed.
+;; like the  +-_q, +-_q, -+_q, +-_f, -+_f convention in math
+;;
+;; Can generalize to a case-based binding, but whatever
+;;   [foo case1 case2
+;;    bind val1 val2]
+;;
+
+
+;; cutoff; beta ; val ; alpha
+
+;; should we return the failure state?? nah, see what happens
+
 (defn cls-ab-search
   "I never actually did alpha beta with the min-max idea.
    Notably - alpha, beta are not symmetric. Other ab - qab, idr-ab, blah
-   Were. Is this costing us??"
-  [gamestate player rank-func depth]
+   Were. Is this costing us??
+
+  Condition: beta < alpha
+"
+  [gamestate player rank-func depth alpha beta]
   (letfn [(rec [gamestate owner depth alpha beta max?]
-            ;; just simple alpha beta..
-
-
-            
-
-            )]
-    (rec gamestate (negate player) depth negative-infinity positive-infinity false)))
+            (if (equals depth 0)
+                  (rank-func gamestate player)
+                  (case-pattern
+                   [max? true false]
+                   [cur alpha beta
+                    opp beta alpha
+                    compo greater-equals less-equals
+                    mnmx fastmax fastmin
+                    lossv negative-infinity positive-infinity]
+                   (let [rd (IncrementalGameCalc. gamestate owner)]
+                     (if (.hasNext rd)
+                       (loop [cur cur]
+                         (if (.hasNext rd)
+                           (let [ngs (.next rd)
+                                 rank (rec ngs (negate owner) (dec-1 depth)
+                                           alpha
+                                           beta
+                                           (not max?))]
+                                        ;  (println "max" rank alpha beta)
+                             (let [cur (mnmx rank cur)]
+                               (if (compo cur opp)
+                                 cur
+                                 (recur cur))))
+                           cur))                      
+                       lossv)))))]
+    (when (<= beta alpha)
+      (println "What's up with the window??"))
+    (rec gamestate (negate player) depth alpha beta false)))
 
 
 
