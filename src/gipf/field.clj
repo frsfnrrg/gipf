@@ -375,6 +375,38 @@
           (recur (clojure.string/replace meat k v)
                  (rest rk)))))))
 
+(defmacro export
+  "Ye gods, how do I long for macrolet.
+  This should belong, locally bound, in def-search"
+  [thing val]
+  (reset! thing val))
+
+(defrecord Search [pre eval post])
+
+(defn dfsh
+  [name docs common sargs sbody targs tbody rargs rbody]
+  (let [nil-atoms (alternating common (map (fn [] `(atom nil)) (range)))
+        rebounds (flatten (map (fn [symb] (symb `(deref symb))) common))]
+    `(let [~@nil-atoms]
+       (def ~name ~docs
+         (Search.
+          (fn [~@sargs] ~@sbody)
+          (fn [~@rargs] ;; could do targs collision avoidance... nah..
+            (let [~@rebounds]
+              ~@rbody))
+          (fn [~@targs]
+            ~@tbody))))))
+
+(defmacro def-search
+  ([name docstring
+    [& common]
+    [key1 [& args1] & body1]
+    [key2 [& args2] & body2]
+    [key3 [& args3] & body3]]
+     (dfsh name docstring common args1 body1 args2 body2 args3 body3))
+  ([name docstring [] [key [& args] & body]]
+     (dfsh name docstring [] (list) (list) args body (list) (list))))
+
 ;;
 ;;
 ;; (def-search
@@ -391,6 +423,6 @@
 ;; ... macro throws if you try to bind foo in any way.. (let/blah)
 ;;
 ;;  -> (let [foo @foo#]
-;;       (fn [blargh] ooog)
+;;       ~body
 ;;       )
 ;;

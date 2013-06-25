@@ -292,8 +292,10 @@
                                (second (get @ai-action-threads key)))
       end-ai-action-thread! (fn [key]
                               (swap! ai-action-threads
-                                     #(assoc % key
-                                             [(first (get % key)) false])))
+                                     (fn [u]
+                                       (let [t (first (get u key))]
+                                         (.interrupt t)
+                                         (assoc u key [t false])))))
       get-next-key-num (let [kn (atom 0)]
                          (fn []
                            (swap! kn inc)
@@ -563,7 +565,8 @@
               ;; moving         - shoves it
               ;; removing-post  - clears own lines from own move
               ;;
-              (if (<= rad 4)
+              (when (<= rad 4)
+;;                (println clickpt game-phase*)
                 (case game-phase*
                   :placing
                   (when (and (= rad 4)
@@ -593,11 +596,7 @@
       :hover
       (let [hoverpt (screenpx-to-loc (xy (second input) (third input)))]
         (when (and (<= (pt-radius hoverpt) 4) (not= game-phase* :gameover))
-          (update-hover! hoverpt)))
-      
-      )) ; case/doseq tail
-
-  true)
+          (update-hover! hoverpt))))))
 
 (defn runGUI
   []
@@ -720,7 +719,6 @@
   (start-thread
    (simulate mode type)))
 
-;; TODO: why is this unbound?
 (defn -main
   "See \"GIPF: I play the game\" for details."
   [& args]

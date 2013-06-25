@@ -16,10 +16,11 @@
                  :reserve-status false
                  :board-snapshot false
                  :rank-value false
-                 :pre-rank-value true
+                 :pre-rank-value false
                  :screen-display true
                  :evaluation-count true
                  :equals-moves false
+                 :transp-distribution true
                  :pre-calc-message false})]
   (defn set-diagnostic-level!
     [key ^Boolean on]
@@ -39,9 +40,6 @@
   (ond :pre-calc-message
        (println "Beginning move"))
 
- (println reserves 'RES)
-  
-  
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode. Should we? I do not think so..
   (swap! ranks-count (constantly 0)) 
@@ -69,7 +67,8 @@
                        (get-diagnostic-level :total-time)
                        )
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
-    (post-mortem-transp)
+    (ond :transp-distribution
+         (post-mortem-transp))
     (clear-transp!)
     (ond :evaluation-count
          (println "Nodes evaluated:" @ranks-count))
@@ -118,7 +117,7 @@
   "Return a new set of reserves."
   [mode]
   (case mode
-    :basic (->Reserves 3 1)
+    :basic (->Reserves 12 1)
     :advanced (->Reserves 18 0)
     :normal (->Reserves 15 3)))
 
@@ -233,28 +232,40 @@
           (recur g2 (negate player) (inc counter)))))))
 
 (let [smrf! setup-move-ranking-func!
-      qab-transp-gf1-light #(smrf! % rank-gf1 qab-transp simple-quiet 3 7 2)
-      qab-gf1-light #(smrf! % rank-gf1 quiescent-ab-search simple-quiet 3 7 2)
-      cab-hybrid-light #(smrf! % rank-board-hybrid cls-ab-search 3 negative-infinity positive-infinity)
-      nab-hybrid-light #(smrf! % rank-board-hybrid abprune 3)
-      qab-hybrid-medium #(smrf! % rank-board-hybrid
-                                quiescent-ab-search simple-quiet 3 7 3)
-      qab-transp-hybrid-medium #(smrf! % rank-board-hybrid
-                                       qab-transp simple-quiet 3 7 3)
+      qab-transp-gf1-light
+      #(smrf! % rank-gf1 qab-transp simple-quiet 3 7 2)
+      qab-gf1-light
+      #(smrf! % rank-gf1 quiescent-ab-search simple-quiet 3 7 2)
+      cab-hybrid-light
+      #(smrf! % rank-board-hybrid cls-ab-search 3 negative-infinity positive-infinity)
+      nab-hybrid-light
+      #(smrf! % rank-board-hybrid abprune 3)
+      qab-hybrid-medium
+      #(smrf! % rank-board-hybrid quiescent-ab-search simple-quiet 3 7 3)
+      qab-transp-hybrid-medium
+      #(smrf! % rank-board-hybrid qab-transp simple-quiet 3 7 3)
+      cab-transp-hybrid-light
+      #(smrf! % rank-board-hybrid cls-ab-transp-search 3 negative-infinity positive-infinity)
+      aspire-simple #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
+      mtdf-simple #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
+
+      aspire-deep #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
+      mtdf-deep #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
+      cab-transp-deep  #(smrf! % rank-board-hybrid cls-ab-transp-search 5 negative-infinity positive-infinity)
       
       ]
 
   (defn setup-ai!
     []
-    (qab-transp-hybrid-medium 1)
-    (qab-transp-hybrid-medium -1))
+    (cab-transp-deep -1)
+    (mtdf-simple 1))
  
  (defn simulate
     [mode type]
     (println)
     (case type
       :mct
-      (move-comparison-trial cab-hybrid-light
+      (move-comparison-trial cab-transp-hybrid-light
                              cab-hybrid-light)
       :comp
       (do
