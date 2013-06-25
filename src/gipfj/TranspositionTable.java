@@ -5,6 +5,7 @@ import java.util.HashMap;
 /**
  * Maps objects to integers. Supports get, put, change, clear, and size.
  * 
+ * NOTE: class is currently not being used.
  */
 public class TranspositionTable {
     private int elemsize;

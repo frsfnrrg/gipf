@@ -69,6 +69,7 @@
                        (get-diagnostic-level :total-time)
                        )
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
+    (post-mortem-transp)
     (clear-transp!)
     (ond :evaluation-count
          (println "Nodes evaluated:" @ranks-count))
@@ -245,8 +246,8 @@
 
   (defn setup-ai!
     []
-    (cab-hybrid-light 1)
-    (nab-hybrid-light -1))
+    (qab-transp-hybrid-medium 1)
+    (qab-transp-hybrid-medium -1))
  
  (defn simulate
     [mode type]

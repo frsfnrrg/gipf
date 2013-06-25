@@ -333,6 +333,10 @@
     []
     (flush-transp-table movetable))
   
+  (defn post-mortem-transp
+    []
+    (analyze-transp-table movetable))
+  
   (defn qab-transp
     [gamestate good-player rank-func quiet-func depth levelcap iboost]
 
@@ -349,7 +353,7 @@
                 (rank-func gamestate good-player)
                 (let [subs (IncrementalGameCalc. gamestate owner)]
                   (if (.hasNext subs)
-                    (if (less level 5)
+                    (if (less level 6)
                       (ablmi subs best-rank [ngs record]
                              (let [key (make-signed-gamestate ngs good-player)
                                    lrnk (get-transp-table movetable key)]

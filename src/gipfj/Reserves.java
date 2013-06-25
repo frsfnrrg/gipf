@@ -183,6 +183,10 @@ public class Reserves {
     public Reserves applyDelta(int player, int delta_reserve_pieces,
             int delta_board_pieces, int delta_board_gipfs) {
         if (player > 0) {
+            // it isn't worth it to incrementally calculate the hash code.
+            // case 1: we do. 6 XORS (3,3)
+            // case 2: we don't. 6 XORS (6)
+
             return new Reserves(p1 + delta_reserve_pieces, p2, o1
                     + delta_board_pieces, o2, g1 + delta_board_gipfs, g2);
         } else {

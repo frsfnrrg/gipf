@@ -74,7 +74,7 @@ public class LTranspTable {
         }
 
         byte[] a = in.getData();
-        for (int i = 4; i < bucket.length; i += datasize) {
+        for (int i = 0; i < bucket.length; i += datasize) {
             boolean c = false;
             for (int j = 4; j < datasize; j++) {
                 if (a[j] != bucket[j + i]) {
@@ -130,26 +130,19 @@ public class LTranspTable {
 
         byte[] bucket = store[index];
         if (bucket == null) {
-            bucket = new byte[4 + datasize];
-            // we store the HashCode for rehashing/expansion purposes
-            // (if we ever implement it).
-            // At minimum, it is only 4 bytes - we could save 12 on
-            // compressing better alone.
-            bucket[0] = (byte) (hc >> 24);
-            bucket[1] = (byte) (hc >> 16);
-            bucket[2] = (byte) (hc >> 8);
-            bucket[3] = (byte) (hc >> 0);
-
-            System.arraycopy(dat, 0, bucket, 4, datasize);
+            bucket = new byte[datasize];
+            System.arraycopy(dat, 0, bucket, 0, datasize);
 
             store[index] = bucket;
         } else {
+            // System.out.println("Expanding..");
             // expand the bucket..
             int size = bucket.length;
             byte[] o = bucket;
             byte[] n = new byte[size + datasize];
             System.arraycopy(o, 0, n, 0, size);
             System.arraycopy(dat, 0, n, size, datasize);
+            store[index] = n;
         }
 
         elemsize++;
@@ -176,8 +169,41 @@ public class LTranspTable {
         System.gc();
     }
 
+    /**
+     * Gather statistics about the table.
+     */
     public void analyze() {
-        // gather stats about the
+        int[] distribution = new int[128];
+        // if we have any more than 128 things in a single slot, we have a
+        // problem...
+
+        for (byte[] slot : store) {
+            if (slot == null) {
+                distribution[0]++;
+                continue;
+            }
+
+            int sz = slot.length / datasize; // no remainder should exist
+            if (sz >= 128) {
+                System.out
+                        .println("Encountered bucket with 128+ entries. You have a biiig problem.");
+                continue;
+            }
+            distribution[sz] = distribution[sz] + 1;
+        }
+
+        int end = 0;
+        for (int k = distribution.length - 1; k >= 0; k--) {
+            if (distribution[k] != 0) {
+                end = k + 1;
+                break;
+            }
+        }
+
+        System.out.println("-- Transposition table analysis results:");
+        for (int j = 0; j < end; j++) {
+            System.out.format("-- Entries: %d Count: %d\n", j, distribution[j]);
+        }
 
     }
 
@@ -233,6 +259,10 @@ public class LTranspTable {
 
     public static void tclear(LTranspTable t) {
         t.clear();
+    }
+
+    public static void tanalyze(LTranspTable t) {
+        t.analyze();
     }
 
 }

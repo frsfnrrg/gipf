@@ -69,7 +69,9 @@
 (definline flush-transp-table
   [table]
   `(LTranspTable/tclear ~table))
-
+(definline analyze-transp-table
+  [table]
+  `(LTranspTable/tanalyze ~table))
 (definline make-signed-gamestate
   [gamestate player]
   `(CompressedSGS/compress ~gamestate ~player))
