@@ -1,7 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
-                  LTranspTable CompressedSGS)))
+                  LTranspTable CompressedSGS Ranking)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -161,10 +161,10 @@
                        (if (equals 2 (abs val))
                          (recur (pt+ pos delta)
                                 (change-hex-array board pos 0)
-                                (reserve-delta reserves (negate player) 0 -1 0))
+                                (reserve-delta reserves (negate player) 0 0 -1))
                          (recur (pt+ pos delta)
                                 (change-hex-array board pos 0)
-                                reserves))
+                                (reserve-delta reserves (negate player) 0 -1 0)))
                        
                        :else
                        (recur (pt+ pos delta) board reserves)))))))))))
