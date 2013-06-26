@@ -36,7 +36,7 @@
 ;; (ranking geo reserves util)
 ;; (graphics geo util)
 
-
+(llload "settings")
 (llload "math")
 (llload "util")
 (llload "geo")

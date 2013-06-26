@@ -1,59 +1,33 @@
 (in-ns 'gipf.core)
 
-;; TODO eventually; test if, at fixed depth, inf time, 
-;; idr-ab and idr actually give the same results.
-;; they should.... if it's coded right
-
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
-
-(let [dia (atom {:move-newlines true
-                 :move-numbers false
-                 :match-result true
-                 :total-time true
-                 :incremental-time false
-                 :moves-available false
-                 :reserve-status false
-                 :board-snapshot false
-                 :rank-value false
-                 :pre-rank-value false
-                 :screen-display true
-                 :evaluation-count true
-                 :equals-moves false
-                 :transp-distribution true
-                 :pre-calc-message false})]
-  (defn set-diagnostic-level!
-    [key ^Boolean on]
-    (swap! dia (fn [a] (assoc a key on))))
-  (defn get-diagnostic-level
-    [key]
-    (get @dia key))
-  (defmacro ond
-    [key & actions]
-    `(when (get-diagnostic-level ~key)
-       ~@actions)))
 
 (defn compound-ai-move
   [board player reserves adv-phase]
 
-  (use-move-ranking-func! player)
+  (ond :move-newlines
+       (println))
+
+  (init-move-ranking-func! player)
   (ond :pre-calc-message
        (println "Beginning move"))
 
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode. Should we? I do not think so..
   (swap! ranks-count (constantly 0)) 
-  (let [pieces-left (get-pieces-in-reserve reserves player)
+  (let [move-ranking-func (get-move-ranking-func player)
+        pieces-left (get-pieces-in-reserve reserves player)
         possible-moves (shuffle
                         (list-possible-moves-and-board board reserves player))
         ngipfs (count-over-hex-array board (* 2 player))
         degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
-        current-rank (move-ranking-func* (->GameState board reserves) player)
+        current-rank (move-ranking-func (->GameState board reserves) player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
         optimal (timev (rand-best
                         (fn [[move [board res]]]
                           (let [rank
-                                (timev (move-ranking-func*
+                                (timev (move-ranking-func
                                         (->GameState board res)
                                         player)
                                        (get-diagnostic-level :incremental-time))]
@@ -67,16 +41,11 @@
                        (get-diagnostic-level :total-time)
                        )
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
-    (ond :transp-distribution
-         (post-mortem-transp))
-    (ond :transp-distribution
-         (HistoryTable/hanalyze hist-table))
-    (clear-transp!)
-    (HistoryTable/hclear hist-table)
+
     (ond :evaluation-count
          (println "Nodes evaluated:" @ranks-count))
-    ;; best would be, until mouse is moved...
-    ;; note positive sig
+
+    (teardown-move-ranking-func! player)
 
     [c1 (sign-line m degree) c2]))
 
@@ -198,6 +167,13 @@
                 player
                 (third move)))
 
+(defn mct-get-move
+  [gamestate player]
+  (compound-ai-move (game-state-board gamestate)
+                    player
+                    (game-state-reserves gamestate)
+                    :playing))
+
 (defn move-comparison-trial
   "Requires players to be awesome. No, wait."
   [lambda1 lambda2]
@@ -213,20 +189,15 @@
                player
                :normal
                :playing)
-      (negate player)
-      (let [m1 (do
-                 (lambda1 player)
-                 (compound-ai-move (game-state-board gamestate)
-                                   player
-                                   (game-state-reserves gamestate)
-                                   :playing))
+      (do
+        (ond :match-result
+             (println "MCT \"winner\":" (negate player)))
+        (negate player))
+      (let [m1 (do (lambda1 player)
+                 (mct-get-move gamestate player))
             g1 (mct-effect-move gamestate player m1)
-            m2 (do
-                 (lambda2 player)
-                 (compound-ai-move (game-state-board gamestate)
-                                   player
-                                   (game-state-reserves gamestate)
-                                   :playing))
+            m2 (do (lambda2 player)
+                 (mct-get-move gamestate player))
             g2 (mct-effect-move gamestate player m2)]
         (println "ai +1:" m1)
         (println "ai -1:" m2)
@@ -259,15 +230,15 @@
 
   (defn setup-ai!
     []
-    (cab-hybrid-light 1)
-    (cab-hist-light -1))
+    (aspire-deep 1)
+    (mtdf-deep -1))
  
  (defn simulate
     [mode type]
     (println)
     (case type
       :mct
-      (move-comparison-trial cab-transp-hybrid-light
+      (move-comparison-trial cab-hist-light
                              cab-hybrid-light)
       :comp
       (do

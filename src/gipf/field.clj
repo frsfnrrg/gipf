@@ -1,7 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
-                  LTranspTable CompressedSGS Ranking)))
+                  LTranspTable CompressedSGS Ranking MoveSignedGS HistoryTable MoveSignedIGC)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -51,6 +51,11 @@
   [gamestate player]
   `(from-iterator (IncrementalGameCalc. ~gamestate ~player)))
 
+(definline make-signed-gamestate
+  [gamestate player]
+  `(CompressedSGS/compress ~gamestate ~player))
+
+
 (definline make-transp-table
   "Advised coefficients: pool exponent large - 20, 22; array exponent small 0 or 1.
   I do not know how much it costs to do an equality comparison...
@@ -68,14 +73,26 @@
   `(LTranspTable/tsize ~table))
 (definline flush-transp-table
   [table]
-  `(LTranspTable/tclear ~table))
-(definline analyze-transp-table
-  [table]
-  `(LTranspTable/tanalyze ~table))
-(definline make-signed-gamestate
-  [gamestate player]
-  `(CompressedSGS/compress ~gamestate ~player))
+  `(do
+     (ond :transp-analysis
+          (LTranspTable/tanalyze ~table) )
+     (LTranspTable/tclear ~table)))
 
+(definline hist-ordering [table]
+  `(HistoryTable/hordering ~table))
+(definline make-hist-table []
+  `(HistoryTable/hmake))
+(definline hist-add! [table depth mnum]
+  `(HistoryTable/hadd ~table ~depth ~mnum))
+(definline hist-clear! [table]
+ `(do
+     (ond :hist-analysis
+          (HistoryTable/hanalyze ~table))
+     (HistoryTable/hclear ~table)))
+
+(definline signed-gs-move
+  [sgs]
+  `(MoveSignedGS/getMove ~sgs))
 
 ;; predicates/extraction
 
@@ -120,16 +137,16 @@
 (defn impacted-cells
   [board loc shove]
   (vec (GameCalc/getImpactedCells board loc shove)))
-    
+
 
 (defn do-move
   "Does not update properly"
   [board value loc shove]
   [ (game-state-board (place-and-shove
-                        (->GameState board null-reserves)
-                        value
-                        (->Line loc shove)))
-   (impacted-cells board loc shove)])
+                       (->GameState board null-reserves)
+                       value
+                       (->Line loc shove)))
+    (impacted-cells board loc shove)])
 
 (defn do-linemoves
   [gs player move]
@@ -194,20 +211,20 @@
                (loop [cur (line-start chosen) bpr [] bb cb brr rr]
                  (if (= 4 (pt-radius cur))
                    [bpr bb brr]
-                  
+                   
                    (case (int (multiply (get-hex-array bb cur) player))
                      -2
                      (recur (pt+ cur delta)
                             bpr
                             (change-hex-array bb cur 0)
                             (reserve-delta brr (negate player)
-                              0 0 -1))
+                                           0 0 -1))
                      -1 ;; opponent
                      (recur (pt+ cur delta)
                             bpr
                             (change-hex-array bb cur 0)
                             (reserve-delta brr (negate player)
-                              0 -1 0))
+                                           0 -1 0))
                      0
                      (recur (pt+ cur delta)
                             bpr bb brr)
@@ -219,8 +236,8 @@
                      2 ;; save own gipfs
                      (do
                        (recur (pt+ cur delta)
-                         (conj bpr cur)
-                         bb brr)))))]
+                              (conj bpr cur)
+                              bb brr)))))]
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
@@ -273,31 +290,47 @@
   "Costs 60% more in ai than the cheat version"
   [gamestate player]
   (vec (GameCalc/listPossibleBoards gamestate player)))
-  
+
 (def list-possible-boards list-possible-boards-opt)
 
 ;; should make this easily changeable... (per menu?; with registering stuf)
 (def expected-max-rank* nil)
-(def move-ranking-func* nil)
 
 (defrecord Heuristic [setup eval])
+(defrecord Search [pre eval post])
 
 (let [mrfs (atom {})]
   (defn setup-move-ranking-func!
-    [player ^Heuristic lead-heuristic search-func & sfargs]
+    [player lead-heuristic search & sfargs]
+    (when (or (nil? (:setup lead-heuristic))
+              (nil? (:eval lead-heuristic))
+              (nil? (:pre search))
+              (nil? (:eval search))
+              (nil? (:post search)))
+      (throw (java.lang.Exception.
+              "Wrong types passed to setup-move-ranking-func!")))
     (swap! mrfs
-             #(assoc % player [(:setup lead-heuristic)
-                               (fn [state player]
-                                 (apply search-func state player
-                                        (:eval lead-heuristic) sfargs))])))
-
-
-  (defn use-move-ranking-func!
+           #(assoc % player
+                   [(:setup lead-heuristic)
+                    (fn [] (apply (:pre search) sfargs))
+                    (fn [] (apply (:post search) sfargs))
+                    (fn [state player]
+                      (apply (:eval search) state player
+                             (:eval lead-heuristic) sfargs))])))
+  (defn init-move-ranking-func!
     [player]
     (let [rr (get @mrfs player)
-          [setupf lmda] rr]
-      (setupf)
-      (def move-ranking-func* lmda))))
+          [setuphf setupsf endf lmda] rr]
+      (setuphf)
+      (setupsf)))
+  (defn get-move-ranking-func
+    [player]
+    (fourth (get @mrfs player)))
+  (defn teardown-move-ranking-func!
+    [player]
+    (let [rr (get @mrfs player)
+          [setuphf setupsf endf lmda] rr]
+      (endf))))
 
 
 (def ranks-count (atom (long 0)))
@@ -335,6 +368,64 @@
            (dfr-helper name docstring key2exprs (first key1args) (second key1args) key1exprs)
            :else
            (throw (IllegalArgumentException. "wrong clauses to def-ranking-function")))))
+
+
+(defmacro export
+  "Ye gods, how do I long for macrolet.
+  This should belong, locally bound, in def-search"
+  [thing val]
+  `(reset! ~thing ~val))
+
+(defn dfsh
+  [name docs common sargs sbody targs tbody rargs rbody]
+  (let [nil-atoms (alternating common (map (fn [_] `(atom nil)) (range)))
+        rebounds (reduce concat (map (fn [symb] [symb `(deref ~symb)]) common))
+        newname (symbol (str name "-func"))]
+    `(let [~@nil-atoms]
+       (def ~name ~docs
+         (Search.
+          (fn [~@sargs] ~@sbody)
+          (fn [~@rargs] ;; could do targs collision avoidance... nah..
+            (let [~@rebounds]
+              ~@rbody))
+          (fn [~@targs]
+            (let [~@rebounds]
+              ~@tbody))))
+       (def ~newname ~docs (:eval ~name)))))
+
+(defmacro def-search
+  ([name [& common]
+    [key1 [& args1] & body1]
+    [key2 [& args2] & body2]
+    [key3 [& args3] & body3]]
+     (doseq [k [key1 key2 key3]]
+       (when-not (or (= k :pre) (= k :post) (= k :eval))
+         (throw (java.lang.Exception. (str k " is not a valid member function.")))))
+     (let [aba (atom {})]
+       (doseq [[k args body] [[key1 args1 body1]
+                               [key2 args2 body2]
+                               [key3 args3 body3]]]
+         (swap! aba #(assoc % k [args body])))
+       (let [[sargs sbody] (:pre @aba)
+             [targs tbody] (:post @aba)
+             [rargs rbody] (:eval @aba)]
+         (dfsh name "" common sargs sbody targs tbody rargs rbody))))
+  ([name docstring
+    [& common]
+    [key1 [& args1] & body1]
+    [key2 [& args2] & body2]
+    [key3 [& args3] & body3]]
+     (dfsh name docstring common args1 body1 args2 body2 args3 body3))
+  ([name [] [key [& args] & body]]
+     (dfsh name "" [] (list (symbol "&") (symbol "args")) (list)
+           (list (symbol "&") (symbol "args")) (list) args body))
+  ([name docstring [] [key [& args] & body]]
+     (dfsh name docstring [] (list (symbol "&") (symbol "args")) (list)
+           (list (symbol "&") (symbol "args")) (list) args body)))
+
+
+
+
 
 (defn print-board
   [board]
@@ -375,54 +466,13 @@
           (recur (clojure.string/replace meat k v)
                  (rest rk)))))))
 
-(defmacro export
-  "Ye gods, how do I long for macrolet.
-  This should belong, locally bound, in def-search"
-  [thing val]
-  (reset! thing val))
-
-(defrecord Search [pre eval post])
-
-(defn dfsh
-  [name docs common sargs sbody targs tbody rargs rbody]
-  (let [nil-atoms (alternating common (map (fn [] `(atom nil)) (range)))
-        rebounds (flatten (map (fn [symb] (symb `(deref symb))) common))]
-    `(let [~@nil-atoms]
-       (def ~name ~docs
-         (Search.
-          (fn [~@sargs] ~@sbody)
-          (fn [~@rargs] ;; could do targs collision avoidance... nah..
-            (let [~@rebounds]
-              ~@rbody))
-          (fn [~@targs]
-            ~@tbody))))))
-
-(defmacro def-search
-  ([name docstring
-    [& common]
-    [key1 [& args1] & body1]
-    [key2 [& args2] & body2]
-    [key3 [& args3] & body3]]
-     (dfsh name docstring common args1 body1 args2 body2 args3 body3))
-  ([name docstring [] [key [& args] & body]]
-     (dfsh name docstring [] (list) (list) args body (list) (list))))
 
 ;;
+;; More ideas: store metadata about the heuristic/search combination.
+;; and use an optional display.
 ;;
-;; (def-search
-;;   (:setup []
-;;     (export foo 1)
-;;   (:teardown [] 
-;;     (analyze foo)
-;;     )
-;;   (:run [& args]
-;;      (* foo foo)
-;;         ))
 ;;
-;; ... macro recursively macroexpands its subitems...
-;; ... macro throws if you try to bind foo in any way.. (let/blah)
 ;;
-;;  -> (let [foo @foo#]
-;;       ~body
-;;       )
+;;
+;;
 ;;

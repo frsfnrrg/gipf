@@ -1,9 +1,5 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc
-                  GameState TranspositionTable
-                  SignedGameState CompressedSGS
-                  LTranspTable MoveSignedIGC
-                  MoveSignedGS HistoryTable)))
+  (:import (gipfj IncrementalGameCalc MoveSignedIGC)))
 
 
 ;; AI.clj
@@ -11,16 +7,16 @@
 ;;
 ;; TODO: next order of business 
 ;;
-;; Look for the nearest todo list;
-;; What other optimizations exist?
-;; 
-;; Killer heuristic
-;; Transp tables
-;; Incremental ranking
-;; Incremental board-lines search
-;; Quiescent search
-;; MTD-f
-;; profiling ;-)
+;; Merge it all:
+;;
+;; quiescence & transp & history 
+;; ab & transp & history & idr (n step)
+;;
+;; All this using _proper_ alpha beta.
+;;
+;; Performance: simply pre-cast all entering longs (or type hint if
+;; doable)
+;; Even?/odd? =~= max?/min?
 ;;
 ;; We will ignore tournament mode for a while, until the ai can beat
 ;; us..
@@ -301,251 +297,256 @@
 ;; another thing to think about; moves are taken infrequently,
 ;; so one might have a chunked interest boost
 
-(defn quiescent-ab-search
+(def-search quiescent-ab-search
   "Goal: to unify alpha-beta and quiescent search.
   Depth: min depth to search
   Levelcap: max depth to search.
   IBoost: how much further to go until quiet"
-  [gamestate good-player rank-func quiet-func depth levelcap iboost]
-  (letfn [(qab [gamestate owner depth level best-rank]
-            (if (or (equals depth 0) (equals level levelcap))
-              (rank-func gamestate good-player)
-              (let [subs (IncrementalGameCalc. gamestate owner)]
-                (if (.hasNext subs)
-                  (ablmi subs best-rank [ngs record]
-                         (negate (if (or (greater-equals depth iboost)
-                                         (quiet-func ngs gamestate))
-                                   (qab ngs (negate owner) (dec-1 depth)
-                                        (inc-1 level) (negate record))
-                                   (qab ngs (negate owner) iboost
-                                        (inc-1 level) (negate record)))))
-                  negative-infinity))))]
-    (negate (qab gamestate (negate good-player) depth 0 positive-infinity))))
-
-
-;; OH NO! now the ranking algorithms require setup/teardown..
-;; (especially to avoid statically loading this monster)
-
-;; the large table is actually worth it - low collision rates are
-;; imperative.
-;; size 23 :: 8*10^6 entries, 32 MB. Access is still fast.
-(def movetable (make-transp-table 23))
-
-(defn clear-transp!
   []
-  (flush-transp-table movetable))
+  (:eval
+   [gamestate good-player rank-func quiet-func depth levelcap iboost]
+   (letfn [(qab [gamestate owner depth level best-rank]
+             (if (or (equals depth 0) (equals level levelcap))
+               (rank-func gamestate good-player)
+               (let [subs (IncrementalGameCalc. gamestate owner)]
+                 (if (.hasNext subs)
+                   (ablmi subs best-rank [ngs record]
+                          (negate (if (or (greater-equals depth iboost)
+                                          (quiet-func ngs gamestate))
+                                    (qab ngs (negate owner) (dec-1 depth)
+                                         (inc-1 level) (negate record))
+                                    (qab ngs (negate owner) iboost
+                                         (inc-1 level) (negate record)))))
+                   negative-infinity))))]
+     (negate (qab gamestate (negate good-player) depth 0 positive-infinity)))))
 
-(defn post-mortem-transp
-  []
-  (analyze-transp-table movetable))
-
-(defn qab-transp
-  [gamestate good-player rank-func quiet-func depth levelcap iboost]
-
-  ;; Fundamental downside: movetable would grow indefinately...
-  ;; idea: clear it before every complete move...
-  ;;
-  
-                                        ;(println "ent")
-  (letfn [(qab [gamestate owner depth level best-rank]
-            ;;(when (equals level 1)
-            ;;  (println "SIZE:" (size-transp-table movetable)))
-            
-            (if (or (equals depth 0) (equals level levelcap))
-              (rank-func gamestate good-player)
-              (let [subs (IncrementalGameCalc. gamestate owner)]
-                (if (.hasNext subs)
-                  (if (less level 6)
-                    (ablmi subs best-rank [ngs record]
-                           (let [key (make-signed-gamestate ngs good-player)
-                                 lrnk (get-transp-table movetable key)]
-                             (if lrnk
-                               lrnk
-                               (let [rr (negate (if (or (greater-equals depth iboost)
-                                                        (quiet-func ngs gamestate))
-                                                  (qab ngs (negate owner) (dec-1 depth)
-                                                       (inc-1 level) (negate record))
-                                                  (qab ngs (negate owner) iboost
-                                                       (inc-1 level) (negate record))))]
-                                 (add-transp-table movetable key rr)
-                                 rr))))
-                    (ablmi subs best-rank [ngs record]
-                           (negate (if (or (greater-equals depth iboost)
-                                           (quiet-func ngs gamestate))
-                                     (qab ngs (negate owner) (dec-1 depth)
-                                          (inc-1 level) (negate record))
-                                     (qab ngs (negate owner) iboost
-                                          (inc-1 level) (negate record))))))
-                  negative-infinity))))]
-    (negate
-     (qab gamestate (negate good-player) depth 0 positive-infinity))))
+(def-search qab-transp
+  "Foofah!"
+  [movetable]
+  (:pre [& args]
+        (export movetable (make-transp-table 23)))
+  (:post [& args]
+         (flush-transp-table movetable))
+  (:eval
+   [gamestate good-player rank-func quiet-func depth levelcap iboost]
+   (letfn [(qab [gamestate owner depth level best-rank]      
+             (if (or (equals depth 0) (equals level levelcap))
+               (rank-func gamestate good-player)
+               (let [subs (IncrementalGameCalc. gamestate owner)]
+                 (if (.hasNext subs)
+                   (if (less level 6)
+                     (ablmi subs best-rank [ngs record]
+                            (let [key (make-signed-gamestate ngs good-player)
+                                  lrnk (get-transp-table movetable key)]
+                              (if lrnk
+                                lrnk
+                                (let [rr (negate (if (or (greater-equals depth iboost)
+                                                         (quiet-func ngs gamestate))
+                                                   (qab ngs (negate owner) (dec-1 depth)
+                                                        (inc-1 level) (negate record))
+                                                   (qab ngs (negate owner) iboost
+                                                        (inc-1 level) (negate record))))]
+                                  (add-transp-table movetable key rr)
+                                  rr))))
+                     (ablmi subs best-rank [ngs record]
+                            (negate (if (or (greater-equals depth iboost)
+                                            (quiet-func ngs gamestate))
+                                      (qab ngs (negate owner) (dec-1 depth)
+                                           (inc-1 level) (negate record))
+                                      (qab ngs (negate owner) iboost
+                                           (inc-1 level) (negate record))))))
+                   negative-infinity))))]
+     (negate
+      (qab gamestate (negate good-player) depth 0 positive-infinity)))))
 
 
-(defn cls-ab-search
+(def-search cls-ab-search
   "I never actually did alpha beta with the min-max idea.
    Notably - alpha, beta are not symmetric. Other ab - qab, idr-ab, blah
    Were. Is this costing us??
 
   Condition: beta < alpha
-"
-  [gamestate player rank-func depth alpha beta]
-  (letfn [(rec [gamestate owner depth alpha beta max?]
-            (if (equals depth 0)
-                  (rank-func gamestate player)
-                  (case-pattern
-                   [max? true false]
-                   [cur alpha beta
-                    opp beta alpha
-                    compo greater-equals less-equals
-                    mnmx fastmax fastmin
-                    lossv negative-infinity positive-infinity]
-                   (let [rd (IncrementalGameCalc. gamestate owner)]
-                     (if (.hasNext rd)
-                       (loop [cur cur]
-                         (if (.hasNext rd)
-                           (let [ngs (.next rd)
-                                 rank (rec ngs (negate owner) (dec-1 depth)
-                                           alpha
-                                           beta
-                                           (not max?))]
-                                        ;  (println "max" rank alpha beta)
-                             (let [cur (mnmx rank cur)]
-                               (if (compo cur opp)
-                                 cur
-                                 (recur cur))))
-                           cur))                      
-                       lossv)))))]
-    (when (<= beta alpha)
-      (println "What's up with the window??"))
-    (rec gamestate (negate player) depth alpha beta false)))
+  "
+  []
+  (:eval
+   [gamestate player rank-func depth alpha beta]
+   (letfn [(rec [gamestate owner depth alpha beta max?]
+             (if (equals depth 0)
+               (rank-func gamestate player)
+               (case-pattern
+                [max? true false]
+                [cur alpha beta
+                 opp beta alpha
+                 compo greater-equals less-equals
+                 mnmx fastmax fastmin
+                 lossv negative-infinity positive-infinity]
+                (let [rd (IncrementalGameCalc. gamestate owner)]
+                  (if (.hasNext rd)
+                    (loop [cur cur]
+                      (if (.hasNext rd)
+                        (let [ngs (.next rd)
+                              rank (rec ngs (negate owner) (dec-1 depth)
+                                        alpha
+                                        beta
+                                        (not max?))]
+                          (let [cur (mnmx rank cur)]
+                            (if (compo cur opp)
+                              cur
+                              (recur cur))))
+                        cur))                      
+                    lossv)))))]
+     (when (<= beta alpha)
+       (println "What's up with the window??"))
+     (rec gamestate (negate player) depth alpha beta false))))
 
-(def hist-table (HistoryTable/hmake))
-
-(defn cls-ab-hist-search
+(def-search cls-ab-hist-search
   "History heuristic alpha beta search."
-  [gamestate player rank-func depth alpha beta]
-  (letfn [(rec [gamestate owner level alpha beta max?]
-            (if (equals level depth)
-                (rank-func gamestate player)
-                  (case-pattern
-                   [max? true false]
-                   [cur alpha beta
-                    opp beta alpha
-                    compo greater-equals less-equals
-                    mnmx fastmax fastmin
-                    lossv negative-infinity positive-infinity]
-                   (let [rd (MoveSignedIGC. gamestate owner (HistoryTable/hordering hist-table))]
-                     (if (.hasNext rd)
-                       (loop [cur cur recm -1]
-                         (if (.hasNext rd)
-                           (let [ngs (.next rd)
-                                 rank (rec ngs (negate owner) (inc-1 level)
-                                           alpha
-                                           beta
-                                           (not max?))]
-                             (let [cur (mnmx rank cur)]
-                               (let [recm (if (equals cur rank)
-                                            (MoveSignedGS/getMove ngs)
-                                            recm)]
-                                 (if (compo cur opp)
-                                   (do
-                                     (when-not (equals recm -1)
-                                       (HistoryTable/hadd hist-table level recm))
-                                     cur)
-                                 (recur cur recm)))))
-                           (do
-                             (when-not (equals recm -1)
-                               (HistoryTable/hadd hist-table level recm))
-                             cur)))                      
-                       lossv)))))]
-    (when (<= beta alpha)
-      (println "What's up with the window??"))
-    (rec gamestate (negate player) 0 alpha beta false)))
+  [hihi]
+  (:pre [& args]
+        (export hihi (make-hist-table)))
+  (:post [& args]
+         (hist-clear! hihi))
+  (:eval
+   [gamestate player rank-func depth alpha beta]
+   (letfn [(rec [gamestate owner depth alpha beta max?]
+             (if (equals 0 depth)
+               (rank-func gamestate player)
+               (case-pattern
+                [max? true false]
+                [cur alpha beta
+                 opp beta alpha
+                 compo greater-equals less-equals
+                 mnmx fastmax fastmin
+                 lossv negative-infinity positive-infinity]
+                (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hihi))]
+                  (if (.hasNext rd)
+                    (loop [cur cur recm -1]
+                      (if (.hasNext rd)
+                        (let [ngs (.next rd)
+                              rank (rec ngs (negate owner) (dec-1 depth)
+                                        alpha
+                                        beta
+                                        (not max?))]
+                          (let [cur (mnmx rank cur)]
+                            (let [recm (if (equals cur rank)
+                                         (signed-gs-move ngs)
+                                         recm)]
+                              (if (compo cur opp)
+                                (do
+                                  (when-not (equals recm -1)
+                                    (hist-add! hihi depth recm))
+                                  cur)
+                                (recur cur recm)))))
+                        (do
+                          (when-not (equals recm -1)
+                            (hist-add! hihi depth recm))
+                          cur)))                      
+                    lossv)))))]
+     (when (<= beta alpha)
+       (println "What's up with the window??"))
+     (rec gamestate (negate player) depth alpha beta false))))
 
-(defn cls-ab-transp-search
-  "So what if I indent five times?
-"
-  [gamestate player rank-func depth alpha beta]
-  (letfn [(rec [gamestate owner level alpha beta max?]
-            (if (equals level depth)
-              (rank-func gamestate player)
-              (case-pattern
-               [max? true false]
-               [cur alpha beta
-                opp beta alpha
-                compo greater-equals less-equals
-                mnmx fastmax fastmin
-                lossv negative-infinity positive-infinity]
-               (let [rd (IncrementalGameCalc. gamestate owner)]
-                 (if (.hasNext rd)
-                   (loop [cur cur]
-                     (if (.hasNext rd)
-                       (let [ngs (.next rd)
-                             rank (if (less-equals level 3)
-                                    (let [key (make-signed-gamestate ngs owner)
-                                          lrnk (get-transp-table movetable key)]
-                                      (if lrnk lrnk
-                                          (let [r (rec ngs (negate owner) (inc-1 level)
-                                                       alpha
-                                                       beta
-                                                       (not max?))]
-                                            (add-transp-table movetable key r)
-                                            r)))
-                                    (rec ngs (negate owner) (inc-1 level)
-                                         alpha
-                                         beta
-                                         (not max?)))]
+(def-search cls-ab-transp-search
+  "So what if I indent five times?"
+  [mtable]
+  (:pre [& args]
+        (export mtable (make-transp-table 23)))
+  (:post [& args]
+         (flush-transp-table mtable))
+  (:eval
+   [gamestate player rank-func depth alpha beta]
+   (letfn [(rec [gamestate owner level alpha beta max?]
+             (if (equals level depth)
+               (rank-func gamestate player)
+               (case-pattern
+                [max? true false]
+                [cur alpha beta
+                 opp beta alpha
+                 compo greater-equals less-equals
+                 mnmx fastmax fastmin
+                 lossv negative-infinity positive-infinity]
+                (let [rd (IncrementalGameCalc. gamestate owner)]
+                  (if (.hasNext rd)
+                    (loop [cur cur]
+                      (if (.hasNext rd)
+                        (let [ngs (.next rd)
+                              rank (if (less-equals level 3)
+                                     (let [key (make-signed-gamestate ngs owner)
+                                           lrnk (get-transp-table mtable key)]
+                                       (if lrnk lrnk
+                                           (let [r (rec ngs (negate owner) (inc-1 level)
+                                                        alpha
+                                                        beta
+                                                        (not max?))]
+                                             (add-transp-table mtable key r)
+                                             r)))
+                                     (rec ngs (negate owner) (inc-1 level)
+                                          alpha
+                                          beta
+                                          (not max?)))]
 
-                         (let [cur (mnmx rank cur)]
-                           (if (compo cur opp)
-                             cur
-                             (recur cur))))
-                       cur))                      
-                   lossv)))))]
-    (when (<= beta alpha)
-      (println "What's up with the window??"))
-    (rec gamestate (negate player) 0 alpha beta false)))
+                          (let [cur (mnmx rank cur)]
+                            (if (compo cur opp)
+                              cur
+                              (recur cur))))
+                        cur))                      
+                    lossv)))))]
+     (when (<= beta alpha)
+       (println "What's up with the window??"))
+     (rec gamestate (negate player) 0 alpha beta false))))
 
-(defn aspiration
+(def-search aspiration
   "We can pass in the guess-func rather nicely.
    WARNING: do not use a transp-table using
    guess func until the search-structure is well
    developed."
-  [gamestate player rankf radius depth guess-func & guess-args]
-  (let [guess (apply guess-func gamestate player guess-args)]
-    (let [alpha (subtract guess radius)
-          beta (add guess radius)
-          res (cls-ab-transp-search gamestate player rankf depth alpha beta)]
-      (cond (equals res alpha)
-            (do
-              ;; (println "Failed low")
-              (cls-ab-transp-search gamestate player rankf depth negative-infinity beta))
-            (equals res beta)
-            (do
-              ;; (println "Failed high")
-              (cls-ab-transp-search gamestate player rankf depth alpha positive-infinity))
-            :else
-            res))))
+  []
+  (:pre [& args]
+        ((:pre cls-ab-transp-search)))
+  (:post [& args]
+         ((:post cls-ab-transp-search)))
+  (:eval
+   [gamestate player rankf radius depth guess-func & guess-args]
+   (let [guess (apply guess-func gamestate player guess-args)]
+     (let [alpha (subtract guess radius)
+           beta (add guess radius)
+           res (cls-ab-transp-search-func gamestate player rankf depth alpha beta)]
+       (cond (equals res alpha)
+             (do
+               ;; (println "Failed low")
+               (cls-ab-transp-search-func gamestate player rankf depth negative-infinity beta))
+             (equals res beta)
+             (do
+               ;; (println "Failed high")
+               (cls-ab-transp-search-func gamestate player rankf depth alpha positive-infinity))
+             :else
+             res)))))
 
-(defn mtd-f
+(def-search mtd-f
   "MTD-F works best with quantized heuristics."
-  [gamestate player rankf depth guess-func & guess-args]
-  (let [guess (apply guess-func gamestate player guess-args)]
-    (loop [guess guess upper positive-infinity lower negative-infinity]
-      (let [beta 
-            (if (equals guess lower)
-              (inc-1 guess)
-              guess)]
-        (let [next (cls-ab-transp-search gamestate player rankf depth (dec-1 beta) beta)]
-          (if (less next beta)
-            (let [upper next]
-              (if (less-equals upper lower)
-                upper
-                (recur next upper lower)))
-            (let [lower next]
-              (if (less-equals upper lower)
-                lower
-                (recur next upper lower)))))))))
+  []
+  (:pre [& args]
+        ((:pre cls-ab-transp-search)))
+  (:post [& args]
+         ((:post cls-ab-transp-search)))
+  (:eval
+   [gamestate player rankf depth guess-func & guess-args]
+   (let [guess (apply guess-func gamestate player guess-args)]
+     (loop [guess guess upper positive-infinity lower negative-infinity]
+       (let [beta 
+             (if (equals guess lower)
+               (inc-1 guess)
+               guess)]
+         (let [next (cls-ab-transp-search-func gamestate player rankf depth (dec-1 beta) beta)]
+           (if (less next beta)
+             (let [upper next]
+               (if (less-equals upper lower)
+                 upper
+                 (recur next upper lower)))
+             (let [lower next]
+               (if (less-equals upper lower)
+                 lower
+                 (recur next upper lower))))))))))
 
 
 ;;
@@ -557,7 +558,14 @@
 ;;
 ;;
 
+(def-search testme
+  []
+  (:pre [])
+  (:eval [] -1)
+  (:post []))
+
+;; what is next?
 ;;
-;; killer heuristic - needs cross tree communication - use let-bound
-;; atom? or pass it around... (thread-safer)
 ;;
+;;
+

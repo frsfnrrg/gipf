@@ -3,6 +3,8 @@
 
 (set! *warn-on-reflection* true)
 
+(load "core")
+
 (gipf.core/runGUI)
 
 "Ola!"
