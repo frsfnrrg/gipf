@@ -15,7 +15,7 @@
 
   ;; we assume the opening strategy ignores the gipfiness when in
   ;; :filling mode. Should we? I do not think so..
-  (swap! ranks-count (constantly 0)) 
+  (Counter/cclear ranks-count) 
   (let [move-ranking-func (get-move-ranking-func player)
         pieces-left (get-pieces-in-reserve reserves player)
         possible-moves (shuffle
@@ -43,7 +43,7 @@
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
 
     (ond :evaluation-count
-         (println "Nodes evaluated:" @ranks-count))
+         (println "Nodes evaluated:" (Counter/cget ranks-count)))
 
     (teardown-move-ranking-func! player)
 

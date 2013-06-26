@@ -1,7 +1,8 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
-                  LTranspTable CompressedSGS Ranking MoveSignedGS HistoryTable MoveSignedIGC)))
+                  LTranspTable CompressedSGS Ranking MoveSignedGS HistoryTable MoveSignedIGC
+                  Counter)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -333,7 +334,7 @@
       (endf))))
 
 
-(def ranks-count (atom (long 0)))
+(def ranks-count (Counter/cmake))
 
 (defn dfr-helper
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
@@ -343,7 +344,7 @@
   `(def ~name ~doc (Heuristic.
                     (fn [] ~@setupexprs)
                     (fn ~name [~evalarg1 ~evalarg2]
-                      (swap! ranks-count #(inc-1 %))
+                      (Counter/cinc ranks-count)
                       ~@evalexprs))))
 
 (defmacro def-ranking-function
