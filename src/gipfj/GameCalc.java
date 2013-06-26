@@ -269,7 +269,7 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        return new GameState(new Board(cdata, hc), rr);
+        return curr.change(new Board(cdata, hc), rr);
     }
 
     private static final GameState[] bgk = new GameState[42];

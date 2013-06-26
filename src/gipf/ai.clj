@@ -2,7 +2,8 @@
   (:import (gipfj IncrementalGameCalc
                   GameState TranspositionTable
                   SignedGameState CompressedSGS
-                  LTranspTable)))
+                  LTranspTable MoveSignedIGC
+                  MoveSignedGS HistoryTable)))
 
 
 ;; AI.clj
@@ -417,6 +418,49 @@
     (when (<= beta alpha)
       (println "What's up with the window??"))
     (rec gamestate (negate player) depth alpha beta false)))
+
+(def hist-table (HistoryTable/hmake))
+
+(defn cls-ab-hist-search
+  "History heuristic alpha beta search."
+  [gamestate player rank-func depth alpha beta]
+  (letfn [(rec [gamestate owner level alpha beta max?]
+            (if (equals level depth)
+                (rank-func gamestate player)
+                  (case-pattern
+                   [max? true false]
+                   [cur alpha beta
+                    opp beta alpha
+                    compo greater-equals less-equals
+                    mnmx fastmax fastmin
+                    lossv negative-infinity positive-infinity]
+                   (let [rd (MoveSignedIGC. gamestate owner (HistoryTable/hordering hist-table))]
+                     (if (.hasNext rd)
+                       (loop [cur cur recm -1]
+                         (if (.hasNext rd)
+                           (let [ngs (.next rd)
+                                 rank (rec ngs (negate owner) (inc-1 level)
+                                           alpha
+                                           beta
+                                           (not max?))]
+                             (let [cur (mnmx rank cur)]
+                               (let [recm (if (equals cur rank)
+                                            (MoveSignedGS/getMove ngs)
+                                            recm)]
+                                 (if (compo cur opp)
+                                   (do
+                                     (when-not (equals recm -1)
+                                       (HistoryTable/hadd hist-table level recm))
+                                     cur)
+                                 (recur cur recm)))))
+                           (do
+                             (when-not (equals recm -1)
+                               (HistoryTable/hadd hist-table level recm))
+                             cur)))                      
+                       lossv)))))]
+    (when (<= beta alpha)
+      (println "What's up with the window??"))
+    (rec gamestate (negate player) 0 alpha beta false)))
 
 (defn cls-ab-transp-search
   "So what if I indent five times?

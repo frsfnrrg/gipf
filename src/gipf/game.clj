@@ -69,7 +69,10 @@
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
     (ond :transp-distribution
          (post-mortem-transp))
+    (ond :transp-distribution
+         (HistoryTable/hanalyze hist-table))
     (clear-transp!)
+    (HistoryTable/hclear hist-table)
     (ond :evaluation-count
          (println "Nodes evaluated:" @ranks-count))
     ;; best would be, until mouse is moved...
@@ -252,13 +255,12 @@
       aspire-deep #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
       mtdf-deep #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
       cab-transp-deep  #(smrf! % rank-board-hybrid cls-ab-transp-search 5 negative-infinity positive-infinity)
-      
-      ]
+      cab-hist-light  #(smrf! % rank-board-hybrid cls-ab-hist-search 3 negative-infinity positive-infinity)]
 
   (defn setup-ai!
     []
-    (cab-transp-deep -1)
-    (mtdf-simple 1))
+    (cab-hybrid-light 1)
+    (cab-hist-light -1))
  
  (defn simulate
     [mode type]

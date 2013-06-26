@@ -52,4 +52,15 @@ public class GameState {
     public String toString() {
         return "{" + b.toString() + " " + r.toString() + "}";
     }
+
+    /**
+     * To be overridden by subclasses of GameState, so key data is not lost.
+     * 
+     * @param board
+     * @param rr
+     * @return
+     */
+    public GameState change(Board board, Reserves rr) {
+        return new GameState(board, rr);
+    }
 }

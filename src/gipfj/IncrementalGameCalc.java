@@ -4,19 +4,19 @@ import java.util.Iterator;
 
 public class IncrementalGameCalc implements Iterator<GameState> {
 
-    private final int[][] g1 = new int[3][];
-    private final GameState[] g2 = new GameState[10];
+    protected final int[][] g1 = new int[3][];
+    protected final GameState[] g2 = new GameState[10];
     private final GameState[] g3 = new GameState[3];
-    private int plo;
+    protected int plo;
     private int g3_pos;
     private int g3_end;
-    private int g2_pos;
-    private int g1_pos;
+    protected int g2_pos;
+    protected int g1_pos;
     private int g1_end;
-    private int player;
+    protected int player;
     private boolean ready;
-    private Reserves deccedReserves;
-    private int origHash;
+    protected Reserves deccedReserves;
+    protected int origHash;
 
     public IncrementalGameCalc(GameState g, long p) {
         this.player = (int) p;
@@ -83,7 +83,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
     }
 
     // this function works by need;
-    private GameState getNextMoveResult() {
+    protected GameState getNextMoveResult() {
         // works off the g1 buffer; writes two at a time into g2
         if (g2_pos == 2) {
             g2_pos = 0;
