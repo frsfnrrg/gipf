@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc MoveSignedIGC DTable Compression)))
+  (:import (gipfj IncrementalGameCalc MoveSignedIGC)))
 
 
 ;; AI.clj
@@ -9,10 +9,8 @@
 ;;
 ;; Merge it all:
 ;;
-;; quiescence & transp & history 
-;; ab & transp & history & idr (n step)
-;;
-;; All this using _proper_ alpha beta.
+;; quiescence & [ab & transp & history ]
+;; [ab & transp & history] & idr (n step) (CHECK)
 ;;
 ;; Performance: simply pre-cast all entering longs (or type hint if
 ;; doable)
@@ -331,6 +329,7 @@
          (flush-transp-table movetable))
   (:eval
    [gamestate good-player rank-func quiet-func depth levelcap iboost]
+   ;; TODO refactor out, into defn-iter-with-context
    (letfn [(qab [gamestate owner depth level best-rank]      
              (if (or (equals depth 0) (equals level levelcap))
                (rank-func gamestate good-player)
@@ -410,6 +409,7 @@
          (hist-clear! hihi))
   (:eval
    [gamestate player rank-func depth alpha beta]
+   ;; TODO refactor out into defn-iter-with-context
    (letfn [(rec [gamestate owner depth alpha beta max?]
              (if (equals 0 depth)
                (rank-func gamestate player)
@@ -452,10 +452,9 @@
   "So what if I indent five times?"
   [mtable]
   (:pre [& args]
-        (export mtable (DTable/dmake 23)))
+        (export mtable (make-dtab 23)))
   (:post [& args]
-    (DTable/danalyze mtable)
-         (DTable/dempty mtable))
+         (dtab-clear! mtable))
   (:eval
    [gamestate player rank-func depth alpha beta]
    (letfn [(rec [gamestate owner level alpha beta max?]
@@ -474,14 +473,14 @@
                       (if (.hasNext rd)
                         (let [ngs (.next rd)
                               rank (if (less-equals level 3)
-                                     (let [key (Compression/compressgs ngs owner)
-                                           lrnk (DTable/dgeta mtable key)]
+                                     (let [key (compress-sgs ngs owner)
+                                           lrnk (dtab-geta mtable key)]
                                        (if lrnk lrnk
                                            (let [r (rec ngs (negate owner) (inc-1 level)
                                                         alpha
                                                         beta
                                                         (not max?))]
-                                             (DTable/dadd mtable key (negate level) r)
+                                             (dtab-add! mtable key (negate level) r)
                                              r)))
                                      (rec ngs (negate owner) (inc-1 level)
                                           alpha
@@ -591,7 +590,7 @@
                                      ngs antiowner                
                                      (rank-func ngs good-player))
 
-                                    (let [nork (DTable/dgetd transp (Compression/compressgs
+                                    (let [nork (dtab-get transp (compress-sgs
                                                                     ngs
                                                                     antiowner)
                                                  depth)]
@@ -604,7 +603,7 @@
                                          alpha beta)
                                         (make-idr-node ngs antiowner nork))))
                              rank (idr-node-rank next)]
-                         (DTable/dadd transp (Compression/compressgs
+                         (dtab-add! transp (compress-sgs
                                               (idr-node-gamestate next)
                                               (idr-node-player next)) depth rank)
                          (add-tr! nchildren rank next)
@@ -633,8 +632,8 @@
                            (hist-add! hist depth recm))
                          cur)
                        (let [onodule (first rq)
-                             nodule (let [ttr (DTable/dgetd transp
-                                                          (Compression/compressgs
+                             nodule (let [ttr (dtab-get transp
+                                                            (compress-sgs
                                                            (idr-node-gamestate onodule)
                                                            (idr-node-player onodule)) depth)]
                                       (if (nil? ttr)
@@ -645,7 +644,7 @@
                                                (dec-1 trange)
                                                (not max?)
                                                alpha beta)]
-                                          (DTable/dchange transp (Compression/compressgs
+                                          (dtab-change! transp (compress-sgs
                                                                   (idr-node-gamestate nog)
                                                                   (idr-node-player nog))
                                                           depth (idr-node-rank nog))
@@ -685,12 +684,11 @@
   (:pre [& args]
         ;; could we do a fully static, with overwrites? saves
         ;; 16 bytes mem/47 each, no overflow (save on alloc)
-        (export transp (DTable/dmake 23))
+        (export transp (make-dtab 23))
         (export hist (make-hist-table)))
   (:post [& args]
          (hist-clear! hist)
-         (DTable/danalyze transp)
-         (DTable/dempty transp))
+         (dtab-clear! transp))
   (:eval
    [gamestate good-player rank-func depth istep time alpha beta]
    (let [endtime (add (System/nanoTime) (* 1e6 time))]

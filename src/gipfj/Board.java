@@ -47,60 +47,20 @@ import java.util.Random;
 
 public class Board {
     public static final int SIZE = IMath.hexNum(4);
-    public final int[] data;
+    public final byte[] data;
     public final int hashCode;
 
     private Board() {
-        data = new int[SIZE];
+        data = new byte[SIZE];
         for (int i = 0; i < SIZE; i++) {
             data[i] = 0;
         }
         hashCode = recalcHashCode();
     }
 
-    public Board(int[] nd, int hash) {
+    public Board(byte[] nd, int hash) {
         data = nd;
         hashCode = hash;
-    }
-
-    public static Board makeBoard() {
-        return new Board();
-    }
-
-    public static int get(Board b, int loc) {
-        return b.data[loc];
-    }
-
-    public static boolean equals(Board a, Board b) {
-        boolean eq = true;
-        int i;
-        for (i = 0; i < SIZE; i++) {
-            if (a.data[i] != b.data[i]) {
-                eq = false;
-            }
-        }
-
-        return eq;
-    }
-
-    public static Board change(Board b, int loc, int val) {
-        // so what if we allocate a lot?
-        int[] nd = new int[SIZE];
-        System.arraycopy(b.data, 0, nd, 0, SIZE);
-        int nhash = b.hashCode ^ hashArray[loc][val + 2]
-                ^ hashArray[loc][nd[loc] + 2];
-        nd[loc] = val;
-        return new Board(nd, nhash);
-    }
-
-    public static int countItem(Board b, int item) {
-        int c = 0;
-        int i;
-        for (i = 0; i < SIZE; i++) {
-            if (b.data[i] == item)
-                c++;
-        }
-        return c;
     }
 
     private int recalcHashCode() {
@@ -108,7 +68,6 @@ public class Board {
         for (int k = 1; k < SIZE; k++) {
             hc ^= hashArray[k][data[k] + 2];
         }
-
         return hc;
     }
 
@@ -117,29 +76,11 @@ public class Board {
     private static int[][] makeHashArray() {
         Random rand = new Random(-6786871167745675445L);
 
-        // 185 vectors, 32 dimensions.
-        // Overdetermined. Still, 192 bits = 24 bytes
-        // for a perfect hash... (thing)
-
         int[][] r = new int[SIZE][5];
-        // fill with random ints
         for (int z = 0; z < SIZE; z++) {
-            // is this justified? at least, the empty
-            // board has hash 0.
-
-            // hmm. none of the zeros coincide.
-            // case: a piece moves one. the new loc changes hash,
-            // the old loc changes hash...
-
-            // well, 0 for empty means only one ^= is needed
-            // when a 0 cell is filled - which happens
-            // at the end of every push...
-
-            // If we really need cycles..
-
             r[z][0] = rand.nextInt();
             r[z][1] = rand.nextInt();
-            r[z][2] = rand.nextInt();// can this be 0 ??
+            r[z][2] = rand.nextInt();
             r[z][3] = rand.nextInt();
             r[z][4] = rand.nextInt();
         }
@@ -152,13 +93,15 @@ public class Board {
      * 
      * Are these (same hashed) boards actually equal?
      * 
+     * TODO: used only in SignedGameState
+     * 
      * @param a
      * @param b
      * @return
      */
-    public static Boolean equalsNHC(Board a, Board b) {
-        int[] da = a.data;
-        int[] db = b.data;
+    public static boolean equalsNHC(Board a, Board b) {
+        byte[] da = a.data;
+        byte[] db = b.data;
         for (int i = 0; i < SIZE; i++) {
             if (da[i] != db[i]) {
                 return false;
@@ -180,5 +123,48 @@ public class Board {
     @Override
     public String toString() {
         return "[board " + Integer.toHexString(hashCode) + "]";
+    }
+
+    // CLOJURE ACCESS
+
+    public static Board makeBoard() {
+        return new Board();
+    }
+
+    public static int get(Board b, int loc) {
+        return b.data[loc];
+    }
+
+    public static Board change(Board b, long location, long val) {
+        int loc = (int) location;
+        // so what if we allocate a lot?
+        byte[] nd = new byte[SIZE];
+        System.arraycopy(b.data, 0, nd, 0, SIZE);
+        int nhash = b.hashCode ^ hashArray[loc][(int) (val + 2)]
+                ^ hashArray[loc][nd[loc] + 2];
+        nd[loc] = (byte) val;
+        return new Board(nd, nhash);
+    }
+
+    public static int countItem(Board b, long item) {
+        int c = 0;
+        int i;
+        for (i = 0; i < SIZE; i++) {
+            if (b.data[i] == item)
+                c++;
+        }
+        return c;
+    }
+
+    public static boolean equals(Board a, Board b) {
+        boolean eq = true;
+        int i;
+        for (i = 0; i < SIZE; i++) {
+            if (a.data[i] != b.data[i]) {
+                eq = false;
+            }
+        }
+
+        return eq;
     }
 }

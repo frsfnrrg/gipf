@@ -14,7 +14,7 @@
                  :pre-rank-value false
                  :screen-display true
                  :evaluation-count true
-                 :equals-moves false
+                 :equal-moves true
                  :pre-calc-message false})]
   (defn set-diagnostic-level!
     [key ^Boolean on]

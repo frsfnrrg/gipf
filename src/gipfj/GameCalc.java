@@ -173,7 +173,7 @@ public class GameCalc {
     private static int[] gicbuf = new int[7];
 
     public static int[] getImpactedCells(Board b, int loc, int delta) {
-        int[] d = b.data;
+        byte[] d = b.data;
         int m = 0;
         while (true) {
             int ind = loc;
@@ -195,7 +195,7 @@ public class GameCalc {
      * Takes a well adjusted (start radius 3) line as `shove`
      */
     public static GameState placeAndShove(GameState foo, int player, Line shove) {
-        int[] cdata = new int[Board.SIZE];
+        byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(foo.b.data, 0, cdata, 0, Board.SIZE);
         // yay! I can mutate!
 
@@ -204,9 +204,9 @@ public class GameCalc {
 
         int hc = foo.b.hashCode;
 
-        int last = player;
+        byte last = (byte) player;
         while (true) {
-            int v = cdata[q];
+            byte v = cdata[q];
             hc ^= Board.hashArray[q][v + 2] ^ Board.hashArray[q][last + 2];
             cdata[q] = last;
 
@@ -228,7 +228,7 @@ public class GameCalc {
             int player) {
         // basically, over the line we do .... something.
 
-        int[] cdata = new int[Board.SIZE];
+        byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
         Reserves rr = curr.r;
         int hc = curr.b.hashCode;
@@ -282,7 +282,7 @@ public class GameCalc {
 
         // we iterate over LOL. forwards AND backwards
 
-        int[] orig = gs.b.data;
+        byte[] orig = gs.b.data;
         Reserves decced = gs.r.applyDelta(player, -1, 1, 0);
 
         for (int[] n : listOfLinePoints) {
@@ -303,15 +303,15 @@ public class GameCalc {
 
             int hcu = gs.b.hashCode;
             int hcd = gs.b.hashCode;
-            int[] up = new int[Board.SIZE];
+            byte[] up = new byte[Board.SIZE];
             System.arraycopy(orig, 0, up, 0, Board.SIZE);
-            int[] down = new int[Board.SIZE];
+            byte[] down = new byte[Board.SIZE];
             System.arraycopy(orig, 0, down, 0, Board.SIZE);
 
-            int last = player;
+            byte last = (byte) player;
             for (int j = 0; j < n.length; j++) {
                 int ind = n[j];
-                int v = up[ind];
+                byte v = up[ind];
                 hcu ^= Board.hashArray[ind][v + 2]
                         ^ Board.hashArray[ind][last + 2];
                 up[ind] = last;
@@ -321,10 +321,10 @@ public class GameCalc {
                 last = v;
             }
 
-            last = player;
+            last = (byte) player;
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
-                int v = down[ind];
+                byte v = down[ind];
                 hcd ^= Board.hashArray[ind][v + 2]
                         ^ Board.hashArray[ind][last + 2];
                 down[ind] = last;

@@ -4,7 +4,7 @@ import java.util.Iterator;
 
 public class IncrementalGameCalc implements Iterator<GameState> {
 
-    protected final int[][] g1 = new int[3][];
+    protected final byte[][] g1 = new byte[3][];
     protected final GameState[] g2 = new GameState[10];
     private final GameState[] g3 = new GameState[3];
     protected int plo;
@@ -13,13 +13,13 @@ public class IncrementalGameCalc implements Iterator<GameState> {
     protected int g2_pos;
     protected int g1_pos;
     private int g1_end;
-    protected int player;
+    protected byte player;
     private boolean ready;
     protected Reserves deccedReserves;
     protected int origHash;
 
     public IncrementalGameCalc(GameState g, long p) {
-        this.player = (int) p;
+        this.player = (byte) p;
         g1_pos = 0;
         g1_end = 0;
         for (GameState q : GameCalc.getLineTakingResults(g, player)) {
@@ -88,7 +88,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
         if (g2_pos == 2) {
             g2_pos = 0;
 
-            int[] orig = g1[g1_pos];
+            byte[] orig = g1[g1_pos];
             // now, we analyze a line...
 
             // n will be set anyway
@@ -123,17 +123,17 @@ public class IncrementalGameCalc implements Iterator<GameState> {
             // we don't want to use the same thing twice
             plo++;
 
-            int[] up = new int[Board.SIZE];
+            byte[] up = new byte[Board.SIZE];
             System.arraycopy(orig, 0, up, 0, Board.SIZE);
-            int[] down = new int[Board.SIZE];
+            byte[] down = new byte[Board.SIZE];
             System.arraycopy(orig, 0, down, 0, Board.SIZE);
             int hcu = origHash;
             int hcd = origHash;
 
-            int last = player;
+            byte last = player;
             for (int j = 0; j < n.length; j++) {
                 int ind = n[j];
-                int v = up[ind];
+                byte v = up[ind];
                 hcu ^= Board.hashArray[ind][v + 2]
                         ^ Board.hashArray[ind][last + 2];
                 up[ind] = last;
@@ -146,7 +146,7 @@ public class IncrementalGameCalc implements Iterator<GameState> {
             last = player;
             for (int j = n.length - 1; j >= 0; j--) {
                 int ind = n[j];
-                int v = down[ind];
+                byte v = down[ind];
                 hcd ^= Board.hashArray[ind][v + 2]
                         ^ Board.hashArray[ind][last + 2];
                 down[ind] = last;

@@ -11,7 +11,7 @@ public class Compression {
     public static byte[] compress(Board b, Reserves r, long player) {
         byte[] data = new byte[14];
         // 105.76 bits; we can pack 75 more states in.
-        int[] bdata = b.data;
+        byte[] bdata = b.data;
         int[] rdata = { r.g1, r.g2, r.o1, r.o2, r.p1, r.p2 };
 
         int A[] = new int[LEN]; // 120 ; 5 * 24

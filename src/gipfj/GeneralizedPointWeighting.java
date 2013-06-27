@@ -205,7 +205,7 @@ public class GeneralizedPointWeighting {
      */
     public static long calcVal(Board b, long player, int[][] weights) {
         int r = 0;
-        int[] d = b.data;
+        byte[] d = b.data;
         for (int i = 0; i < Board.SIZE; i++) {
             r += weights[i][d[i] * (int) player + 2];
         }

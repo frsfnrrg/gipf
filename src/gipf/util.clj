@@ -266,7 +266,7 @@
                     :else
                     (recur (rest rcoll) recv reco)))))]
     (when disp
-      (println (count best)))
+      (println best))
     (rand-nth best)))
 
 (defn same-sign?

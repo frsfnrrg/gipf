@@ -2,7 +2,7 @@
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
                   LTranspTable CompressedSGS Ranking MoveSignedGS HistoryTable MoveSignedIGC
-                  Counter)))
+                  Counter Compression DTable)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -90,9 +90,35 @@
             (HistoryTable/hanalyze ~table))
        (HistoryTable/hclear ~table)))
 
+(definline dtab-get [table key depth]
+  `(DTable/dgetd ~table ~key ~depth))
+(definline dtab-geta [table key]
+  `(DTable/dgeta ~table ~key))
+(definline make-dtab [sz]
+  `(DTable/dmake ~sz))
+(definline dtab-add! [table key level rank]
+  `(DTable/dadd ~table ~key ~level ~rank))
+(definline dtab-change! [table key level rank]
+  `(DTable/dchange ~table ~key ~level ~rank))
+(definline dtab-clear! [table]
+  `(do (ond :transp-analysis
+            (DTable/danalyze ~table))
+       (DTable/dempty ~table)))
+
 (definline signed-gs-move
   [sgs]
   `(MoveSignedGS/getMove ~sgs))
+
+(definline read-counter
+  [counter]
+  `(Counter/cget ~counter))
+(definline clear-counter [counter]
+  `(Counter/cclear ~counter))
+
+(definline compress-sgs
+  [gamestate player]
+  `(Compression/compressgs ~gamestate ~player))
+
 
 ;; predicates/extraction
 
@@ -309,6 +335,7 @@
               (nil? (:post search)))
       (throw (java.lang.Exception.
               "Wrong types passed to setup-move-ranking-func!")))
+    ;;(println player lead-heuristic search sfargs)
     (swap! mrfs
            #(assoc % player
                    [(:setup lead-heuristic)
@@ -321,6 +348,7 @@
     [player]
     (let [rr (get @mrfs player)
           [setuphf setupsf endf lmda] rr]
+      ;;(println rr)
       (setuphf)
       (setupsf)))
   (defn get-move-ranking-func
@@ -380,7 +408,8 @@
   [name docs common sargs sbody targs tbody rargs rbody]
   (let [nil-atoms (alternating common (map (fn [_] `(atom nil)) (range)))
         rebounds (reduce concat (map (fn [symb] [symb `(deref ~symb)]) common))
-        newname (symbol (str name "-func"))]
+        newname (symbol (str name "-func"))
+        empty-atoms (map (fn [symb] `(reset! ~symb nil)) common)]
     `(let [~@nil-atoms]
        (def ~name ~docs
          (Search.
@@ -390,7 +419,8 @@
               ~@rbody))
           (fn [~@targs]
             (let [~@rebounds]
-              ~@tbody))))
+              ~@tbody)
+            ~@empty-atoms)))
        (def ~newname ~docs (:eval ~name)))))
 
 (defmacro def-search

@@ -1,11 +1,11 @@
 package gipfj;
 
 public class MoveSignedGS extends GameState {
-    final int m;
+    final byte m;
 
     public MoveSignedGS(Board b, Reserves r, int move) {
         super(b, r);
-        m = move;
+        m = (byte) move;
     }
 
     @Override

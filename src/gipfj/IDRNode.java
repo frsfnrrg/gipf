@@ -2,14 +2,14 @@ package gipfj;
 
 public class IDRNode {
     private final Object children;
-    private final long player;
-    private final long rank;
+    private final byte player;
+    private final int rank;
     private final GameState gamestate;
 
     private IDRNode(GameState g, long p, long r, Object c) {
         children = c;
-        player = p;
-        rank = r;
+        player = (byte) p;
+        rank = (int) r;
         gamestate = g;
     }
 

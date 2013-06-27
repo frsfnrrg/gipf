@@ -11,21 +11,20 @@ import java.util.Iterator;
 public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
     private final int[] order;
-    protected final int[][] g1 = new int[3][];
-    protected final MoveSignedGS[] g2 = new MoveSignedGS[10];
+    private final byte[][] g1 = new byte[3][];
     private final MoveSignedGS[] g3 = new MoveSignedGS[3];
-    protected int plo;
+    private int plo;
     private int g3_pos;
     private int g3_end;
-    protected int g1_pos;
+    private int g1_pos;
     private int g1_end;
-    protected int player;
+    private byte player;
     private boolean ready;
-    protected Reserves deccedReserves;
-    protected int origHash;
+    private Reserves deccedReserves;
+    private int origHash;
 
     public MoveSignedIGC(GameState g, long p, int[] ordering) {
-        this.player = (int) p;
+        this.player = (byte) p;
         order = ordering;
 
         g1_pos = 0;
@@ -86,7 +85,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     protected MoveSignedGS getNextMoveResult() {
         // works off the g1 buffer; writes two at a time into g2
 
-        int[] orig = g1[g1_pos];
+        byte[] orig = g1[g1_pos];
         // now, we analyze a line...
 
         // n will be set anyway
@@ -120,14 +119,14 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             return null;
         }
 
-        int[] r = new int[Board.SIZE];
+        byte[] r = new byte[Board.SIZE];
         System.arraycopy(orig, 0, r, 0, Board.SIZE);
         int hcr = origHash;
 
-        int last = player;
+        byte last = player;
         for (int j = 0; j < n.length; j++) {
             int ind = n[j];
-            int v = r[ind];
+            byte v = r[ind];
             hcr ^= Board.hashArray[ind][v + 2] ^ Board.hashArray[ind][last + 2];
             r[ind] = last;
             if (v == 0) {

@@ -37,7 +37,7 @@ public class CompressedSGS implements Compressed {
 
             // FIRST 4 BYTES ARE RESERVED FOR TRANSP TABLE USE
 
-            int[] bd = g.b.data;
+            byte[] bd = g.b.data;
             data = new byte[4 + 27];
             for (int i = 0; i < Board.SIZE; i++) {
                 int pos = i * 5 + bd[i] + 2;// range 0 -> 184
