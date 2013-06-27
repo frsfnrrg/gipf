@@ -230,20 +230,20 @@
       mtdf-deep
       #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
       cab-transp-deep
-      #(smrf! % rank-board-hybrid cls-ab-transp-search 5 negative-infinity positive-infinity)
+      #(smrf! % rank-board-hybrid cls-ab-transp-search 6 negative-infinity positive-infinity)
       cab-hist-light
       #(smrf! % rank-board-hybrid cls-ab-hist-search 3 negative-infinity positive-infinity)
       cab-hist-deep
       #(smrf! % rank-board-hybrid cls-ab-hist-search 5 negative-infinity positive-infinity)
       idrnh-hybrid-light
-      #(smrf! % rank-board-hybrid idrn-ab-h 4 2 300 negative-infinity positive-infinity)
+      #(smrf! % rank-board-hybrid idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
 
       ]
 
   (defn setup-ai!
     []
     (cab-transp-deep 1)
-    (cab-transp-deep -1))
+    (idrnh-hybrid-light -1))
  
  (defn simulate
     [mode type]

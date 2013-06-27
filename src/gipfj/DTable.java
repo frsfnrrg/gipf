@@ -15,6 +15,10 @@ public class DTable {
     private int count_null;
     private int count_first;
     private int count_second;
+    private int count_csecond;
+    private int count_cneither;
+    private int count_cfirst;
+    private int count_cnull;
 
     private DTable(int sexp) {
         size = 1 << sexp;
@@ -24,6 +28,11 @@ public class DTable {
         count_null = 0;
         count_first = 0;
         count_second = 0;
+
+        count_cnull = 0;
+        count_cfirst = 0;
+        count_csecond = 0;
+        count_cneither = 0;
     }
 
     private Entry[] store;
@@ -60,10 +69,13 @@ public class DTable {
     }
 
     private void empty() {
-
         count_null = 0;
         count_first = 0;
         count_second = 0;
+        count_cnull = 0;
+        count_cfirst = 0;
+        count_csecond = 0;
+        count_cneither = 0;
         store = null;
     }
 
@@ -84,6 +96,9 @@ public class DTable {
         System.out.println("== Depth 2 table analysis results:");
         System.out.format("== Search: fail - %d; first %d; second %d\n",
                 count_null, count_first, count_second);
+        System.out.format(
+                "== Change: empty - %d; first %d; second %d; neither %d\n",
+                count_cnull, count_cfirst, count_csecond, count_cneither);
         System.out.format("== State: empty %d; single entry %d; full %d\n",
                 empty, single, full);
     }
@@ -110,15 +125,20 @@ public class DTable {
         int index = in.hashCode() >>> shift_cut;
         Entry ff = store[index];
         if (ff == null) {
+            count_cnull++;
             add(in, depth, rank);
+            return;
         }
 
         if (ff.equals(in, depth)) {
+            count_cfirst++;
             ff.rank = rank;
-        } else if (ff.second.equals(in, depth)) {
+        } else if (ff.second != null && ff.second.equals(in, depth)) {
+            count_csecond++;
             ff.second.rank = rank;
         } else {
-            System.out.println("Changing value that does not exist.");
+            count_cneither++;
+            add(in, depth, rank);
         }
     }
 

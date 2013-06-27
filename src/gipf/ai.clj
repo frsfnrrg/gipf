@@ -551,6 +551,127 @@
                  lower
                  (recur next upper lower))))))))))
 
+(defn-iter-with-context itr
+  "Helper to idrn-ab-h"
+  [good-player rank-func depth endtime hist transp]
+  [node depth trange max? alpha beta]
+  (if (and (greater-equals trange 3) (past-time? endtime))
+    node
+    (let [gamestate (idr-node-gamestate node)
+          owner (idr-node-player node)
+          antiowner (negate owner)
+          ochildren (idr-node-children node)
+          nchildren (transient {})
+          orank (idr-node-rank node)
+          nrank
+          ;;
+          ;; Children:
+          ;; {} empty - terminal
+          ;; nil - expandme!
+          ;; {bob, jones, frank} - update!!
+          ;;
+          (if (and (not (nil? ochildren)) (empty? ochildren))
+            orank
+            (case-pattern
+             [max? true false]
+             [cur alpha beta
+              opp beta alpha
+              compo greater-equals less-equals
+              mnmx fastmax fastmin
+              lossv negative-infinity positive-infinity]
+             (if (nil? ochildren)
+               (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hist))]
+                 (if (.hasNext rd)
+                   (loop [cur cur recm -1]
+                     (if (.hasNext rd)
+                       (let [ngs (.next rd)
+                             ;; transp!
+                             next (if (equals depth 0)
+                                    (make-idr-node
+                                     ngs antiowner                
+                                     (rank-func ngs good-player))
+
+                                    (let [nork (DTable/dget transp (make-signed-gamestate
+                                                                    ngs
+                                                                    antiowner) depth)]
+                                      (if (nil? nork)
+                                        (itr
+                                         (make-idr-node ngs antiowner 0)
+                                         (dec-1 depth)
+                                         (dec-1 trange)
+                                         (not max?)
+                                         alpha beta)
+                                        (make-idr-node ngs antiowner nork))))
+                             rank (idr-node-rank next)]
+                         (DTable/dadd transp (make-signed-gamestate
+                                              (idr-node-gamestate next)
+                                              (idr-node-player next)) depth rank)
+                         (add-tr! nchildren rank next)
+                         (let [cur (mnmx rank cur)]
+                           (let [recm (if (equals cur rank)
+                                        (signed-gs-move ngs)
+                                        recm)]
+                             (if (compo cur opp)
+                               (do
+                                 (when-not (equals recm -1)
+                                   (hist-add! hist depth recm))
+                                 cur)
+                               (recur cur recm)))))
+                       (do
+                         (when-not (equals recm -1)
+                           (hist-add! hist depth recm))
+                         cur)))
+                   lossv))
+               (let [rq (expand-trm ochildren)]
+                 (if (empty? ochildren)
+                   orank
+                   (loop [rq rq cur cur recm -1]
+                     (if (empty? rq)
+                       (do
+                         (when-not (equals recm -1)
+                           (hist-add! hist depth recm))
+                         cur)
+                       (let [onodule (first rq)
+                             nodule (let [ttr (DTable/dget transp
+                                                          (make-signed-gamestate
+                                                           (idr-node-gamestate onodule)
+                                                           (idr-node-player onodule))
+                                                          depth)]
+                                      (if (nil? ttr)
+                                        (let [nog
+                                              (itr
+                                               onodule
+                                               (dec-1 depth)
+                                               (dec-1 trange)
+                                               (not max?)
+                                               alpha beta)]
+                                          (DTable/dchange transp (make-signed-gamestate
+                                                                  (idr-node-gamestate nog)
+                                                                  (idr-node-player nog))
+                                                          depth (idr-node-rank nog))
+                                          nog)                                       
+                                        ;; note that the children are
+                                        ;; not updated - would the table
+                                        ;; entry ever dissappear, we would
+                                        ;; have to go through the entire
+                                        ;; tree again.
+                                        (idr-node-update onodule ttr
+                                                         (idr-node-children onodule))))
+                             ngs (idr-node-gamestate onodule)
+                             rank (idr-node-rank nodule)]
+                         (add-tr! nchildren rank nodule)
+                         (let [cur (mnmx rank cur)]
+                           (let [recm (if (equals cur rank)
+                                        (signed-gs-move ngs)
+                                        recm)]
+                             (if (compo cur opp)
+                               (do
+                                 (when-not (equals recm -1)
+                                   (hist-add! hist depth recm))
+                                 cur)
+                               (recur (rest rq) cur recm))))))))))))]
+      (idr-node-update node nrank (persistent! nchildren)))))
+
 (def-search idrn-ab-h
   "Godlike."
   ;; TODO: in order to implement transp tables into this,
@@ -560,112 +681,28 @@
   ;; Additionally, nodes "should" hold Compressed~~~'s.
   ;; umm... at minimum, we need depth-tables
   ;;
-  [hist]
+  [hist transp]
   (:pre [& args]
         ;; could we do a fully static, with overwrites? saves
         ;; 16 bytes mem/47 each, no overflow (save on alloc)
+        (export transp (DTable/dmake 23))
         (export hist (make-hist-table)))
   (:post [& args]
-         (hist-clear! hist))
+         (hist-clear! hist)
+         (DTable/danalyze transp)
+         (DTable/dclear transp))
   (:eval
    [gamestate good-player rank-func depth istep time alpha beta]
    (let [endtime (add (System/nanoTime) (* 1e6 time))]
-     (letfn [(itr [node depth trange max? alpha beta]
-               (if (and (greater-equals trange 3) (past-time? endtime))
-                 node
-                 (let [gamestate (idr-node-gamestate node)
-                       owner (idr-node-player node)
-                       antiowner (negate owner)
-                       ochildren (idr-node-children node)
-                       nchildren (transient {})
-                       orank (idr-node-rank node)
-                       nrank
-                       ;;
-                       ;; Children:
-                       ;; {} empty - terminal
-                       ;; nil - expandme!
-                       ;; {bob, jones, frank} - update!!
-                       ;;
-                       (if (and (not (nil? ochildren)) (empty? ochildren))
-                         orank
-                         (case-pattern
-                          [max? true false]
-                          [cur alpha beta
-                           opp beta alpha
-                           compo greater-equals less-equals
-                           mnmx fastmax fastmin
-                           lossv negative-infinity positive-infinity]
-                          (if (nil? ochildren)
-                            (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hist))]
-                              (if (.hasNext rd)
-                                (loop [cur cur recm -1]
-                                  (if (.hasNext rd)
-                                    (let [ngs (.next rd)
-                                          next (if (equals depth 0)
-                                                 (make-idr-node
-                                                  ngs antiowner                
-                                                  (rank-func ngs good-player))
-                                                 (itr
-                                                  (make-idr-node ngs antiowner 0)
-                                                  (dec-1 depth)
-                                                  (dec-1 trange)
-                                                  (not max?)
-                                                  alpha beta))
-                                          rank (idr-node-rank next)]
-                                      (add-tr! nchildren rank next)
-                                      (let [cur (mnmx rank cur)]
-                                        (let [recm (if (equals cur rank)
-                                                     (signed-gs-move ngs)
-                                                     recm)]
-                                          (if (compo cur opp)
-                                            (do
-                                              (when-not (equals recm -1)
-                                                (hist-add! hist depth recm))
-                                              cur)
-                                            (recur cur recm)))))
-                                    (do
-                                      (when-not (equals recm -1)
-                                        (hist-add! hist depth recm))
-                                      cur)))
-                                lossv))
-                            (let [rq (expand-trm ochildren)]
-                              (if (empty? ochildren)
-                                orank
-                                (loop [rq rq cur cur recm -1]
-                                  (if (empty? rq)
-                                    (do
-                                      (when-not (equals recm -1)
-                                        (hist-add! hist depth recm))
-                                      cur)
-                                    (let [onodule (first rq)
-                                          nodule (itr
-                                                onodule
-                                                (dec-1 depth)
-                                                (dec-1 trange)
-                                                (not max?)
-                                                alpha beta)
-                                          ngs (idr-node-gamestate onodule)
-                                          rank (idr-node-rank nodule)]
-                                      (add-tr! nchildren rank nodule)
-                                      (let [cur (mnmx rank cur)]
-                                        (let [recm (if (equals cur rank)
-                                                     (signed-gs-move ngs)
-                                                     recm)]
-                                          (if (compo cur opp)
-                                            (do
-                                              (when-not (equals recm -1)
-                                                (hist-add! hist depth recm))
-                                              cur)
-                                            (recur (rest rq) cur recm))))))))))))]
-                   (idr-node-update node nrank (persistent! nchildren)))))]
-       (when (greater-equals alpha beta)
-         (println "Warning: alpha and beta have incorrect ordering."))
-       (loop [nodetree (make-idr-node gamestate (negate good-player) 0)
-              level 0]
-         (if (or (past-time? endtime) (greater level depth))
-           (idr-node-rank nodetree)
-           (recur (itr nodetree level 4 false alpha beta)
-                  (add level istep))))))))
+     (when (greater-equals alpha beta)
+       (println "Warning: alpha and beta have incorrect ordering."))
+     (loop [nodetree (make-idr-node gamestate (negate good-player) 0)
+            level 0]
+       (if (or (past-time? endtime) (greater level depth))
+         (idr-node-rank nodetree)
+         (recur (itr good-player rank-func depth endtime hist transp
+                     nodetree level 4 false alpha beta)
+                (add level istep)))))))
   
 
 

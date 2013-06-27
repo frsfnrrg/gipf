@@ -491,6 +491,15 @@
     `(case ~det ~@mg)))
 
 
+(defmacro defn-iter-with-context
+  "Creates a function, called by the concat of context and args."
+  ([name doc [& context] [& args] & body]
+     `(defn ~name ~doc
+        [~@context ~@args]
+        (letfn [(~name [~@args]
+                  ~@body)]
+          (~name ~@args)))))
+
 ;;
 ;; Idea 1
 ;;
