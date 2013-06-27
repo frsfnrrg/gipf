@@ -220,18 +220,30 @@
       #(smrf! % rank-board-hybrid qab-transp simple-quiet 3 7 3)
       cab-transp-hybrid-light
       #(smrf! % rank-board-hybrid cls-ab-transp-search 3 negative-infinity positive-infinity)
-      aspire-simple #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
-      mtdf-simple #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
+      aspire-simple
+      #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
+      mtdf-simple
+      #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
 
-      aspire-deep #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
-      mtdf-deep #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
-      cab-transp-deep  #(smrf! % rank-board-hybrid cls-ab-transp-search 5 negative-infinity positive-infinity)
-      cab-hist-light  #(smrf! % rank-board-hybrid cls-ab-hist-search 3 negative-infinity positive-infinity)]
+      aspire-deep
+      #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
+      mtdf-deep
+      #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
+      cab-transp-deep
+      #(smrf! % rank-board-hybrid cls-ab-transp-search 5 negative-infinity positive-infinity)
+      cab-hist-light
+      #(smrf! % rank-board-hybrid cls-ab-hist-search 3 negative-infinity positive-infinity)
+      cab-hist-deep
+      #(smrf! % rank-board-hybrid cls-ab-hist-search 5 negative-infinity positive-infinity)
+      idrnh-hybrid-light
+      #(smrf! % rank-board-hybrid idrn-ab-h 4 2 300 negative-infinity positive-infinity)
+
+      ]
 
   (defn setup-ai!
     []
-    (aspire-deep 1)
-    (mtdf-deep -1))
+    (cab-hist-light 1)
+    (cab-transp-deep -1))
  
  (defn simulate
     [mode type]

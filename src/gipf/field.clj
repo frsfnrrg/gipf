@@ -11,8 +11,8 @@
 
 (definline row-full? [b s e] `(GameCalc/lineFull ~b ~s ~e))
 
-(definline make-idr-node [a b c] `( IDRNode/makeIDRNode ~a ~b ~c))
-(definline idr-node-update [a b c] `( IDRNode/updateIDRNode ~a ~b ~c))
+(definline make-idr-node [gs playa rank] `( IDRNode/makeIDRNode ~gs ~playa ~rank))
+(definline idr-node-update [node rank kids] `( IDRNode/updateIDRNode ~node ~rank ~kids))
 (definline idr-node-gamestate [a] `( IDRNode/getGameState ~a))
 (definline idr-node-player [a] `( IDRNode/getPlayer ~a))
 (definline idr-node-rank [a] `( IDRNode/getRank ~a))
@@ -86,10 +86,9 @@
 (definline hist-add! [table depth mnum]
   `(HistoryTable/hadd ~table ~depth ~mnum))
 (definline hist-clear! [table]
- `(do
-     (ond :hist-analysis
-          (HistoryTable/hanalyze ~table))
-     (HistoryTable/hclear ~table)))
+  `(do (ond :hist-analysis
+            (HistoryTable/hanalyze ~table))
+       (HistoryTable/hclear ~table)))
 
 (definline signed-gs-move
   [sgs]
@@ -404,8 +403,8 @@
          (throw (java.lang.Exception. (str k " is not a valid member function.")))))
      (let [aba (atom {})]
        (doseq [[k args body] [[key1 args1 body1]
-                               [key2 args2 body2]
-                               [key3 args3 body3]]]
+                              [key2 args2 body2]
+                              [key3 args3 body3]]]
          (swap! aba #(assoc % k [args body])))
        (let [[sargs sbody] (:pre @aba)
              [targs tbody] (:post @aba)

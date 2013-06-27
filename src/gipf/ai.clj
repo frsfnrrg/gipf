@@ -133,12 +133,6 @@
 ;; Negamax search:
 ;; 
 ;; at each node: maximize the negation of the value of the subnodes
-;;
-;;
-;;
-;;
-;;
-;;
 
 ;;; negamax: rank := (fastmax (map #(negate %) ranks)
 
@@ -146,6 +140,7 @@
 
 
 (defn abps
+  "WARNING: excessive pruning"
   [gamestate owner ranker gp depth bestrank]
   (if (equals depth 0)
     (ranker gamestate gp)
@@ -173,6 +168,7 @@
                 (recur (rest rem) (fastmax nr record)))))))))
 
 (defn abprune
+  "WARNING: excessive pruning"
   [gamestate gp rank-func depth]
   ;; core is negamax, using 2-deep cutting
   (abps gamestate (negate gp) rank-func gp depth -10000000))
@@ -235,6 +231,7 @@
 
 ;; rankfunc, gp remain constant the entire time....
 (defn idr-ab-s
+  "WARNING: excessive pruning"
   [node rankfunc gp cdepth edepth etime bestrank]
   (if
       (and (less cdepth 1) (past-time? etime))
@@ -271,7 +268,8 @@
 ;; potentially good nodes? Yes, but the ranking add is worth it
 
 (defn idr-ab-ranking
-  "A ranking function. How good is this board condition for gp, who just moved?"
+  "WARNING: excessive pruning
+  A ranking function. How good is this board condition for gp, who just moved?"
   [gamestate gp rank-func depth max-time]
   (let [endtime (+ (System/nanoTime) (* 1e6 max-time))]
     (loop [nodetree (generate-node gamestate (negate gp)) level 0]
@@ -301,7 +299,9 @@
   "Goal: to unify alpha-beta and quiescent search.
   Depth: min depth to search
   Levelcap: max depth to search.
-  IBoost: how much further to go until quiet"
+  IBoost: how much further to go until quiet
+
+  WARNING: excessive pruning"
   []
   (:eval
    [gamestate good-player rank-func quiet-func depth levelcap iboost]
@@ -321,7 +321,9 @@
      (negate (qab gamestate (negate good-player) depth 0 positive-infinity)))))
 
 (def-search qab-transp
-  "Foofah!"
+  "Foofah!
+
+  WARNING: excessive pruning"
   [movetable]
   (:pre [& args]
         (export movetable (make-transp-table 23)))
@@ -548,23 +550,129 @@
                  lower
                  (recur next upper lower))))))))))
 
+(def-search idrn-ab-h
+  "Godlike."
+  ;; TODO: in order to implement transp tables into this,
+  ;; depth-seperate tabling and the _change_ function must
+  ;; be implemented, to keep track of updated nodes ranks.
+  ;;
+  ;; Additionally, nodes "should" hold Compressed~~~'s.
+  ;; umm... at minimum, we need depth-tables
+  ;;
+  [hist]
+  (:pre [& args]
+        ;; could we do a fully static, with overwrites? saves
+        ;; 16 bytes mem/47 each, no overflow (save on alloc)
+        (export hist (make-hist-table)))
+  (:post [& args]
+         (hist-clear! hist))
+  (:eval
+   [gamestate good-player rank-func depth istep time alpha beta]
+   (let [endtime (add (System/nanoTime) (* 1e6 time))]
+     (letfn [(itr [node depth trange max? alpha beta]
+               (if (and (greater-equals trange 3) (past-time? endtime))
+                 node
+                 (let [gamestate (idr-node-gamestate node)
+                       owner (idr-node-player node)
+                       antiowner (negate owner)
+                       ochildren (idr-node-children node)
+                       nchildren (transient {})
+                       orank (idr-node-rank node)
+                       nrank
+                       ;;
+                       ;; Children:
+                       ;; {} empty - terminal
+                       ;; nil - expandme!
+                       ;; {bob, jones, frank} - update!!
+                       ;;
+                       (if (and (not (nil? ochildren)) (empty? ochildren))
+                         orank
+                         (case-pattern
+                          [max? true false]
+                          [cur alpha beta
+                           opp beta alpha
+                           compo greater-equals less-equals
+                           mnmx fastmax fastmin
+                           lossv negative-infinity positive-infinity]
+                          (if (nil? ochildren)
+                            (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hist))]
+                              (if (.hasNext rd)
+                                (loop [cur cur recm -1]
+                                  (if (.hasNext rd)
+                                    (let [ngs (.next rd)
+                                          next (if (equals depth 0)
+                                                 (make-idr-node
+                                                  ngs antiowner                
+                                                  (rank-func ngs good-player))
+                                                 (itr
+                                                  (make-idr-node ngs antiowner 0)
+                                                  (dec-1 depth)
+                                                  (dec-1 trange)
+                                                  (not max?)
+                                                  alpha beta))
+                                          rank (idr-node-rank next)]
+                                      (add-tr! nchildren rank next)
+                                      (let [cur (mnmx rank cur)]
+                                        (let [recm (if (equals cur rank)
+                                                     (signed-gs-move ngs)
+                                                     recm)]
+                                          (if (compo cur opp)
+                                            (do
+                                              (when-not (equals recm -1)
+                                                (hist-add! hist depth recm))
+                                              cur)
+                                            (recur cur recm)))))
+                                    (do
+                                      (when-not (equals recm -1)
+                                        (hist-add! hist depth recm))
+                                      cur)))
+                                lossv))
+                            (let [rq (expand-trm ochildren)]
+                              (if (empty? ochildren)
+                                orank
+                                (loop [rq rq cur cur recm -1]
+                                  (if (empty? rq)
+                                    (do
+                                      (when-not (equals recm -1)
+                                        (hist-add! hist depth recm))
+                                      cur)
+                                    (let [onodule (first rq)
+                                          nodule (itr
+                                                onodule
+                                                (dec-1 depth)
+                                                (dec-1 trange)
+                                                (not max?)
+                                                alpha beta)
+                                          ngs (idr-node-gamestate onodule)
+                                          rank (idr-node-rank nodule)]
+                                      (add-tr! nchildren rank nodule)
+                                      (let [cur (mnmx rank cur)]
+                                        (let [recm (if (equals cur rank)
+                                                     (signed-gs-move ngs)
+                                                     recm)]
+                                          (if (compo cur opp)
+                                            (do
+                                              (when-not (equals recm -1)
+                                                (hist-add! hist depth recm))
+                                              cur)
+                                            (recur (rest rq) cur recm))))))))))))]
+                   (idr-node-update node nrank (persistent! nchildren)))))]
+       (when (greater-equals alpha beta)
+         (println "Warning: alpha and beta have incorrect ordering."))
+       (loop [nodetree (make-idr-node gamestate (negate good-player) 0)
+              level 0]
+         (if (or (past-time? endtime) (greater level depth))
+           (idr-node-rank nodetree)
+           (recur (itr nodetree level 4 false alpha beta)
+                  (add level istep))))))))
+  
+
 
 ;;
 ;; Still more ideas: the back/forth between moves, as demonstrated
 ;; by the heuristic, can throw off iterative deepening, as it prunes
 ;; too early. One can convert this into two-depth idr, which could
 ;; be smoother...
-;;
-;;
-;;
-
-(def-search testme
-  []
-  (:pre [])
-  (:eval [] -1)
-  (:post []))
-
-;; what is next?
 ;;
 ;;
 ;;
