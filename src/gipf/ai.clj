@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc MoveSignedIGC DTable)))
+  (:import (gipfj IncrementalGameCalc MoveSignedIGC DTable Compression)))
 
 
 ;; AI.clj
@@ -455,7 +455,7 @@
         (export mtable (DTable/dmake 23)))
   (:post [& args]
     (DTable/danalyze mtable)
-         (DTable/dclear mtable))
+         (DTable/dempty mtable))
   (:eval
    [gamestate player rank-func depth alpha beta]
    (letfn [(rec [gamestate owner level alpha beta max?]
@@ -474,8 +474,8 @@
                       (if (.hasNext rd)
                         (let [ngs (.next rd)
                               rank (if (less-equals level 3)
-                                     (let [key (make-signed-gamestate ngs owner)
-                                           lrnk (DTable/dget mtable key (negate level))]
+                                     (let [key (Compression/compressgs ngs owner)
+                                           lrnk (DTable/dgeta mtable key)]
                                        (if lrnk lrnk
                                            (let [r (rec ngs (negate owner) (inc-1 level)
                                                         alpha
@@ -591,9 +591,10 @@
                                      ngs antiowner                
                                      (rank-func ngs good-player))
 
-                                    (let [nork (DTable/dget transp (make-signed-gamestate
+                                    (let [nork (DTable/dgetd transp (Compression/compressgs
                                                                     ngs
-                                                                    antiowner) depth)]
+                                                                    antiowner)
+                                                 depth)]
                                       (if (nil? nork)
                                         (itr
                                          (make-idr-node ngs antiowner 0)
@@ -603,7 +604,7 @@
                                          alpha beta)
                                         (make-idr-node ngs antiowner nork))))
                              rank (idr-node-rank next)]
-                         (DTable/dadd transp (make-signed-gamestate
+                         (DTable/dadd transp (Compression/compressgs
                                               (idr-node-gamestate next)
                                               (idr-node-player next)) depth rank)
                          (add-tr! nchildren rank next)
@@ -632,11 +633,10 @@
                            (hist-add! hist depth recm))
                          cur)
                        (let [onodule (first rq)
-                             nodule (let [ttr (DTable/dget transp
-                                                          (make-signed-gamestate
+                             nodule (let [ttr (DTable/dgetd transp
+                                                          (Compression/compressgs
                                                            (idr-node-gamestate onodule)
-                                                           (idr-node-player onodule))
-                                                          depth)]
+                                                           (idr-node-player onodule)) depth)]
                                       (if (nil? ttr)
                                         (let [nog
                                               (itr
@@ -645,7 +645,7 @@
                                                (dec-1 trange)
                                                (not max?)
                                                alpha beta)]
-                                          (DTable/dchange transp (make-signed-gamestate
+                                          (DTable/dchange transp (Compression/compressgs
                                                                   (idr-node-gamestate nog)
                                                                   (idr-node-player nog))
                                                           depth (idr-node-rank nog))
@@ -690,7 +690,7 @@
   (:post [& args]
          (hist-clear! hist)
          (DTable/danalyze transp)
-         (DTable/dclear transp))
+         (DTable/dempty transp))
   (:eval
    [gamestate good-player rank-func depth istep time alpha beta]
    (let [endtime (add (System/nanoTime) (* 1e6 time))]

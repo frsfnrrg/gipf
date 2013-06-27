@@ -21,6 +21,33 @@ public class DTable {
     private int count_cnull;
 
     private DTable(int sexp) {
+        // 48 bytes/elem; 4 bytes at reference; "approximation" of overhead.
+        long max_size = (1 << sexp) * 100;
+        long omax = max_size;
+        int osexp = sexp;
+        Runtime foo = Runtime.getRuntime();
+        foo.gc();
+        long safe_size = foo.maxMemory() - foo.totalMemory() + foo.freeMemory()
+                - (1 << 26); // safety margin
+        boolean c = false;
+        while (safe_size < max_size && sexp >= 5) {
+            c = true;
+            sexp--;
+            max_size = (1 << sexp) * 100;
+        }
+        if (c) {
+            System.out
+                    .format("&& DTable init warning: when full, table would have used %d bytes.\n",
+                            omax);
+            System.out.format(
+                    "&& Estimated free bytes: %d; Overflow (bytes): %d\n",
+                    safe_size, omax - safe_size);
+            System.out.format("&& Size exponent reduced from %d to %d\n",
+                    osexp, sexp);
+            System.out.format("&& Free memory remaining: %d bytes\n", safe_size
+                    - max_size);
+        }
+
         size = 1 << sexp;
         shift_cut = 32 - sexp;
         store = new Entry[size];
@@ -37,7 +64,7 @@ public class DTable {
 
     private Entry[] store;
 
-    private void add(CompressedSGS in, int depth, int rank) {
+    private void add(Compression.CGS in, int depth, int rank) {
         // what about in.hashCode() >>> shift_cut;
         int index = in.hashCode() >>> shift_cut;
         // if (index < 0) {
@@ -62,6 +89,10 @@ public class DTable {
         }
     }
 
+    /**
+     * This does not do a memcheck. You might as well make a new instance.
+     * 
+     */
     private void load() {
         if (store == null) {
             store = new Entry[size];
@@ -77,6 +108,7 @@ public class DTable {
         count_csecond = 0;
         count_cneither = 0;
         store = null;
+        System.gc();
     }
 
     private void analyze() {
@@ -103,7 +135,7 @@ public class DTable {
                 empty, single, full);
     }
 
-    private Long get(CompressedSGS in, int depth) {
+    private Long geta(Compression.CGS in) {
         int index = in.hashCode() >>> shift_cut;
         Entry f = store[index];
         if (f == null) {
@@ -111,17 +143,36 @@ public class DTable {
             return null;
         }
 
-        if (f.equals(in, depth)) {
+        if (f.equals(in)) {
             count_first++;
             return (long) f.rank;
-        } else if (f.second != null && f.second.equals(in, depth)) {
+        } else if (f.second != null && f.second.equals(in)) {
             count_second++;
             return (long) f.second.rank;
         }
         return null;
     }
 
-    private void change(CompressedSGS in, int depth, int rank) {
+    private Long getd(Compression.CGS in, byte depth) {
+        int index = in.hashCode() >>> shift_cut;
+        Entry f = store[index];
+        if (f == null) {
+            count_null++;
+            return null;
+        }
+
+        if (f.equals(in) && f.depth == depth) {
+            count_first++;
+            return (long) f.rank;
+        } else if (f.second != null && f.second.equals(in)
+                && f.second.depth == depth) {
+            count_second++;
+            return (long) f.second.rank;
+        }
+        return null;
+    }
+
+    private void change(Compression.CGS in, byte depth, int rank) {
         int index = in.hashCode() >>> shift_cut;
         Entry ff = store[index];
         if (ff == null) {
@@ -130,12 +181,14 @@ public class DTable {
             return;
         }
 
-        if (ff.equals(in, depth)) {
+        if (ff.equals(in)) {
             count_cfirst++;
             ff.rank = rank;
-        } else if (ff.second != null && ff.second.equals(in, depth)) {
+            ff.depth = depth;
+        } else if (ff.second != null && ff.second.equals(in)) {
             count_csecond++;
             ff.second.rank = rank;
+            ff.second.depth = depth;
         } else {
             count_cneither++;
             add(in, depth, rank);
@@ -146,16 +199,44 @@ public class DTable {
         return new DTable((int) size);
     }
 
-    public static void dadd(DTable d, CompressedSGS gs, long depth, long rank) {
+    public static void dadd(DTable d, Compression.CGS gs, long depth, long rank) {
         d.add(gs, (int) depth, (int) rank);
     }
 
-    public static Long dget(DTable d, CompressedSGS gs, long depth) {
-        return d.get(gs, (int) depth);
+    /**
+     * Depth need not match.
+     * 
+     * @param d
+     * @param gs
+     * @return
+     */
+    public static Long dgeta(DTable d, Compression.CGS gs) {
+        return d.geta(gs);
     }
 
-    public static void dchange(DTable d, CompressedSGS gs, long depth, long rank) {
-        d.change(gs, (int) depth, (int) rank);
+    /**
+     * Depth _must_ match.
+     * 
+     * @param d
+     * @param gs
+     * @param depth
+     * @return
+     */
+    public static Long dgetd(DTable d, Compression.CGS gs, long depth) {
+        return d.getd(gs, (byte) depth);
+    }
+
+    /**
+     * Depth need not match;
+     * 
+     * @param d
+     * @param gs
+     * @param depth
+     * @param rank
+     */
+    public static void dchange(DTable d, Compression.CGS gs, long depth,
+            long rank) {
+        d.change(gs, (byte) depth, (int) rank);
     }
 
     public static void dclear(DTable d) {
@@ -175,7 +256,7 @@ public class DTable {
         d.analyze();
     }
 
-    private class Entry {
+    private static class Entry {
         public int hc;
         public int rank;
         public byte depth;
@@ -183,6 +264,10 @@ public class DTable {
         // make a 2ndEntry class
         public Entry second;
 
+        public byte d0;
+        public byte d1;
+        public byte d2;
+        public byte d3;
         public byte d4;
         public byte d5;
         public byte d6;
@@ -193,32 +278,19 @@ public class DTable {
         public byte d11;
         public byte d12;
         public byte d13;
-        public byte d14;
-        public byte d15;
-        public byte d16;
-        public byte d17;
-        public byte d18;
-        public byte d19;
-        public byte d20;
-        public byte d21;
-        public byte d22;
-        public byte d23;
-        public byte d24;
-        public byte d25;
-        public byte d26;
-        public byte d27;
-        public byte d28;
-        public byte d29;
-        public byte d30;
 
-        public Entry(CompressedSGS d, int depth, int rank) {
-            byte[] q = d.getData();
-            hc = d.hashCode();
+        public Entry(Compression.CGS g, int depth, int rank) {
+            hc = g.hc;
+            byte[] q = g.d;
             this.depth = (byte) depth;
-            this.rank = rank;
+            this.rank = rank; // force short??
             // o yay! 27 entries
 
             // regexes!
+            d0 = q[0];
+            d1 = q[1];
+            d2 = q[2];
+            d3 = q[3];
             d4 = q[4];
             d5 = q[5];
             d6 = q[6];
@@ -229,39 +301,18 @@ public class DTable {
             d11 = q[11];
             d12 = q[12];
             d13 = q[13];
-            d14 = q[14];
-            d15 = q[15];
-            d16 = q[16];
-            d17 = q[17];
-            d18 = q[18];
-            d19 = q[19];
-            d20 = q[20];
-            d21 = q[21];
-            d22 = q[22];
-            d23 = q[23];
-            d24 = q[24];
-            d25 = q[25];
-            d26 = q[26];
-            d27 = q[27];
-            d28 = q[28];
-            d29 = q[29];
-            d30 = q[30];
         }
 
-        public boolean equals(CompressedSGS in, int depth2) {
-            if (depth2 != depth || in.hashCode() != hc)
+        public boolean equals(Compression.CGS in) {
+            if (in.hc != hc)
                 return false;
 
-            byte[] q = in.getData();
+            byte[] q = in.d;
             return (d4 == q[4]) && (d5 == q[5]) && (d6 == q[6]) && (d7 == q[7])
                     && (d8 == q[8]) && (d9 == q[9]) && (d10 == q[10])
                     && (d11 == q[11]) && (d12 == q[12]) && (d13 == q[13])
-                    && (d14 == q[14]) && (d15 == q[15]) && (d16 == q[16])
-                    && (d17 == q[17]) && (d18 == q[18]) && (d19 == q[19])
-                    && (d20 == q[20]) && (d21 == q[21]) && (d22 == q[22])
-                    && (d23 == q[23]) && (d24 == q[24]) && (d25 == q[25])
-                    && (d26 == q[26]) && (d27 == q[27]) && (d28 == q[28])
-                    && (d29 == q[29]) && (d30 == q[30]);
+                    && (d0 == q[0]) && (d1 == q[1]) && (d2 == q[2])
+                    && (d3 == q[3]);
         }
     }
 }
