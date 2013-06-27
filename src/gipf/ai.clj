@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc MoveSignedIGC)))
+  (:import (gipfj IncrementalGameCalc MoveSignedIGC DTable)))
 
 
 ;; AI.clj
@@ -452,9 +452,10 @@
   "So what if I indent five times?"
   [mtable]
   (:pre [& args]
-        (export mtable (make-transp-table 23)))
+        (export mtable (DTable/dmake 23)))
   (:post [& args]
-         (flush-transp-table mtable))
+    (DTable/danalyze mtable)
+         (DTable/dclear mtable))
   (:eval
    [gamestate player rank-func depth alpha beta]
    (letfn [(rec [gamestate owner level alpha beta max?]
@@ -474,13 +475,13 @@
                         (let [ngs (.next rd)
                               rank (if (less-equals level 3)
                                      (let [key (make-signed-gamestate ngs owner)
-                                           lrnk (get-transp-table mtable key)]
+                                           lrnk (DTable/dget mtable key (negate level))]
                                        (if lrnk lrnk
                                            (let [r (rec ngs (negate owner) (inc-1 level)
                                                         alpha
                                                         beta
                                                         (not max?))]
-                                             (add-transp-table mtable key r)
+                                             (DTable/dadd mtable key (negate level) r)
                                              r)))
                                      (rec ngs (negate owner) (inc-1 level)
                                           alpha

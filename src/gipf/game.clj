@@ -242,7 +242,7 @@
 
   (defn setup-ai!
     []
-    (cab-hist-light 1)
+    (cab-transp-deep 1)
     (cab-transp-deep -1))
  
  (defn simulate

@@ -96,6 +96,10 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
             // System.out.format("%s %d %d\n", n.toString(), plo, order[plo]);
 
+            // TODO: optimization freak, realize that now each iteration
+            // requires 1 check - not the 1/2 that is possible. Use a size-21
+            // bit field??
+
             boolean skip = true;
             for (int i = 0; i < n.length; i++) {
                 if (orig[n[i]] == 0) {
