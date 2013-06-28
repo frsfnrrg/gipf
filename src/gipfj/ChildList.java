@@ -201,8 +201,8 @@ public class ChildList {
      * 
      * @return
      */
-    public static void cladd(ChildList a, Object q, int r) {
-        a.add(q, r);
+    public static void cladd(ChildList a, Object q, long r) {
+        a.add(q, (int)r);
     }
 
     public static String tsr(Node q) {
