@@ -82,6 +82,7 @@ public class DTable {
             if (n.depth > ff.depth) {
                 store[index] = n;
                 n.second = ff;
+                ff.second = null;
             } else {
                 ff.second = n;
             }
