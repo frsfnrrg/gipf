@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc MoveSignedIGC)))
+  (:import (gipfj IncrementalGameCalc MoveSignedIGC ChildList)))
 
 
 ;; AI.clj
@@ -559,8 +559,8 @@
     (let [gamestate (idr-node-gamestate node)
           owner (idr-node-player node)
           antiowner (negate owner)
-          ochildren (idr-node-children node)
-          nchildren (transient {})
+          ^java.util.Iterator ochildren (idr-node-children node)
+          nchildren (ChildList/clmake)
           orank (idr-node-rank node)
           nrank
           ;;
@@ -569,7 +569,7 @@
           ;; nil - expandme!
           ;; {bob, jones, frank} - update!!
           ;;
-          (if (and (not (nil? ochildren)) (empty? ochildren))
+          (if (and (not (nil? ochildren)) (not (.hasNext ochildren)))
             orank
             (case-pattern
              [max? true false]
@@ -606,7 +606,7 @@
                          (dtab-add! transp (compress-sgs
                                               (idr-node-gamestate next)
                                               (idr-node-player next)) depth rank)
-                         (add-tr! nchildren rank next)
+                         (ChildList/cladd nchildren next rank)
                          (let [cur (mnmx rank cur)]
                            (let [recm (if (equals cur rank)
                                         (signed-gs-move ngs)
@@ -622,16 +622,11 @@
                            (hist-add! hist depth recm))
                          cur)))
                    lossv))
-               (let [rq (expand-trm ochildren)]
-                 (if (empty? ochildren)
-                   orank
-                   (loop [rq rq cur cur recm -1]
-                     (if (empty? rq)
-                       (do
-                         (when-not (equals recm -1)
-                           (hist-add! hist depth recm))
-                         cur)
-                       (let [onodule (first rq)
+               (let [rq ochildren]
+                 (if (.hasNext rq)
+                   (loop [cur cur recm -1]
+                     (if (.hasNext rq)
+                       (let [onodule (.next rq)
                              nodule (let [ttr (dtab-get transp
                                                             (compress-sgs
                                                            (idr-node-gamestate onodule)
@@ -658,7 +653,7 @@
                                                          (idr-node-children onodule))))
                              ngs (idr-node-gamestate onodule)
                              rank (idr-node-rank nodule)]
-                         (add-tr! nchildren rank nodule)
+                         (ChildList/cladd nchildren nodule rank)
                          (let [cur (mnmx rank cur)]
                            (let [recm (if (equals cur rank)
                                         (signed-gs-move ngs)
@@ -668,8 +663,13 @@
                                  (when-not (equals recm -1)
                                    (hist-add! hist depth recm))
                                  cur)
-                               (recur (rest rq) cur recm))))))))))))]
-      (idr-node-update node nrank (persistent! nchildren)))))
+                               (recur cur recm)))))
+                       (do
+                         (when-not (equals recm -1)
+                           (hist-add! hist depth recm))
+                         cur)))
+                   orank)))))]
+      (idr-node-update node nrank (ChildList/clpack nchildren max?)))))
 
 (def-search idrn-ab-h
   "Godlike."
