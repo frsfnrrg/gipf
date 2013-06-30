@@ -237,15 +237,18 @@
       #(smrf! % rank-board-hybrid cls-ab-hist-search 5 negative-infinity positive-infinity)
       idrnh-hybrid-light
       #(smrf! % rank-board-hybrid idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
-
-      ]
+      qthab-light
+      #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 3 6 2 negative-infinity positive-infinity)
+      qthab-deep
+      #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)]
+  
 
   (defn setup-ai!
     []
-    (cab-transp-deep 1)
-    (idrnh-hybrid-light -1))
+    (idrnh-hybrid-light 1)
+    (qthab-deep -1))
  
- (defn simulate
+  (defn simulate
     [mode type]
     (println)
     (case type

@@ -2,7 +2,7 @@
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
                   LTranspTable CompressedSGS Ranking MoveSignedGS HistoryTable MoveSignedIGC
-                  Counter Compression DTable)))
+                  Counter Compression DTable ChildList)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
@@ -118,6 +118,13 @@
 (definline compress-sgs
   [gamestate player]
   `(Compression/compressgs ~gamestate ~player))
+
+(definline clist-make  []
+  `(ChildList/clmake))
+(definline clist-add  [cl obj rank]
+  `(ChildList/cladd ~cl ~obj ~rank))
+(definline clist-pack  [cl desc]
+  `(ChildList/clpack ~cl ~desc))
 
 
 ;; predicates/extraction

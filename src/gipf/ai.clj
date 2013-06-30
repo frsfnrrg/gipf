@@ -1,5 +1,5 @@
 (ns gipf.core
-  (:import (gipfj IncrementalGameCalc MoveSignedIGC ChildList)))
+  (:import (gipfj IncrementalGameCalc MoveSignedIGC)))
 
 
 ;; AI.clj
@@ -560,7 +560,7 @@
           owner (idr-node-player node)
           antiowner (negate owner)
           ^java.util.Iterator ochildren (idr-node-children node)
-          nchildren (ChildList/clmake)
+          nchildren (clist-make)
           orank (idr-node-rank node)
           nrank
           ;;
@@ -606,7 +606,7 @@
                          (dtab-add! transp (compress-sgs
                                               (idr-node-gamestate next)
                                               (idr-node-player next)) depth rank)
-                         (ChildList/cladd nchildren next rank)
+                         (clist-add nchildren next rank)
                          (let [cur (mnmx rank cur)]
                            (let [recm (if (equals cur rank)
                                         (signed-gs-move ngs)
@@ -653,7 +653,7 @@
                                                          (idr-node-children onodule))))
                              ngs (idr-node-gamestate onodule)
                              rank (idr-node-rank nodule)]
-                         (ChildList/cladd nchildren nodule rank)
+                         (clist-add nchildren nodule rank)
                          (let [cur (mnmx rank cur)]
                            (let [recm (if (equals cur rank)
                                         (signed-gs-move ngs)
@@ -669,17 +669,10 @@
                            (hist-add! hist depth recm))
                          cur)))
                    orank)))))]
-      (idr-node-update node nrank (ChildList/clpack nchildren max?)))))
+      (idr-node-update node nrank (clist-pack nchildren max?)))))
 
 (def-search idrn-ab-h
   "Godlike."
-  ;; TODO: in order to implement transp tables into this,
-  ;; depth-seperate tabling and the _change_ function must
-  ;; be implemented, to keep track of updated nodes ranks.
-  ;;
-  ;; Additionally, nodes "should" hold Compressed~~~'s.
-  ;; umm... at minimum, we need depth-tables
-  ;;
   [hist transp]
   (:pre [& args]
         ;; could we do a fully static, with overwrites? saves
@@ -701,7 +694,71 @@
          (recur (itr good-player rank-func depth endtime hist transp
                      nodetree level 4 false alpha beta)
                 (add level istep)))))))
-  
+
+(defn-iter-with-context qht-sub
+  ;; one downside: qab has unpredicable depths
+  ""
+  [good-player rank-func quiet-func qboost hist transp]
+  [gamestate owner sdepth ltdepth alpha beta max?]
+  (if (or (equals sdepth 0) (equals ltdepth 0))
+    (rank-func gamestate good-player)
+    (let [subs (MoveSignedIGC. gamestate owner (hist-ordering hist))]
+      (case-pattern
+       [max? true false]
+       [cur alpha beta
+        opp beta alpha
+        compo greater-equals less-equals
+        mnmx fastmax fastmin
+        lossv negative-infinity positive-infinity]
+       (if (.hasNext subs)
+         (loop [cur cur recm -1]
+           (if (.hasNext subs)
+             (let [ngs (.next subs)
+                   rank (let [key (compress-sgs ngs (negate owner))
+                              llrk (dtab-get transp key ltdepth)]
+                          (if (nil? llrk)
+                            (let [ww (qht-sub ngs (negate owner)
+                                              (if (quiet-func gamestate ngs)
+                                                (dec-1 sdepth)
+                                                qboost)
+                                              (dec-1 ltdepth)
+                                              alpha
+                                              beta
+                                              (not max?))]
+                              (dtab-add! transp key ltdepth ww)
+                              ww)
+                            llrk))]
+               (let [cur (mnmx rank cur)]
+                 (let [recm (if (equals cur rank)
+                              (signed-gs-move ngs)
+                              recm)]
+                   (if (compo cur opp)
+                     (do
+                       (when-not (equals recm -1)
+                         (hist-add! hist ltdepth recm))
+                       cur)
+                     (recur cur recm)))))
+             (do
+               (when-not (equals recm -1)
+                 (hist-add! hist ltdepth recm))
+               cur)))
+         lossv)))))
+
+;; just mix quiescient, hist, transp. simple. right??>
+(def-search qab-hist-transp
+  [hist transp]
+  (:pre [& args]
+        (export transp (make-dtab 23))
+        (export hist (make-hist-table)))
+  (:post [& args]
+         (hist-clear! hist)
+         (dtab-clear! transp))
+  (:eval [gamestate good-player rank-func quiet-func mindepth maxdepth qboost alpha beta]
+         (qht-sub good-player rank-func
+                  quiet-func qboost
+                  hist transp
+                  gamestate (negate good-player)
+                  mindepth maxdepth alpha beta false)))
 
 
 ;;
