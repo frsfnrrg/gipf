@@ -25,14 +25,16 @@ package gipfj;
 public class GameState {
     public final Board b;
     public final Reserves r;
+    public final boolean gphase;
 
-    public GameState(Board b, Reserves r) {
+    public GameState(Board b, Reserves r, boolean gphase) {
         this.b = b;
         this.r = r;
+        this.gphase = gphase;
     }
 
-    public static GameState makeGameState(Board b, Reserves r) {
-        return new GameState(b, r);
+    public static GameState makeGameState(Board b, Reserves r, Boolean gipf) {
+        return new GameState(b, r, gipf);
     }
 
     public static Board getBoard(GameState g) {
@@ -41,6 +43,10 @@ public class GameState {
 
     public static Reserves getReserves(GameState g) {
         return g.r;
+    }
+
+    public static boolean isGipfing(GameState g) {
+        return g.gphase;
     }
 
     @Override
@@ -60,7 +66,7 @@ public class GameState {
      * @param rr
      * @return
      */
-    public GameState change(Board board, Reserves rr) {
-        return new GameState(board, rr);
+    public GameState change(Board board, Reserves rr, boolean gphase) {
+        return new GameState(board, rr, gphase);
     }
 }

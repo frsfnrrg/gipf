@@ -88,28 +88,6 @@ public class Board {
         return r;
     }
 
-    /**
-     * Collision resolution only:
-     * 
-     * Are these (same hashed) boards actually equal?
-     * 
-     * TODO: used only in SignedGameState
-     * 
-     * @param a
-     * @param b
-     * @return
-     */
-    public static boolean equalsNHC(Board a, Board b) {
-        byte[] da = a.data;
-        byte[] db = b.data;
-        for (int i = 0; i < SIZE; i++) {
-            if (da[i] != db[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     @Override
     public int hashCode() {
         return hashCode;

@@ -1,11 +1,11 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
-                  IDRNode GameCalc IncrementalGameCalc GeneralizedPointWeighting
-                  LTranspTable CompressedSGS Ranking MoveSignedGS HistoryTable MoveSignedIGC
+                  IDRNode GameCalc GeneralizedPointWeighting
+                  Ranking MoveSignedGS HistoryTable MoveSignedIGC
                   Counter Compression DTable ChildList)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
-(definline ->GameState [a b] `(GameState/makeGameState ~a ~b))
+(definline ->GameState [a b c] `(GameState/makeGameState ~a ~b ~c))
 (definline game-state-board [gs] `(GameState/getBoard ~gs))
 (definline game-state-reserves [gs] `(GameState/getReserves ~gs))
 
@@ -50,34 +50,7 @@
 
 (definline lazy-next-gamestates
   [gamestate player]
-  `(from-iterator (IncrementalGameCalc. ~gamestate ~player)))
-
-(definline make-signed-gamestate
-  [gamestate player]
-  `(CompressedSGS/compress ~gamestate ~player))
-
-
-(definline make-transp-table
-  "Advised coefficients: pool exponent large - 20, 22; array exponent small 0 or 1.
-  I do not know how much it costs to do an equality comparison...
-  At 10^6 nodes, the pool is filled with mainly 1-4 items, log style."
-  [poole]
-  `(LTranspTable/tmake ~poole))
-(definline get-transp-table
-  [table key]
-  `(LTranspTable/tget ~table ~key))
-(definline add-transp-table
-  [table key val]
-  `(LTranspTable/tadd ~table ~key ~val))
-(definline size-transp-table
-  [table]
-  `(LTranspTable/tsize ~table))
-(definline flush-transp-table
-  [table]
-  `(do
-     (ond :transp-analysis
-          (LTranspTable/tanalyze ~table) )
-     (LTranspTable/tclear ~table)))
+  `(from-iterator (MoveSignedIGC/makeIncrementalGameCalc ~gamestate ~player)))
 
 (definline hist-ordering [table]
   `(HistoryTable/hordering ~table))
@@ -126,6 +99,10 @@
 (definline clist-pack  [cl desc]
   `(ChildList/clpack ~cl ~desc))
 
+(definline unordered-move-generator [gs p]
+  `(MoveSignedIGC/makeIncrementalGameCalc ~gs ~p))
+(definline move-generator [gs p ordering]
+  `(MoveSignedIGC/makeMSIGC ~gs ~p ~ordering))
 
 ;; predicates/extraction
 
@@ -176,7 +153,7 @@
   "Does not update properly"
   [board value loc shove]
   [ (game-state-board (place-and-shove
-                       (->GameState board null-reserves)
+                       (->GameState board null-reserves false) ;; TODO
                        value
                        (->Line loc shove)))
     (impacted-cells board loc shove)])
@@ -195,7 +172,7 @@
                   board (game-state-board gamestate)
                   reserves (game-state-reserves gamestate)]
              (if (= (pt-radius pos) 4)
-               (->GameState board reserves)
+               (->GameState board reserves false);; TODO
                (let [val (get-hex-array board pos)]
                  (cond (some #(pt= pos %) prot)
                        (recur (pt+ pos delta) board reserves)
@@ -280,7 +257,7 @@
 
 (defn do-shove
   [board reserves player shove]
-  (expand-gamestate (place-and-shove (->GameState board reserves) player shove)))
+  (expand-gamestate (place-and-shove (->GameState board reserves false) player shove)));; TODO
 
 (defn get-line-taking-results
   [gamestate player]

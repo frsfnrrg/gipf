@@ -1,5 +1,4 @@
-(ns gipf.core
-  (:import (gipfj IncrementalGameCalc MoveSignedIGC)))
+(ns gipf.core)
 
 
 ;; AI.clj
@@ -46,7 +45,7 @@
                  compo greater-equals less-equals
                  mnmx fastmax fastmin
                  lossv negative-infinity positive-infinity]
-                (let [rd (IncrementalGameCalc. gamestate owner)]
+                (let [rd (unordered-move-generator gamestate owner)]
                   (if (.hasNext rd)
                     (loop [cur cur]
                       (if (.hasNext rd)
@@ -85,7 +84,7 @@
                  compo greater-equals less-equals
                  mnmx fastmax fastmin
                  lossv negative-infinity positive-infinity]
-                (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hihi))]
+                (let [rd (move-generator gamestate owner (hist-ordering hihi))]
                   (if (.hasNext rd)
                     (loop [cur cur recm -1]
                       (if (.hasNext rd)
@@ -132,7 +131,7 @@
                  compo greater-equals less-equals
                  mnmx fastmax fastmin
                  lossv negative-infinity positive-infinity]
-                (let [rd (IncrementalGameCalc. gamestate owner)]
+                (let [rd (unordered-move-generator gamestate owner)]
                   (if (.hasNext rd)
                     (loop [cur cur]
                       (if (.hasNext rd)
@@ -183,7 +182,7 @@
                  compo greater-equals less-equals
                  mnmx fastmax fastmin
                  lossv negative-infinity positive-infinity]
-                (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hist))]
+                (let [rd (move-generator gamestate owner (hist-ordering hist))]
                   (if (.hasNext rd)
                     (loop [cur cur recm -1]
                       (if (.hasNext rd)
@@ -300,7 +299,7 @@
               mnmx fastmax fastmin
               lossv negative-infinity positive-infinity]
              (if (nil? ochildren)
-               (let [rd (MoveSignedIGC. gamestate owner (hist-ordering hist))]
+               (let [rd (move-generator gamestate owner (hist-ordering hist))]
                  (if (.hasNext rd)
                    (loop [cur cur recm -1]
                      (if (.hasNext rd)
@@ -423,7 +422,7 @@
   [gamestate owner sdepth ltdepth alpha beta max?]
   (if (or (equals sdepth 0) (equals ltdepth 0))
     (rank-func gamestate good-player)
-    (let [subs (MoveSignedIGC. gamestate owner (hist-ordering hist))]
+    (let [subs (move-generator gamestate owner (hist-ordering hist))]
       (case-pattern
        [max? true false]
        [cur alpha beta

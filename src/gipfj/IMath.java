@@ -25,4 +25,12 @@ public class IMath {
         }
         return res;
     }
+
+    public static int abs(int q) {
+        if (q > 0) {
+            return q;
+        } else {
+            return -q;
+        }
+    }
 }

@@ -202,6 +202,9 @@ public class GameCalc {
         int q = Line.getStart(shove);
         int d = Line.getDelta(shove);
 
+        // TODO: make this return a MoveSignedGameState, by means of a
+        // line-lookup-hook
+
         int hc = foo.b.hashCode;
 
         byte last = (byte) player;
@@ -220,8 +223,15 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
+        boolean gphs;
+        if (foo.gphase && (2 == IMath.abs(player))) {
+            gphs = true;
+        } else {
+            gphs = false;
+        }
+
         return new GameState(new Board(cdata, hc), foo.r.applyDelta(player, -1,
-                1, 0));
+                1, 0), gphs);
     }
 
     private static GameState simpleLineEmpty(GameState curr, Line found,
@@ -269,10 +279,10 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        return curr.change(new Board(cdata, hc), rr);
+        return curr.change(new Board(cdata, hc), rr, curr.gphase);
     }
 
-    private static final GameState[] bgk = new GameState[42];
+    private static final GameState[] bgk = new GameState[84];
 
     private static GameState[] getMoveMakingResults(GameState gs, int player) {
 
@@ -285,59 +295,68 @@ public class GameCalc {
         byte[] orig = gs.b.data;
         Reserves decced = gs.r.applyDelta(player, -1, 1, 0);
 
-        for (int[] n : listOfLinePoints) {
-            // question: iterate twice, or allocate and discard?
-            // answer: iterate 1 1/2 times!
+        int q;
+        if (gs.gphase) {
+            q = 2;
+        } else {
+            q = 1;
+        }
 
-            boolean skip = true;
-            for (int i = 0; i < n.length; i++) {
-                if (orig[n[i]] == 0) {
-                    skip = false;
-                    break;
+        for (int jkl = 1; jkl <= q; jkl++) {
+            for (int[] n : listOfLinePoints) {
+                // question: iterate twice, or allocate and discard?
+                // answer: iterate 1 1/2 times!
+
+                boolean skip = true;
+                for (int i = 0; i < n.length; i++) {
+                    if (orig[n[i]] == 0) {
+                        skip = false;
+                        break;
+                    }
                 }
-            }
 
-            if (skip) {
-                continue;
-            }
-
-            int hcu = gs.b.hashCode;
-            int hcd = gs.b.hashCode;
-            byte[] up = new byte[Board.SIZE];
-            System.arraycopy(orig, 0, up, 0, Board.SIZE);
-            byte[] down = new byte[Board.SIZE];
-            System.arraycopy(orig, 0, down, 0, Board.SIZE);
-
-            byte last = (byte) player;
-            for (int j = 0; j < n.length; j++) {
-                int ind = n[j];
-                byte v = up[ind];
-                hcu ^= Board.hashArray[ind][v + 2]
-                        ^ Board.hashArray[ind][last + 2];
-                up[ind] = last;
-                if (v == 0) {
-                    break;
+                if (skip) {
+                    continue;
                 }
-                last = v;
-            }
 
-            last = (byte) player;
-            for (int j = n.length - 1; j >= 0; j--) {
-                int ind = n[j];
-                byte v = down[ind];
-                hcd ^= Board.hashArray[ind][v + 2]
-                        ^ Board.hashArray[ind][last + 2];
-                down[ind] = last;
-                if (v == 0) {
-                    break;
+                int hcu = gs.b.hashCode;
+                int hcd = gs.b.hashCode;
+                byte[] up = new byte[Board.SIZE];
+                System.arraycopy(orig, 0, up, 0, Board.SIZE);
+                byte[] down = new byte[Board.SIZE];
+                System.arraycopy(orig, 0, down, 0, Board.SIZE);
+
+                byte last = (byte) (jkl * player);
+                for (int j = 0; j < n.length; j++) {
+                    int ind = n[j];
+                    byte v = up[ind];
+                    hcu ^= Board.hashArray[ind][v + 2]
+                            ^ Board.hashArray[ind][last + 2];
+                    up[ind] = last;
+                    if (v == 0) {
+                        break;
+                    }
+                    last = v;
                 }
-                last = v;
-            }
 
-            bgk[mm] = new GameState(new Board(up, hcu), decced);
-            mm++;
-            bgk[mm] = new GameState(new Board(down, hcd), decced);
-            mm++;
+                last = (byte) (jkl * player);
+                for (int j = n.length - 1; j >= 0; j--) {
+                    int ind = n[j];
+                    byte v = down[ind];
+                    hcd ^= Board.hashArray[ind][v + 2]
+                            ^ Board.hashArray[ind][last + 2];
+                    down[ind] = last;
+                    if (v == 0) {
+                        break;
+                    }
+                    last = v;
+                }
+
+                bgk[mm] = new GameState(new Board(up, hcu), decced, jkl == 2);
+                mm++;
+                bgk[mm] = new GameState(new Board(down, hcd), decced, jkl == 2);
+                mm++;
+            }
         }
 
         GameState[] foo = new GameState[mm];

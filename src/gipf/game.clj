@@ -22,13 +22,13 @@
                         (list-possible-moves-and-board board reserves player))
         ngipfs (count-over-hex-array board (* 2 player))
         degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
-        current-rank (move-ranking-func (->GameState board reserves) player)
+        current-rank (move-ranking-func (->GameState board reserves (= adv-phase :filling)) player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
         optimal (timev (rand-best
                         (fn [[move [board res]]]
                           (let [rank
                                 (timev (move-ranking-func
-                                        (->GameState board res)
+                                        (->GameState board res false) ;; TODO
                                         player)
                                        (get-diagnostic-level :incremental-time))]
                             (ond :rank-value
@@ -95,13 +95,13 @@
 
 (defn new-gamestate
   [mode]
-  (->GameState (new-board mode) (new-reserves mode)))
+  (->GameState (new-board mode) (new-reserves mode) (= mode :advanced)))
 
 (defn lost?
   [board reserves player mode advm]
   ;; TODO: make the GameState advm phase aware...; 
   ;; then allow gipfs to be placed under advm
-  (let [res (lazy-next-gamestates (->GameState board reserves) player)]
+  (let [res (lazy-next-gamestates (->GameState board reserves (= advm :filling)) player)]
     (ond :moves-available
          (println "Moves available:" (count res)))
     (empty? res)))
@@ -134,7 +134,7 @@
 (defn run-match
   [mode]
   (let [md :playing]
-    (loop [gamestate (->GameState (new-board mode) (new-reserves mode))
+    (loop [gamestate (->GameState (new-board mode) (new-reserves mode) false) ;; TODO
            player 1
            counter 0]
       (ond :move-newlines
