@@ -3,6 +3,8 @@
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
 
+(def tournament-ai-gipfs 5)
+
 (defn compound-ai-move
   [board player reserves adv-phase]
 
@@ -21,8 +23,9 @@
         possible-moves (shuffle
                         (list-possible-moves-and-board board reserves player))
         ngipfs (count-over-hex-array board (* 2 player))
-        degree (if (and (= adv-phase :filling) (< ngipfs 4)) 2 1)
-        current-rank (move-ranking-func (->GameState board reserves (= adv-phase :filling)) player)
+        use-gipf (and (= adv-phase :filling) (< ngipfs tournament-ai-gipfs))
+        degree (if use-gipf 2 1)
+        current-rank (move-ranking-func (->GameState board reserves use-gipf) player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
         optimal (timev (rand-best
                         (fn [[move [board res]]]
@@ -38,8 +41,7 @@
                             rank))
                         nil -100000 possible-moves
                         (get-diagnostic-level :equal-moves))
-                       (get-diagnostic-level :total-time)
-                       )
+                       (get-diagnostic-level :total-time))
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
 
     (ond :evaluation-count

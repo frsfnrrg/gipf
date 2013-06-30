@@ -55,6 +55,11 @@ public class Line {
         return (a.start == b.start && a.delta == b.delta && a.sig == b.sig);
     }
 
+    public static boolean same(Line a, Line b) {
+        // order is proportional to possibilities
+        return (a.start == b.start && a.delta == b.delta);
+    }
+
     public static Line sign(Line l, int sig) {
         return new Line(sig, l.start, l.delta);
     }

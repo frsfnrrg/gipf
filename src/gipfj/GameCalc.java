@@ -147,6 +147,8 @@ public class GameCalc {
         return foo;
     }
 
+    private static Line[] tried = new Line[84];
+
     public static GameState[] getLineTakingResults(GameState g, int player) {
         // returns a sequence of stuff like this:
         // ( [[[prot] take1 take2 ...] ...)
@@ -160,11 +162,36 @@ public class GameCalc {
 
         GameState curr = g;
 
-        Line[] found;
-        while ((found = filterLines(getBoardLines(curr.b), player)).length > 0) {
-            curr = simpleLineEmpty(curr, found[0], player);
-        }
+        int t = 0;
 
+        Line[] found;
+        while (true) {
+            found = filterLines(getBoardLines(curr.b), player);
+            boolean k = false;
+            for (Line f : found) {
+                boolean c = false;
+                for (int i = 0; i < t; i++) {
+                    if (Line.same(tried[i], f)) {
+                        c = true;
+                        break;
+                    }
+                }
+
+                if (c) {
+                    continue;
+                }
+
+                curr = simpleLineEmpty(curr, f, player);
+                tried[t] = f;
+                t++;
+                k = true;
+                break;
+            }
+            if (k == false) {
+                break;
+            }
+        }
+        // System.out.println("Exit");
         results[0] = curr;
 
         return results;
