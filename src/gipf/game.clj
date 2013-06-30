@@ -206,25 +206,14 @@
           (recur g2 (negate player) (inc counter)))))))
 
 (let [smrf! setup-move-ranking-func!
-      qab-transp-gf1-light
-      #(smrf! % rank-gf1 qab-transp simple-quiet 3 7 2)
-      qab-gf1-light
-      #(smrf! % rank-gf1 quiescent-ab-search simple-quiet 3 7 2)
       cab-hybrid-light
       #(smrf! % rank-board-hybrid cls-ab-search 3 negative-infinity positive-infinity)
-      nab-hybrid-light
-      #(smrf! % rank-board-hybrid abprune 3)
-      qab-hybrid-medium
-      #(smrf! % rank-board-hybrid quiescent-ab-search simple-quiet 3 7 3)
-      qab-transp-hybrid-medium
-      #(smrf! % rank-board-hybrid qab-transp simple-quiet 3 7 3)
       cab-transp-hybrid-light
       #(smrf! % rank-board-hybrid cls-ab-transp-search 3 negative-infinity positive-infinity)
       aspire-simple
       #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
       mtdf-simple
       #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
-
       aspire-deep
       #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
       mtdf-deep
@@ -240,12 +229,17 @@
       qthab-light
       #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 3 6 2 negative-infinity positive-infinity)
       qthab-deep
-      #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)]
+      #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)
+      thab-deep
+      #(smrf! % rank-board-hybrid cab-transp-hist 6 negative-infinity positive-infinity)
+
+      ]
+  
   
 
   (defn setup-ai!
     []
-    (idrnh-hybrid-light 1)
+    (thab-deep 1)
     (qthab-deep -1))
  
   (defn simulate
@@ -258,7 +252,7 @@
       :comp
       (do
         (cab-hybrid-light 1)
-        (nab-hybrid-light -1)
+        (thab-deep -1)
         (loop [count 0  win1 0 win2 0]
           (if (>= count number-of-trials)
             (println "Winner ratio: 1:" win1 "-1:" win2)
