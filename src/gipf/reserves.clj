@@ -15,6 +15,5 @@
   `(Reserves/change ~res ~player ~d-rpieces ~d-bpieces ~d-gipfs))
 (definline eqv-reserves [r p] `( Reserves/equiv ~r ~p))
 (definline was-taken? [r p] `( Reserves/wasTaken ~r ~p))
-(definline losing-reserve? [r p] `(Reserves/losingReserve ~r ~p))
 
 (def null-reserves (->Reserves (/ Reserves/MAX_CAPACITY 2) (/ Reserves/MAX_CAPACITY 2)))

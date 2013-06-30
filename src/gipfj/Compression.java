@@ -6,7 +6,9 @@ public class Compression {
     public static final int EXP = 8 * DEG;
     public static final int THR = 1 << EXP;
     public static final int LEN = 5;
-    public static final int[] RPROF = { 5, 9, 9, 18, 18, 18 };
+    public static final int[] RPROF = { 5, Reserves.MAX_GIPFS_ON_BOARD,
+            Reserves.MAX_GIPFS_ON_BOARD, Reserves.MAX_CAPACITY,
+            Reserves.MAX_CAPACITY, Reserves.MAX_CAPACITY };
 
     public static byte[] compress(Board b, Reserves r, long player) {
         byte[] data = new byte[14];

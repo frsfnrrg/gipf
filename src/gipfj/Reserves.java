@@ -19,6 +19,7 @@ public class Reserves {
     public final int g2;
     public final int hashCode;
 
+    public final static int MAX_GIPFS_ON_BOARD = 9;
     public final static int MAX_CAPACITY = 18;
 
     /**
@@ -72,7 +73,8 @@ public class Reserves {
     }
 
     private static int[][] makeHashArray() {
-        int[][] a = new int[6][MAX_CAPACITY];
+        // some fields are unused - whatever, it is a once-only cost
+        int[][] a = new int[6][MAX_CAPACITY + 1];
         Random rng = new Random(7987897987987897L);
         for (int z = 0; z < a.length; z++) {
             for (int q = 0; q < a[z].length; q++) {
@@ -126,11 +128,33 @@ public class Reserves {
         }
     }
 
-    public static boolean losingReserve(Reserves r, int player) {
-        if (player > 0) {
-            return (r.p1 <= 0) || (r.g1 <= 0);
+    public boolean losingReserve(int player, boolean gipfphase) {
+        if (gipfphase) {
+            if (player > 0) {
+                return (p1 <= 0);
+            } else {
+                return (p2 <= 0);
+            }
         } else {
-            return (r.p2 <= 0) || (r.g2 <= 0);
+            if (player > 0) {
+                return (p1 <= 0) || (g1 <= 0);
+            } else {
+                return (p2 <= 0) || (g2 <= 0);
+            }
+        }
+    }
+
+    /**
+     * 
+     * 
+     * @param player
+     * @return
+     */
+    public boolean overextended(int player) {
+        if (player > 0) {
+            return g1 < 0;
+        } else {
+            return g2 < 0;
         }
     }
 

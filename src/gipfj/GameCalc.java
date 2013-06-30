@@ -293,7 +293,11 @@ public class GameCalc {
         // we iterate over LOL. forwards AND backwards
 
         byte[] orig = gs.b.data;
-        Reserves decced = gs.r.applyDelta(player, -1, 1, 0);
+        Reserves[] decced = new Reserves[3];
+        decced[1] = gs.r.applyDelta(player, -1, 1, 0);
+        if (gs.gphase) {
+            decced[2] = gs.r.applyDelta(player, -2, 0, 1);
+        }
 
         int q;
         if (gs.gphase) {
@@ -352,9 +356,11 @@ public class GameCalc {
                     last = v;
                 }
 
-                bgk[mm] = new GameState(new Board(up, hcu), decced, jkl == 2);
+                bgk[mm] = new GameState(new Board(up, hcu), decced[jkl],
+                        jkl == 2);
                 mm++;
-                bgk[mm] = new GameState(new Board(down, hcd), decced, jkl == 2);
+                bgk[mm] = new GameState(new Board(down, hcd), decced[jkl],
+                        jkl == 2);
                 mm++;
             }
         }
@@ -380,13 +386,15 @@ public class GameCalc {
         }
 
         for (int x = 0; x < i; x++) {
-            if (Reserves.losingReserve(mpm1[x].r, player)) {
+            if (mpm1[x].r.losingReserve(player, mpm1[x].gphase)) {
                 continue;
             }
 
             for (GameState q : getMoveMakingResults(mpm1[x], player)) {
-                mpm2[j] = q;
-                j++;
+                if (!q.r.overextended(player)) {
+                    mpm2[j] = q;
+                    j++;
+                }
             }
         }
 

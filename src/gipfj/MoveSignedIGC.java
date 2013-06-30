@@ -33,10 +33,10 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         g1_pos = 0;
         g1_end = 0;
         for (GameState q : GameCalc.getLineTakingResults(g, player)) {
-            if (!Reserves.losingReserve(q.r, player)) {
+            if (!q.r.losingReserve(player, q.gphase)) {
                 g1[g1_end] = q.b;
                 g1r1[g1_end] = q.r.applyDelta(player, -1, 1, 0);
-                g1r2[g1_end] = q.r.applyDelta(player, -1, 0, 0);
+                g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
                 g1_end++;
             }
         }
@@ -102,6 +102,13 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
                 if (orig[pd[i]] == 0) {
                     skip = false;
                     break;
+                }
+            }
+
+            if (glvl == 2) {
+                // case: 1 piece left: cannot place a GIPF
+                if (g1r2[g1_pos].overextended(player)) {
+                    skip = true;
                 }
             }
 
