@@ -11,6 +11,8 @@
   (ond :move-newlines
        (println))
 
+  (println (game-state-reserves gamestate))
+  
   (init-move-ranking-func! player)
   (ond :pre-calc-message
        (println "Beginning move"))
@@ -25,17 +27,18 @@
         ;;ngipfs (count-over-hex-array board (* 2 player))
         ;;use-gipf (and (= adv-phase :filling) (< ngipfs tournament-ai-gipfs))
         ;;degree (if use-gipf 2 1)
-        _ (println "possible" possible-moves)
         current-rank (move-ranking-func gamestate player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
         optimal (timev (rand-best
                         (fn [[move gamestate]]
+                          (println (game-state-reserves gamestate) move)
                           (let [rank
                                 (timev (move-ranking-func gamestate player)
                                        (get-diagnostic-level :incremental-time))]
                             (ond :rank-value
                                  (println "Rank:" rank))
                             (ond :screen-display
+                              ;; TODO: extedn gipof moves outward, antiparallel to normal
                                  (direct-visualize-ai-ranking (second move) (- rank current-rank)))
                             rank))
                         nil -100000 possible-moves
@@ -48,12 +51,12 @@
 
     (teardown-move-ranking-func! player)
 
-    (println "m" m (line-sig m))
+    (println "m" m (line-sig m) player)
     
     ;; asserted: m must be signed with the piece value
     (if (= 0 (count-over-hex-array (game-state-board gamestate) (* 2 player)))
-        [c1 (sign-line m (* 2 player)) c2]
-        [c1 m c2])))
+        [c1 (sign-line m 2) c2]
+        [c1 (sign-line m (abs (line-sig m))) c2])))
 
 
 

@@ -255,7 +255,7 @@ public class GameCalc {
         if (pieceval > 0) {
             if (foo.gphase1 && pieceval == 2) {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) pieceval, -1, 1, 0), true, foo.gphase2);
+                        (int) pieceval, -2, 0, 1), true, foo.gphase2);
             } else {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
                         (int) pieceval, -1, 1, 0), false, foo.gphase2);
@@ -263,7 +263,7 @@ public class GameCalc {
         } else {
             if (foo.gphase2 && pieceval == -2) {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) pieceval, -1, 1, 0), foo.gphase1, true);
+                        (int) pieceval, -2, 0, 1), foo.gphase1, true);
             } else {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
                         (int) pieceval, -1, 1, 0), foo.gphase1, false);
@@ -295,6 +295,10 @@ public class GameCalc {
             int v = player * cdata[q];
             // System.out.format("v: %d p:%d d:%d d:%d q:%d %s\n", v, player,
             // cdata[q], d, q, rr.toString());
+
+            // / System.out.format("%d %d, %d %d, %d %d\n", rr.p1, rr.p2, rr.o1,
+            // rr.o2, rr.g1, rr.g2);
+
             if (v < 0) {
                 cdata[q] = 0;
                 hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][v + 2];

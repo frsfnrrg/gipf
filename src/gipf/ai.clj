@@ -116,7 +116,7 @@
   "So what if I indent five times?"
   [mtable]
   (:pre [& args]
-        (export mtable (make-dtab 23)))
+        (export mtable (make-dtab 21)))
   (:post [& args]
          (dtab-clear! mtable))
   (:eval
@@ -165,7 +165,7 @@
   "Awesomeness."
   [mtable hist]
   (:pre [& args]
-        (export mtable (make-dtab 23))
+        (export mtable (make-dtab 21))
         (export hist (make-hist-table)))
   (:post [& args]
          (hist-clear! hist)
@@ -397,7 +397,7 @@
   (:pre [& args]
         ;; could we do a fully static, with overwrites? saves
         ;; 16 bytes mem/47 each, no overflow (save on alloc)
-        (export transp (make-dtab 23))
+        (export transp (make-dtab 21))
         (export hist (make-hist-table)))
   (:post [& args]
          (hist-clear! hist)
@@ -468,7 +468,7 @@
 (def-search qab-hist-transp
   [hist transp]
   (:pre [& args]
-        (export transp (make-dtab 23))
+        (export transp (make-dtab 21))
         (export hist (make-hist-table)))
   (:post [& args]
          (hist-clear! hist)

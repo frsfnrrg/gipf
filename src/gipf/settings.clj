@@ -2,19 +2,19 @@
 
 (let [dia (atom {:move-newlines true
                  :move-numbers false
-                 :hist-analysis true
-                 :transp-analysis true
-                 :match-result true
+                 :hist-analysis false
+                 :transp-analysis false
+                 :match-result false
                  :total-time true
-                 :incremental-time true
+                 :incremental-time false
                  :moves-available false
                  :reserve-status false
                  :board-snapshot false
-                 :rank-value true
+                 :rank-value false
                  :pre-rank-value false
                  :screen-display true
-                 :evaluation-count true
-                 :equal-moves true
+                 :evaluation-count false
+                 :equal-moves false
                  :pre-calc-message false})]
   (defn set-diagnostic-level!
     [key ^Boolean on]

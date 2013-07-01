@@ -14,7 +14,7 @@ public class Line {
 
     @Override
     public String toString() {
-        return String.format("%d %d", this.start, this.delta);
+        return String.format("%d %d - %d", this.start, this.delta, this.sig);
         // return String.format("<Line G: %d S: %s D: %s>", this.sig,
         // Geometry.toString(this.start), Geometry.toString(this.delta));
     }
