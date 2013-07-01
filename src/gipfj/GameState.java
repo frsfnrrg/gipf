@@ -25,16 +25,19 @@ package gipfj;
 public class GameState {
     public final Board b;
     public final Reserves r;
-    public final boolean gphase;
+    public final boolean gphase1; // positive
+    public final boolean gphase2; // negative
 
-    public GameState(Board b, Reserves r, boolean gphase) {
+    public GameState(Board b, Reserves r, boolean gphase1, boolean gphase2) {
         this.b = b;
         this.r = r;
-        this.gphase = gphase;
+        this.gphase1 = gphase1;
+        this.gphase2 = gphase2;
     }
 
-    public static GameState makeGameState(Board b, Reserves r, Boolean gipf) {
-        return new GameState(b, r, gipf);
+    public static GameState makeGameState(Board b, Reserves r, Boolean gipfp,
+            Boolean gipfm) {
+        return new GameState(b, r, gipfp, gipfm);
     }
 
     public static Board getBoard(GameState g) {
@@ -45,8 +48,28 @@ public class GameState {
         return g.r;
     }
 
-    public static boolean isGipfing(GameState g) {
-        return g.gphase;
+    public static boolean isGipfing(GameState g, long player) {
+        if (player > 0) {
+            return g.gphase1;
+        } else {
+            return g.gphase2;
+        }
+    }
+
+    public boolean getPhase(int player) {
+        if (player > 0) {
+            return gphase1;
+        } else {
+            return gphase2;
+        }
+    }
+
+    public GameState endGipf(int player) {
+        if (player > 0) {
+            return new GameState(b, r, false, gphase2);
+        } else {
+            return new GameState(b, r, gphase1, false);
+        }
     }
 
     @Override
@@ -66,7 +89,18 @@ public class GameState {
      * @param rr
      * @return
      */
-    public GameState change(Board board, Reserves rr, boolean gphase) {
-        return new GameState(board, rr, gphase);
+    public GameState change(Board board, Reserves rr, boolean gphase1,
+            boolean gphase2) {
+        return new GameState(board, rr, gphase1, gphase2);
     }
+
+    public boolean losingGameState(int player) {
+        if (player > 0) {
+            return r.losingReserve(player, gphase1);
+        } else {
+            return r.losingReserve(player, gphase2);
+        }
+    }
+
+    // todo: make losingGameState =eqv= .r.losingReserve(p, .getPhase(p))
 }

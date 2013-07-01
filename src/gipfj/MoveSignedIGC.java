@@ -24,6 +24,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     private boolean ready;
     private int origHash;
     private boolean gipfs;
+    private boolean oppg;
     private int glvl;
 
     public MoveSignedIGC(GameState g, long p, int[] ordering) {
@@ -33,7 +34,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         g1_pos = 0;
         g1_end = 0;
         for (GameState q : GameCalc.getLineTakingResults(g, player)) {
-            if (!q.r.losingReserve(player, q.gphase)) {
+            if (!q.losingGameState(player)) {
                 g1[g1_end] = q.b;
                 g1r1[g1_end] = q.r.applyDelta(player, -1, 1, 0);
                 g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
@@ -41,7 +42,13 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             }
         }
 
-        gipfs = g.gphase;
+        if (player > 0) {
+            gipfs = g.gphase1;
+            oppg = g.gphase2;
+        } else {
+            gipfs = g.gphase2;
+            oppg = g.gphase1;
+        }
 
         if (g1_end == 0) {
             ready = false;
@@ -158,8 +165,14 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             last = v;
         }
 
-        MoveSignedGS result = new MoveSignedGS(new Board(r, hcr), ruk,
-                glvl == 2, order[plo]);
+        MoveSignedGS result;
+        if (player > 0) {
+            result = new MoveSignedGS(new Board(r, hcr), ruk, glvl == 2, oppg,
+                    order[plo]);
+        } else {
+            result = new MoveSignedGS(new Board(r, hcr), ruk, oppg, glvl == 2,
+                    order[plo]);
+        }
         plo++;
         return result;
     }

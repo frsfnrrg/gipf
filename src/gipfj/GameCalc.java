@@ -191,7 +191,6 @@ public class GameCalc {
                 break;
             }
         }
-        // System.out.println("Exit");
         results[0] = curr;
 
         return results;
@@ -220,8 +219,10 @@ public class GameCalc {
 
     /*
      * Takes a well adjusted (start radius 3) line as `shove`
+     * 
+     * THIS SHOULD ONLY BE CALLED EXTERNALLY. It sets the GameState gphase.
      */
-    public static GameState placeAndShove(GameState foo, int player, Line shove) {
+    public static GameState placeAndShove(GameState foo, long player, Line shove) {
         byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(foo.b.data, 0, cdata, 0, Board.SIZE);
         // yay! I can mutate!
@@ -250,15 +251,23 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        boolean gphs;
-        if (foo.gphase && (2 == IMath.abs(player))) {
-            gphs = true;
+        if (player > 0) {
+            if (foo.gphase1 && player == 2) {
+                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
+                        (int) player, -1, 1, 0), true, foo.gphase2);
+            } else {
+                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
+                        (int) player, -1, 1, 0), false, foo.gphase2);
+            }
         } else {
-            gphs = false;
+            if (foo.gphase2 && player == -2) {
+                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
+                        (int) player, -1, 1, 0), foo.gphase1, true);
+            } else {
+                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
+                        (int) player, -1, 1, 0), foo.gphase1, false);
+            }
         }
-
-        return new GameState(new Board(cdata, hc), foo.r.applyDelta(player, -1,
-                1, 0), gphs);
     }
 
     private static GameState simpleLineEmpty(GameState curr, Line found,
@@ -306,7 +315,8 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        return curr.change(new Board(cdata, hc), rr, curr.gphase);
+        return curr
+                .change(new Board(cdata, hc), rr, curr.gphase1, curr.gphase2);
     }
 
     private static final GameState[] bgk = new GameState[84];
@@ -322,18 +332,25 @@ public class GameCalc {
         byte[] orig = gs.b.data;
         Reserves[] decced = new Reserves[3];
         decced[1] = gs.r.applyDelta(player, -1, 1, 0);
-        if (gs.gphase) {
-            decced[2] = gs.r.applyDelta(player, -2, 0, 1);
-        }
-
         int q;
-        if (gs.gphase) {
+        if (gs.getPhase(player)) {
+            decced[2] = gs.r.applyDelta(player, -2, 0, 1);
             q = 2;
         } else {
             q = 1;
         }
 
         for (int jkl = 1; jkl <= q; jkl++) {
+            boolean alpha;
+            boolean beta;
+            if (player > 0) {
+                alpha = (jkl == 2);
+                beta = gs.gphase2;
+            } else {
+                alpha = gs.gphase1;
+                beta = (jkl == 2);
+            }
+
             for (int[] n : listOfLinePoints) {
                 // question: iterate twice, or allocate and discard?
                 // answer: iterate 1 1/2 times!
@@ -383,11 +400,11 @@ public class GameCalc {
                     last = v;
                 }
 
-                bgk[mm] = new GameState(new Board(up, hcu), decced[jkl],
-                        jkl == 2);
+                bgk[mm] = new GameState(new Board(up, hcu), decced[jkl], alpha,
+                        beta);
                 mm++;
                 bgk[mm] = new GameState(new Board(down, hcd), decced[jkl],
-                        jkl == 2);
+                        alpha, beta);
                 mm++;
             }
         }
@@ -413,7 +430,7 @@ public class GameCalc {
         }
 
         for (int x = 0; x < i; x++) {
-            if (mpm1[x].r.losingReserve(player, mpm1[x].gphase)) {
+            if (mpm1[x].losingGameState(player)) {
                 continue;
             }
 
