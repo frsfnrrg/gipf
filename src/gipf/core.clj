@@ -304,25 +304,26 @@
   (defn start-compound-ai-move!
     []
     ;; one question remains: how does one cut/interrupt compound-ai-move ?
-    (let [b board*
-          p current-player*
-          rp reserve-pieces*
+    (let [p current-player*
           key (get-next-key-num)
-          fut (proxy [java.lang.Thread] []
-                (run []
-                (try
-                  (let [action (compound-ai-move b p rp (get-adv-phase))]
-                    (busy-doing-important-stuff 1.0)
-                    (if (check-ai-action-thread key)
-                      (on-swing-thread
-                       (update-game (list (cons :caimove action))))
-                      (println "aborting move" key)))
-                  (catch java.lang.Exception e
-                    (.printStackTrace e)))
-                (remove-ai-action-thread! key)))]
+          gs (->GameState board* reserve-pieces*
+                          (= :filling (get adv-phase* (player->index 1)))
+                          (= :filling (get adv-phase* (player->index -1))))
+          thrd (proxy [java.lang.Thread] []
+                 (run []
+                   (try
+                     (let [action (compound-ai-move gs p)]
+                       (busy-doing-important-stuff 1.0)
+                       (if (check-ai-action-thread key)
+                         (on-swing-thread
+                           (update-game (list (cons :caimove action))))
+                         (println "### Aborting move:" key)))
+                     (catch java.lang.Exception e
+                       (.printStackTrace e)))
+                   (remove-ai-action-thread! key)))]
       (add-ai-action-thread!
        key
-       (doto fut (.start)))))
+       (doto thrd (.start)))))
 
   (defn interrupt-ai-threads!
     []

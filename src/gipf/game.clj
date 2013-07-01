@@ -6,7 +6,7 @@
 (def tournament-ai-gipfs 5)
 
 (defn compound-ai-move
-  [board player reserves adv-phase]
+  [gamestate player]
 
   (ond :move-newlines
        (println))
@@ -19,20 +19,19 @@
   ;; :filling mode. Should we? I do not think so..
   (clear-counter ranks-count) 
   (let [move-ranking-func (get-move-ranking-func player)
-        pieces-left (get-pieces-in-reserve reserves player)
+        ;; pieces-left (get-pieces-in-reserve reserves player)
         possible-moves (shuffle
-                        (list-possible-moves-and-board board reserves player))
-        ngipfs (count-over-hex-array board (* 2 player))
-        use-gipf (and (= adv-phase :filling) (< ngipfs tournament-ai-gipfs))
-        degree (if use-gipf 2 1)
-        current-rank (move-ranking-func (->GameState board reserves use-gipf) player)
+                        (list-possible-moves-and-board gamestate player))
+        ;;ngipfs (count-over-hex-array board (* 2 player))
+        ;;use-gipf (and (= adv-phase :filling) (< ngipfs tournament-ai-gipfs))
+        ;;degree (if use-gipf 2 1)
+        _ (println "possible" possible-moves)
+        current-rank (move-ranking-func gamestate player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
         optimal (timev (rand-best
-                        (fn [[move [board res]]]
+                        (fn [[move gamestate]]
                           (let [rank
-                                (timev (move-ranking-func
-                                        (->GameState board res false) ;; TODO
-                                        player)
+                                (timev (move-ranking-func gamestate player)
                                        (get-diagnostic-level :incremental-time))]
                             (ond :rank-value
                                  (println "Rank:" rank))
@@ -49,7 +48,12 @@
 
     (teardown-move-ranking-func! player)
 
-    [c1 (sign-line m degree) c2]))
+    (println "m" m (line-sig m))
+    
+    ;; asserted: m must be signed with the piece value
+    (if (= 0 (count-over-hex-array (game-state-board gamestate) (* 2 player)))
+        [c1 (sign-line m (* 2 player)) c2]
+        [c1 m c2])))
 
 
 
@@ -97,13 +101,17 @@
 
 (defn new-gamestate
   [mode]
-  (->GameState (new-board mode) (new-reserves mode) (= mode :advanced)))
+  (->GameState (new-board mode) (new-reserves mode)
+               (= mode :advanced) (= mode :advanced)))
 
 (defn lost?
   [board reserves player mode advm]
   ;; TODO: make the GameState advm phase aware...; 
   ;; then allow gipfs to be placed under advm
-  (let [res (lazy-next-gamestates (->GameState board reserves (= advm :filling)) player)]
+  (let [res (lazy-next-gamestates (->GameState board reserves
+                                               (= advm :filling)
+                                               (= advm :filling))
+                                  player)]
     (ond :moves-available
          (println "Moves available:" (count res)))
     (empty? res)))
@@ -136,7 +144,7 @@
 (defn run-match
   [mode]
   (let [md :playing]
-    (loop [gamestate (->GameState (new-board mode) (new-reserves mode) false) ;; TODO
+    (loop [gamestate (->GameState (new-board mode) (new-reserves mode) false false) ;; TODO
            player 1
            counter 0]
       (ond :move-newlines

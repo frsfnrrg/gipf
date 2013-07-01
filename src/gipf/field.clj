@@ -5,9 +5,11 @@
                   Counter Compression DTable ChildList)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
-(definline ->GameState [a b c] `(GameState/makeGameState ~a ~b ~c))
+(definline ->GameState [a b c1 c2] `(GameState/makeGameState ~a ~b ~c1 ~c2))
 (definline game-state-board [gs] `(GameState/getBoard ~gs))
 (definline game-state-reserves [gs] `(GameState/getReserves ~gs))
+(definline game-state-changebr [gs bo re] `(GameState/changeBR ~gs ~bo ~re))
+(definline game-state-gipf? [gs player] `(GameState/isGipfing ~gs ~player))
 
 (definline row-full? [b s e] `(GameCalc/lineFull ~b ~s ~e))
 
@@ -153,7 +155,7 @@
   "Does not update properly"
   [board value loc shove]
   [ (game-state-board (place-and-shove
-                       (->GameState board null-reserves false) ;; TODO
+                       (->GameState board null-reserves false false) ;; TODO
                        value
                        (->Line loc shove)))
     (impacted-cells board loc shove)])
@@ -172,7 +174,7 @@
                   board (game-state-board gamestate)
                   reserves (game-state-reserves gamestate)]
              (if (= (pt-radius pos) 4)
-               (->GameState board reserves false);; TODO
+               (->GameState board reserves false false);; TODO
                (let [val (get-hex-array board pos)]
                  (cond (some #(pt= pos %) prot)
                        (recur (pt+ pos delta) board reserves)
@@ -199,20 +201,22 @@
                        (recur (pt+ pos delta) board reserves)))))))))))
 
 (defn get-line-taking-orderings
-  "Returns a list of [[[prot] take1 take2] newboard newreserves]
+  "Returns a list of [[[prot] take1 take2] gamestate]
    for all possible line
    orderings"
-  [board reserves player]
+  [gamestate player]
   ;; we go dumb, take only the first ones...
   ;; if we really want to, we can make a slower, more complete
   ;; version.
   ;; We protect ourselves..
-  
+
   (list
-   (loop [cb board rr reserves taken [] protected []]
+   (loop [cb (game-state-board gamestate)
+          rr (game-state-reserves gamestate)
+          taken [] protected []]
      (let [found (filter #(same-sign? (line-sig %) player) (get-lines-of-four cb))]
        (if (empty? found)
-         [(concat [protected] taken) cb rr]
+         [(concat [protected] taken) (game-state-changebr gamestate cb rr)]
 
          ;; this seems to work...
          (let [chosen (first found)
@@ -256,8 +260,8 @@
   [(game-state-board gs) (game-state-reserves gs)])
 
 (defn do-shove
-  [board reserves player shove]
-  (expand-gamestate (place-and-shove (->GameState board reserves false) player shove)));; TODO
+  [gamestate player shove]
+  (place-and-shove gamestate player shove))
 
 (defn get-line-taking-results
   [gamestate player]
@@ -266,42 +270,43 @@
 (defn list-possible-moves-and-board
   "Like list-possible-boards, just returns the moves along with the boards.
   ([move board reserves] ... )"
-  [board reserves player]
+  [gamestate player]
   
-  (let [lines-board (get-line-taking-orderings board reserves player)
+  (let [lines-board (get-line-taking-orderings gamestate player)
         actions-board (expand
-                       (fn [[lmove board reserves]]
+                       (fn [[lmove gamestate]]
                          ;; return all possible shoves after this,
                          ;; form [[lmove shove]]
-                         (map
+                         (expand
                           (fn [shove]
-                            (let [[nb nr] (do-shove board reserves
-                                                    player
-                                                    (advance-line shove))]
-                              [[lmove shove] nb nr]))
-                          (get-open-moves board)))
+                            (if (game-state-gipf? gamestate player)
+                              (list [[lmove (sign-line shove player)]
+                                     (place-and-shove gamestate
+                                       player
+                                       (advance-line shove))]
+                                [[lmove (sign-line shove (multiply 2 player))]
+                                     (place-and-shove gamestate
+                                       (multiply 2 player)
+                                       (advance-line shove))])
+                              (list [[lmove (sign-line shove player)]
+                                     (place-and-shove gamestate
+                                       player
+                                       (advance-line shove))])))
+                          (get-open-moves (game-state-board gamestate))))
                        lines-board)
         flines-board (expand
-                      (fn [[move board reserves]]
+                      (fn [[move gamestate]]
                         (map
-                         (fn [[lmove board reserves]]
-                           [(conj move lmove) [board reserves]])
-                         (get-line-taking-orderings board reserves player))
-                        )
+                         (fn [[lmove gamestate]]
+                           [(conj move lmove) gamestate])
+                         (get-line-taking-orderings gamestate player)))
                       actions-board)]
     flines-board))
 
-(defn list-possible-boards-cheat
-  [gamestate player]
-  (map (constantly gamestate) (range 42)))
-
-;; one issue: it is not lazy; which could waste a bit given pruning algorithms
-(defn list-possible-boards-opt
-  "Costs 60% more in ai than the cheat version"
+(defn list-possible-boards
+  "TODO: remove listPossibleBoards by putting all into MoveSignedIGC??"
   [gamestate player]
   (vec (GameCalc/listPossibleBoards gamestate player)))
-
-(def list-possible-boards list-possible-boards-opt)
 
 ;; should make this easily changeable... (per menu?; with registering stuf)
 (def expected-max-rank* nil)

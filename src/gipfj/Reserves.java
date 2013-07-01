@@ -236,4 +236,12 @@ public class Reserves {
                 || ((a.p1 == b.p1) && (a.p2 == b.p2) && (a.g1 == b.g1)
                         && (a.g2 == a.g2) && (a.o1 == b.o1) && (a.o2 == a.o2));
     }
+
+    public int numReserves(int player) {
+        if (player > 0) {
+            return p1;
+        } else {
+            return p2;
+        }
+    }
 }

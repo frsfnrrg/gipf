@@ -222,7 +222,8 @@ public class GameCalc {
      * 
      * THIS SHOULD ONLY BE CALLED EXTERNALLY. It sets the GameState gphase.
      */
-    public static GameState placeAndShove(GameState foo, long player, Line shove) {
+    public static GameState placeAndShove(GameState foo, long pieceval,
+            Line shove) {
         byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(foo.b.data, 0, cdata, 0, Board.SIZE);
         // yay! I can mutate!
@@ -235,7 +236,7 @@ public class GameCalc {
 
         int hc = foo.b.hashCode;
 
-        byte last = (byte) player;
+        byte last = (byte) pieceval;
         while (true) {
             byte v = cdata[q];
             hc ^= Board.hashArray[q][v + 2] ^ Board.hashArray[q][last + 2];
@@ -251,21 +252,21 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        if (player > 0) {
-            if (foo.gphase1 && player == 2) {
+        if (pieceval > 0) {
+            if (foo.gphase1 && pieceval == 2) {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) player, -1, 1, 0), true, foo.gphase2);
+                        (int) pieceval, -1, 1, 0), true, foo.gphase2);
             } else {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) player, -1, 1, 0), false, foo.gphase2);
+                        (int) pieceval, -1, 1, 0), false, foo.gphase2);
             }
         } else {
-            if (foo.gphase2 && player == -2) {
+            if (foo.gphase2 && pieceval == -2) {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) player, -1, 1, 0), foo.gphase1, true);
+                        (int) pieceval, -1, 1, 0), foo.gphase1, true);
             } else {
                 return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) player, -1, 1, 0), foo.gphase1, false);
+                        (int) pieceval, -1, 1, 0), foo.gphase1, false);
             }
         }
     }
@@ -333,7 +334,7 @@ public class GameCalc {
         Reserves[] decced = new Reserves[3];
         decced[1] = gs.r.applyDelta(player, -1, 1, 0);
         int q;
-        if (gs.getPhase(player)) {
+        if (gs.getPhase(player) && gs.r.numReserves(player) > 2) {
             decced[2] = gs.r.applyDelta(player, -2, 0, 1);
             q = 2;
         } else {
@@ -420,6 +421,14 @@ public class GameCalc {
     private static final GameState[] mpm2 = new GameState[120];
     private static final GameState[] mpm3 = new GameState[360];
 
+    /**
+     * 
+     * TODO: deprecate in favor of the lazier, iterator version...
+     * 
+     * @param g
+     * @param player
+     * @return
+     */
     public static GameState[] listPossibleBoards(GameState g, int player) {
 
         int i = 0, j = 0, k = 0;
@@ -435,10 +444,8 @@ public class GameCalc {
             }
 
             for (GameState q : getMoveMakingResults(mpm1[x], player)) {
-                if (!q.r.overextended(player)) {
-                    mpm2[j] = q;
-                    j++;
-                }
+                mpm2[j] = q;
+                j++;
             }
         }
 

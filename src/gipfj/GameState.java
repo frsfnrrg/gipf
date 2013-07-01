@@ -102,5 +102,9 @@ public class GameState {
         }
     }
 
+    public static GameState changeBR(GameState in, Board nb, Reserves nr) {
+        return new GameState(nb, nr, in.gphase1, in.gphase2);
+    }
+
     // todo: make losingGameState =eqv= .r.losingReserve(p, .getPhase(p))
 }

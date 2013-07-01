@@ -37,7 +37,15 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             if (!q.losingGameState(player)) {
                 g1[g1_end] = q.b;
                 g1r1[g1_end] = q.r.applyDelta(player, -1, 1, 0);
-                g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
+                if (player > 0) {
+                    if (q.r.p1 >= 1) {
+                        g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
+                    }
+                } else {
+                    if (q.r.p2 >= 1) {
+                        g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
+                    }
+                }
                 g1_end++;
             }
         }
@@ -104,34 +112,30 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             pd = HistoryTable.listOfPushPoints[order[plo]];
             byte[] orig = g1[g1_pos].data;
 
-            boolean skip = true;
-            for (int i = 0; i < pd.length; i++) {
-                if (orig[pd[i]] == 0) {
-                    skip = false;
-                    break;
+            boolean select = false;
+
+            if (glvl == 2 && g1r2[g1_pos] == null) {
+                select = false;
+            } else {
+                for (int i = 0; i < pd.length; i++) {
+                    if (orig[pd[i]] == 0) {
+                        select = true;
+                        break;
+                    }
                 }
             }
 
-            if (glvl == 2) {
-                // case: 1 piece left: cannot place a GIPF
-                if (g1r2[g1_pos].overextended(player)) {
-                    skip = true;
-                }
-            }
-
-            if (!skip) {
+            if (select) {
                 break;
             }
 
-            if (skip) {
-                glvl++;
-                if (!gipfs || glvl == 3) {
-                    glvl = 1;
-                    g1_pos++;
-                    if (g1_pos == g1_end) {
-                        g1_pos = 0;
-                        plo++;
-                    }
+            glvl++;
+            if (!gipfs || glvl == 3) {
+                glvl = 1;
+                g1_pos++;
+                if (g1_pos == g1_end) {
+                    g1_pos = 0;
+                    plo++;
                 }
             }
         }

@@ -10,7 +10,7 @@
                  :moves-available false
                  :reserve-status false
                  :board-snapshot false
-                 :rank-value false
+                 :rank-value true
                  :pre-rank-value false
                  :screen-display true
                  :evaluation-count true
