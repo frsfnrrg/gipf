@@ -6,7 +6,7 @@
                  :transp-analysis false
                  :match-result false
                  :total-time true
-                 :incremental-time false
+                 :incremental-time true
                  :moves-available false
                  :reserve-status false
                  :board-snapshot false

@@ -172,6 +172,7 @@
 
 
 (def expected-max-rank*)
+(def ^:const rank-vis-cap 10)
 (defn direct-visualize-ai-ranking
   [line strength]
   (try
@@ -181,14 +182,25 @@
       (let [magic-factor (/ 15 expected-max-rank*)
             ^java.awt.Graphics2D g game-graphics
             [e1x e1y] (loc-to-screenpx (line-start line))
-            [e2x e2y] (loc-to-screenpx (pt+ (line-start line) (line-delta line)))]
-        (if (neg? strength)
-          (.setColor g (java.awt.Color/PINK))
-          (.setColor g (java.awt.Color/GREEN)))
+            [e2x e2y] (loc-to-screenpx (if (equals (abs (line-sig line)) 2)
+                                         (pt- (line-start line) (line-delta line))
+                                         (pt+ (line-start line) (line-delta line))))]
+
+        (.setColor g
+                   (cond
+                    (greater strength (* rank-vis-cap expected-max-rank*))
+                    java.awt.Color/YELLOW
+                    (less strength (* -1 rank-vis-cap expected-max-rank*))
+                    java.awt.Color/RED
+                    :else
+                    (nif strength
+                         java.awt.Color/GREEN
+                         java.awt.Color/BLUE
+                         java.awt.Color/PINK)))
         
         (doto g
           (.setStroke (java.awt.BasicStroke.
-                        (* (abs strength) magic-factor)))
+                       (* (min (abs strength) (* rank-vis-cap expected-max-rank*)) magic-factor)))
           (.drawLine e1x e1y e2x e2y)
           (.setStroke (java.awt.BasicStroke.))))
       

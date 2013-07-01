@@ -293,7 +293,7 @@
       end-ai-action-thread! (fn [key]
                               (swap! ai-action-threads
                                      (fn [u]
-                                       (let [t (first (get u key))]
+                                       (let [^java.lang.Thread t (first (get u key))]
                                          (.interrupt t)
                                          (assoc u key [t false])))))
       get-next-key-num (let [kn (atom 0)]

@@ -500,6 +500,13 @@
                   ~@body)]
           (~name ~@args)))))
 
+(defmacro nif
+  "Numeric if: pos? zero? neg?"
+  [value pos zero neg]
+  `(let [v# ~value]
+     (if (zero? v#) ~zero
+         (if (pos? v#) ~pos ~neg))))
+
 ;;
 ;; Idea 1
 ;;
