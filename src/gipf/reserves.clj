@@ -1,7 +1,7 @@
 (ns gipf.core
   (:import (gipfj Reserves)))
 
-(definline ->Reserves [r p] `( Reserves/makeReserves ~r ~p))
+(definline ->Reserves [r p g] `( Reserves/makeReserves ~r ~p ~g))
 (definline get-gipfs-on-board [r p] 
   `( Reserves/getGipfs ~r ~p))
 (definline get-pieces-on-board [r p] 
@@ -16,4 +16,4 @@
 (definline eqv-reserves [r p] `( Reserves/equiv ~r ~p))
 (definline was-taken? [r p] `( Reserves/wasTaken ~r ~p))
 
-(def null-reserves (->Reserves (/ Reserves/MAX_CAPACITY 2) (/ Reserves/MAX_CAPACITY 2)))
+(def null-reserves (->Reserves 5 5 5))

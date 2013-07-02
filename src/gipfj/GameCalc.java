@@ -355,6 +355,7 @@ public class GameCalc {
                 alpha = gs.gphase1;
                 beta = (jkl == 2);
             }
+            final byte push = (byte) (jkl * player);
 
             for (int[] n : listOfLinePoints) {
                 // question: iterate twice, or allocate and discard?
@@ -379,7 +380,7 @@ public class GameCalc {
                 byte[] down = new byte[Board.SIZE];
                 System.arraycopy(orig, 0, down, 0, Board.SIZE);
 
-                byte last = (byte) (jkl * player);
+                byte last = push;
                 for (int j = 0; j < n.length; j++) {
                     int ind = n[j];
                     byte v = up[ind];
@@ -392,7 +393,7 @@ public class GameCalc {
                     last = v;
                 }
 
-                last = (byte) (jkl * player);
+                last = push;
                 for (int j = n.length - 1; j >= 0; j--) {
                     int ind = n[j];
                     byte v = down[ind];

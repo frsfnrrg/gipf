@@ -42,9 +42,9 @@
          (println "Nodes evaluated:" (read-counter ranks-count)))
 
     (teardown-move-ranking-func! player)
-    
-    ;; abs sign is to conform to outside...
-    (if (= 0 (count-over-hex-array (game-state-board gamestate) (* 2 player)))
+
+    ;; we use gipfs-on-board for compat with simple mode    
+    (if (= 0 (get-gipfs-on-board (game-state-reserves gamestate) player))
         [c1 (sign-line m 2) c2]
         [c1 (sign-line m (abs (line-sig m))) c2])))
 
@@ -88,9 +88,9 @@
   "Return a new set of reserves."
   [mode]
   (case mode
-    :basic (->Reserves 12 1)
-    :advanced (->Reserves 18 0)
-    :normal (->Reserves 15 3)))
+    :basic (->Reserves 12 3 1)
+    :advanced (->Reserves 18 0 0)
+    :normal (->Reserves 15 0 3)))
 
 (defn new-gamestate
   [mode]
@@ -98,23 +98,21 @@
                (= mode :advanced) (= mode :advanced)))
 
 (defn lost?
-  [board reserves player mode advm]
-  ;; TODO: make the GameState advm phase aware...; 
-  ;; then allow gipfs to be placed under advm
-  (let [res (lazy-next-gamestates (->GameState board reserves
-                                               (= advm :filling)
-                                               (= advm :filling))
-                                  player)]
-    (ond :moves-available
-         (println "Moves available:" (count res)))
-    (empty? res)))
+  ([board reserves player mode advm]
+     (let [res (lazy-next-gamestates (->GameState board reserves
+                                                  (= advm :filling)
+                                                  (= advm :filling))
+                                     player)]
+       (ond :moves-available
+            (println "Moves available:" (count res)))
+       (empty? res)))
+  ([gamestate player]
+     (not (.hasNext (unordered-move-generator gamestate player)))))
 
 (defn next-move
-  [gamestate player md]
-  (let [move (compound-ai-move (game-state-board gamestate)
-                               player
-                               (game-state-reserves gamestate)
-                               md)]
+  [gamestate player]
+  (let [move (compound-ai-move gamestate
+                               player)]
     (do-linemoves (place-and-shove (do-linemoves gamestate
                                                  player
                                                  (first move))
@@ -137,26 +135,24 @@
 (defn run-match
   [mode]
   (let [md :playing]
-    (loop [gamestate (->GameState (new-board mode) (new-reserves mode) false false) ;; TODO
+    (loop [gamestate (new-gamestate mode)
            player 1
            counter 0]
       (ond :move-newlines
            (println))
       (ond :move-numbers
            (println (str "Move #: " counter "; Player " player)))
-      (if (lost? (game-state-board gamestate)
-                 (game-state-reserves gamestate)
-                 player mode md)
+      (if (lost? gamestate player)
         (do
           (ond :match-result
                (println "Player" (negate player) "won"))
           (negate player))
-        (let [ng (next-move gamestate player md)]
+        (let [ng (next-move gamestate player)]
           (ond :reserve-status
                (println "->" (game-state-reserves gamestate)))
           (ond :board-snapshot
                (print-board (game-state-board gamestate)))
-          (recur ng (negate player) (inc counter)))))))
+          (recur ng (negate player) (inc-1 counter)))))))
 
 (def number-of-trials 1)
 
@@ -170,13 +166,6 @@
                 player
                 (third move)))
 
-(defn mct-get-move
-  [gamestate player]
-  (compound-ai-move (game-state-board gamestate)
-                    player
-                    (game-state-reserves gamestate)
-                    :playing))
-
 (defn move-comparison-trial
   "Requires players to be awesome. No, wait."
   [lambda1 lambda2]
@@ -187,20 +176,16 @@
          (println))
     (ond :move-numbers
          (println (str "Move #: " counter "; Player " player)))
-    (if (lost? (game-state-board gamestate)
-               (game-state-reserves gamestate)
-               player
-               :normal
-               :playing)
+    (if (lost? gamestate player)
       (do
         (ond :match-result
              (println "MCT \"winner\":" (negate player)))
         (negate player))
       (let [m1 (do (lambda1 player)
-                 (mct-get-move gamestate player))
+                 (compound-ai-move gamestate player))
             g1 (mct-effect-move gamestate player m1)
             m2 (do (lambda2 player)
-                 (mct-get-move gamestate player))
+                 (compound-ai-move gamestate player))
             g2 (mct-effect-move gamestate player m2)]
         (println "ai +1:" m1)
         (println "ai -1:" m2)
@@ -208,42 +193,43 @@
           (recur g1 (negate player) (inc counter))
           (recur g2 (negate player) (inc counter)))))))
 
-(let [smrf! setup-move-ranking-func!
-      cab-hybrid-light
-      #(smrf! % rank-board-hybrid cls-ab-search 3 negative-infinity positive-infinity)
-      cab-transp-hybrid-light
-      #(smrf! % rank-board-hybrid cls-ab-transp-search 3 negative-infinity positive-infinity)
-      aspire-simple
-      #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
-      mtdf-simple
-      #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
-      aspire-deep
-      #(smrf! % rank-board-hybrid aspiration 80 5 (:eval rank-board-hybrid))
-      mtdf-deep
-      #(smrf! % rank-board-hybrid mtd-f 5 (:eval rank-board-hybrid))
-      cab-transp-deep
-      #(smrf! % rank-board-hybrid cls-ab-transp-search 6 negative-infinity positive-infinity)
-      cab-hist-light
-      #(smrf! % rank-board-hybrid cls-ab-hist-search 3 negative-infinity positive-infinity)
-      cab-hist-deep
-      #(smrf! % rank-board-hybrid cls-ab-hist-search 5 negative-infinity positive-infinity)
-      idrnh-hybrid-light
-      #(smrf! % rank-board-hybrid idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
-      qthab-light
-      #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 3 6 2 negative-infinity positive-infinity)
-      qthab-deep
-      #(smrf! % rank-board-hybrid qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)
-      thab-deep
-      #(smrf! % rank-board-hybrid cab-transp-hist 6 negative-infinity positive-infinity)
 
-      ]
+
+(let [dmrf (fn [& args]
+             (fn [^Search s ^long p] (apply setup-move-ranking-func! p s args)))
+      cab-hybrid-light
+      (dmrf cls-ab-search 3 negative-infinity positive-infinity)
+      cab-transp-hybrid-light
+      (dmrf cls-ab-transp-search 3 negative-infinity positive-infinity)
+      aspire-simple
+      (dmrf aspiration 80 5 (:eval rank-board-hybrid))
+      mtdf-simple
+      (dmrf mtd-f 5 (:eval rank-board-hybrid))
+      aspire-deep
+      (dmrf aspiration 80 5 (:eval rank-board-hybrid))
+      mtdf-deep
+      (dmrf mtd-f 5 (:eval rank-board-hybrid))
+      cab-transp-deep
+      (dmrf cls-ab-transp-search 6 negative-infinity positive-infinity)
+      cab-hist-light
+      (dmrf cls-ab-hist-search 3 negative-infinity positive-infinity)
+      cab-hist-deep
+      (dmrf cls-ab-hist-search 5 negative-infinity positive-infinity)
+      idrnh-hybrid-light
+      (dmrf idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
+      qthab-light
+      (dmrf qab-hist-transp simple-quiet 3 6 2 negative-infinity positive-infinity)
+      qthab-deep
+      (dmrf qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)
+      thab-deep
+      (dmrf cab-transp-hist 6 negative-infinity positive-infinity)]
   
   
 
   (defn setup-ai!
     []
-    (thab-deep 1)
-    (qthab-deep -1))
+    (thab-deep rank-gf1 1)
+    (qthab-deep rank-board-hybrid -1))
  
   (defn simulate
     [mode type]

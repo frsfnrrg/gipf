@@ -56,11 +56,15 @@ public class Reserves {
 
     private final static int[][] hashArray = makeHashArray();
 
+    public static boolean DEBUG = false;
+
     private int calcHashCode(int p1, int p2, int g1, int g2, int o1, int o2) {
 
         // debug on crash
-        // System.out.format("%d, %d, %d, %d, %d, %d\n", p1, p2, o1, o2, g1,
-        // g2);
+        if (DEBUG) {
+            System.out.format("%d, %d, %d, %d, %d, %d\n", p1, p2, o1, o2, g1,
+                    g2);
+        }
 
         int r = hashArray[0][p1];
         r ^= hashArray[1][p2];
@@ -92,8 +96,9 @@ public class Reserves {
 
     // Statics...
 
-    public static Reserves makeReserves(long p, long g) {
-        return new Reserves((int) p, (int) p, 0, 0, (int) g, (int) g);
+    public static Reserves makeReserves(long r, long p, long g) {
+        return new Reserves((int) r, (int) r, (int) p, (int) p, (int) g,
+                (int) g);
     }
 
     public static long getReserves(Reserves r, long player) {

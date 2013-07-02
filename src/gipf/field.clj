@@ -80,18 +80,15 @@
             (DTable/danalyze ~table))
        (DTable/dempty ~table)))
 
-(definline signed-gs-move
-  [sgs]
+(definline signed-gs-move [sgs]
   `(MoveSignedGS/getMove ~sgs))
 
-(definline read-counter
-  [counter]
+(definline read-counter  [counter]
   `(Counter/cget ~counter))
 (definline clear-counter [counter]
   `(Counter/cclear ~counter))
 
-(definline compress-sgs
-  [gamestate player]
+(definline compress-sgs  [gamestate player]
   `(Compression/compressgs ~gamestate ~player))
 
 (definline clist-make  []
@@ -151,11 +148,13 @@
   (vec (GameCalc/getImpactedCells board loc shove)))
 
 
+;; TODO: promote sync by passing the gamestate in,
+;; and actually _USING_ the values provided
 (defn do-move
   "Does not update properly"
   [board value loc shove]
   [ (game-state-board (place-and-shove
-                       (->GameState board null-reserves false false) ;; TODO
+                       (->GameState board null-reserves false false)
                        value
                        (->Line loc shove)))
     (impacted-cells board loc shove)])
@@ -324,7 +323,6 @@
               (nil? (:post search)))
       (throw (java.lang.Exception.
               "Wrong types passed to setup-move-ranking-func!")))
-    ;;(println player lead-heuristic search sfargs)
     (swap! mrfs
            #(assoc % player
                    [(:setup lead-heuristic)

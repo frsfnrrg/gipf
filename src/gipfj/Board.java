@@ -145,4 +145,20 @@ public class Board {
 
         return eq;
     }
+
+    /**
+     * Don't use this often.
+     * 
+     * @return
+     */
+    public String verboseToString() {
+        String q = "[board";
+
+        for (byte b : data) {
+            q += String.format(" %2d", b);
+        }
+
+        q += "]";
+        return q;
+    }
 }
