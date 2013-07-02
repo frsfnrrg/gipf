@@ -3,8 +3,6 @@ package gipfj;
 import java.util.Iterator;
 
 /**
- * Clone of IncrementalGameCalc; signs its moves, uses a move ordering.
- * 
  */
 public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
@@ -25,7 +23,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     private boolean oppg;
     private int glvl;
 
-    private MoveSignedIGC(GameState g, long p, int[] ordering) {
+    public MoveSignedIGC(GameState g, long p, int[] ordering) {
         this.player = (byte) p;
         order = ordering;
 

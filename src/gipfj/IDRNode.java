@@ -1,12 +1,12 @@
 package gipfj;
 
 public class IDRNode {
-    private final Object children;
+    private Object children;
     private final byte player;
-    private final int rank;
+    private int rank;
     private final GameState gamestate;
 
-    private IDRNode(GameState g, long p, long r, Object c) {
+    public IDRNode(GameState g, long p, long r, Object c) {
         children = c;
         player = (byte) p;
         rank = (int) r;
@@ -19,6 +19,12 @@ public class IDRNode {
 
     public static IDRNode updateIDRNode(IDRNode d, long r, Object c) {
         return new IDRNode(d.gamestate, d.player, r, c);
+    }
+
+    public static IDRNode mutateIDRNode(IDRNode d, long r, Object c) {
+        d.rank = (int) r;
+        d.children = c;
+        return d;
     }
 
     public static GameState getGameState(IDRNode i) {

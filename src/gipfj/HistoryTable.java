@@ -4,7 +4,7 @@ package gipfj;
  * 
  * This is a simple history heuristic table.
  * 
- * Each move is assigned a number 1:42.
+ * Each move is assigned a number 0:42 (array style).
  * 
  * @author msto
  * 

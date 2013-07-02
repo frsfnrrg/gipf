@@ -91,7 +91,7 @@
   `(Counter/cclear ~counter))
 
 (definline compress-sgs  [gamestate player]
-  `(Compression/compressgs ~gamestate ~player))
+  `(Compression/compress ~gamestate ~player))
 
 (definline clist-make  []
   `(ChildList/clmake))

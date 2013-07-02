@@ -13,9 +13,10 @@ public class Compression {
     private static final byte[] data = new byte[14];
     private static final int[] A = new int[LEN];
 
-    public static Entry compress(Board b, Reserves r, long player) {
+    public static Entry compress(GameState g, long player) {
         // 105.76 bits; we can pack 75 more states in.
-        byte[] bdata = b.data;
+        byte[] bdata = g.b.data;
+        Reserves r = g.r;
         int[] rdata = { r.g1, r.g2, r.o1, r.o2, r.p1, r.p2 };
 
         if (player > 0) {
@@ -67,12 +68,8 @@ public class Compression {
                 k++;
             }
         }
-        Entry e = new Entry(data, b.hashCode ^ r.hashCode ^ (int) player);
+        Entry e = new Entry(data, g.b.hashCode ^ r.hashCode ^ (int) player);
 
         return e;
-    }
-
-    public static Entry compressgs(GameState g, long player) {
-        return compress(g.b, g.r, player);
     }
 }
