@@ -27,7 +27,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     private boolean oppg;
     private int glvl;
 
-    public MoveSignedIGC(GameState g, long p, int[] ordering) {
+    private MoveSignedIGC(GameState g, long p, int[] ordering) {
         this.player = (byte) p;
         order = ordering;
 
@@ -104,7 +104,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return ready;
     }
 
-    protected MoveSignedGS getNextMoveResult() {
+    private MoveSignedGS getNextMoveResult() {
         // works off the g1 buffer; writes two at a time into g2
 
         int[] pd = null;
@@ -191,7 +191,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
     // CLJR INTEROP
 
-    public static final int[] DEFAULT_MOVE_ORDER = gdfmo();
+    private static final int[] DEFAULT_MOVE_ORDER = gdfmo();
 
     private static int[] gdfmo() {
         int[] q = new int[42];

@@ -74,6 +74,7 @@ public class GameState {
 
     @Override
     public int hashCode() {
+        // we deliberately ignore phasing
         return b.hashCode() ^ r.hashCode();
     }
 

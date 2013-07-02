@@ -249,4 +249,36 @@ public class Reserves {
             return p2;
         }
     }
+
+    public static void mutateArray(int[] arr, int player,
+            int delta_reserve_pieces, int delta_board_pieces,
+            int delta_board_gipfs) {
+        if (player > 0) {
+            // it isn't worth it to incrementally calculate the hash code.
+            // case 1: we do. 6 XORS (3,3)
+            // case 2: we don't. 6 XORS (6)
+            arr[0] += delta_reserve_pieces;
+            arr[2] += delta_board_pieces;
+            arr[4] += delta_board_gipfs;
+        } else {
+            arr[1] += delta_reserve_pieces;
+            arr[3] += delta_board_pieces;
+            arr[5] += delta_board_gipfs;
+        }
+    }
+
+    public int[] toArray() {
+        int[] r = { p1, p2, o1, o2, g1, g2 };
+        return r;
+    }
+
+    public Reserves(int[] arr) {
+        this.p1 = arr[0];
+        this.p2 = arr[1];
+        this.o1 = arr[2];
+        this.o2 = arr[3];
+        this.g1 = arr[4];
+        this.g2 = arr[5];
+        hashCode = calcHashCode(p1, p2, g1, g2, o1, o2);
+    }
 }

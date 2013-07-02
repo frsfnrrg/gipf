@@ -147,7 +147,38 @@ public class GameCalc {
         return foo;
     }
 
-    private static Line[] tried = new Line[84];
+    private static int[] gfbl_buf = new int[21];
+
+    private static int[] getFilteredBoardLines(Board b, int player) {
+        int m = 0;
+        for (int num = 0; num < 21; num++) {
+            int[] line = listOfLinePoints[num];
+            int sign = 0;
+            int count = 1;
+            int len = line.length;
+            for (int kk = 0; kk < len; kk++) {
+                int v = b.data[line[kk]];
+                if (v == 0 || (v * sign <= 0)) {
+                    count = 1;
+                    sign = v;
+                } else {
+                    count++;
+                }
+
+                if (count == 4 && (sign * player) > 0) {
+                    gfbl_buf[m] = num;
+                    m++;
+                    break;
+                }
+            }
+        }
+
+        int[] foo = new int[m];
+        System.arraycopy(gfbl_buf, 0, foo, 0, m);
+        return foo;
+    }
+
+    private static int[] tried = new int[21];
 
     public static GameState[] getLineTakingResults(GameState g, int player) {
         // returns a sequence of stuff like this:
@@ -164,14 +195,14 @@ public class GameCalc {
 
         int t = 0;
 
-        Line[] found;
+        int[] found;
         while (true) {
-            found = filterLines(getBoardLines(curr.b), player);
+            found = getFilteredBoardLines(g.b, player);
             boolean k = false;
-            for (Line f : found) {
+            for (int f : found) {
                 boolean c = false;
                 for (int i = 0; i < t; i++) {
-                    if (Line.same(tried[i], f)) {
+                    if (tried[i] == f) {
                         c = true;
                         break;
                     }
@@ -181,7 +212,7 @@ public class GameCalc {
                     continue;
                 }
 
-                curr = simpleLineEmpty(curr, f, player);
+                curr = lineEmpty(curr, f, player);
                 tried[t] = f;
                 t++;
                 k = true;
@@ -254,44 +285,34 @@ public class GameCalc {
 
         if (pieceval > 0) {
             if (foo.gphase1 && pieceval == 2) {
-                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) pieceval, -2, 0, 1), true, foo.gphase2);
+                return foo.change(new Board(cdata, hc),
+                        foo.r.applyDelta((int) pieceval, -2, 0, 1), true,
+                        foo.gphase2);
             } else {
-                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) pieceval, -1, 1, 0), false, foo.gphase2);
+                return foo.change(new Board(cdata, hc),
+                        foo.r.applyDelta((int) pieceval, -1, 1, 0), false,
+                        foo.gphase2);
             }
         } else {
             if (foo.gphase2 && pieceval == -2) {
-                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) pieceval, -2, 0, 1), foo.gphase1, true);
+                return foo.change(new Board(cdata, hc),
+                        foo.r.applyDelta((int) pieceval, -2, 0, 1),
+                        foo.gphase1, true);
             } else {
-                return new GameState(new Board(cdata, hc), foo.r.applyDelta(
-                        (int) pieceval, -1, 1, 0), foo.gphase1, false);
+                return foo.change(new Board(cdata, hc),
+                        foo.r.applyDelta((int) pieceval, -1, 1, 0),
+                        foo.gphase1, false);
             }
         }
     }
 
-    private static GameState simpleLineEmpty(GameState curr, Line found,
-            int player) {
-        // basically, over the line we do .... something.
-
+    private static GameState lineEmpty(GameState curr, int found, int player) {
         byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
-        Reserves rr = curr.r;
         int hc = curr.b.hashCode;
+        int[] res = curr.r.toArray();
 
-        // I could, theoretically, have a lookup table
-        // of qq[hex4][hex1] -> int[up to 7].
-        // Why? because there is a _lot_
-        // of inefficiency with repeated padds & lends
-        // best is one lookup on a large table, then
-        // almost no calcs - 1/5th the cost
-
-        int q = Line.getStart(found);
-        int d = Line.getDelta(found);
-        int le = Geometry.lend(q, d);
-
-        while (true) {
+        for (int q : listOfLinePoints[found]) {
             int v = player * cdata[q];
             // System.out.format("v: %d p:%d d:%d d:%d q:%d %s\n", v, player,
             // cdata[q], d, q, rr.toString());
@@ -303,25 +324,20 @@ public class GameCalc {
                 cdata[q] = 0;
                 hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][v + 2];
                 if (v == -2) {
-                    rr = rr.applyDelta(-player, 0, 0, -1);
+                    Reserves.mutateArray(res, -player, 0, 0, -1);
                 } else {
-                    rr = rr.applyDelta(-player, 0, -1, 0);
+                    Reserves.mutateArray(res, -player, 0, -1, 0);
                 }
             } else if (v == 1) {
                 hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][3];
                 cdata[q] = 0;
-                rr = rr.applyDelta(player, 1, -1, 0);
+                Reserves.mutateArray(res, player, 1, -1, 0);
             }
-
-            if (q == le) {
-                break;
-            }
-
-            q = Geometry.padd(q, d);
         }
 
-        return curr
-                .change(new Board(cdata, hc), rr, curr.gphase1, curr.gphase2);
+        // .change preserves superclass metadata
+        return curr.change(new Board(cdata, hc), new Reserves(res),
+                curr.gphase1, curr.gphase2);
     }
 
     private static final GameState[] bgk = new GameState[84];
