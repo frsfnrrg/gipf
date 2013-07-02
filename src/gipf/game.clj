@@ -232,8 +232,8 @@
 
   (defn setup-ai!
     []
-    (idrnh-light rank-gf1 1)
-    (idrnh-light rank-board-hybrid -1))
+    (cab-hist-light rank-gf1 1)
+    (cab-transp-light rank-board-hybrid -1))
  
   (defn simulate
     [mode type]

@@ -507,6 +507,12 @@
      (if (zero? v#) ~zero
          (if (pos? v#) ~pos ~neg))))
 
+(defmacro longify
+  [[& binds] & block]
+  (let [alt (mapcat (fn [symb] (list symb `(long ~symb))) binds)]
+    `(let [~@alt]
+       ~@block)))
+
 ;;
 ;; Idea 1
 ;;
