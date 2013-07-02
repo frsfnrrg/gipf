@@ -56,27 +56,27 @@
   [gamestate player]
   `(from-iterator (MoveSignedIGC/makeIncrementalGameCalc ~gamestate ~player)))
 
-(definline hist-ordering [table]
-  `(.getMoveOrdering ~table))
+(definline hist-ordering [^HistoryTable table]
+  `(HistoryTable/hordering ~table))
 (definline make-hist-table []
   `(HistoryTable/hmake))
-(definline hist-add! [table depth mnum]
-  `(.addSufficientMove ~table ~depth ~mnum))
+(definline hist-add! [^HistoryTable table depth mnum]
+  `(HistoryTable/hadd ~table ~depth ~mnum))
 (definline hist-clear! [table]
   `(do (ond :hist-analysis
             (HistoryTable/hanalyze ~table))
        (HistoryTable/hclear ~table)))
 
 (definline dtab-get [table key depth]
-  `(.getd ~table ~key ~depth))
+  `(DTable/dgetd ~table ~key ~depth))
 (definline dtab-geta [table key]
-  `(.geta ~table ~key))
+  `(DTable/dgeta ~table ~key))
 (definline make-dtab [sz]
   `(DTable/dmake ~sz))
-(definline dtab-add! [table key level rank]
-  `(.add ~table ~key ~level ~rank))
-(definline dtab-change! [table key level rank]
-  `(.change ~table ~key ~level ~rank))
+(definline dtab-add! [^DTable table key level rank]
+  `(DTable/dadd ~table ~key ~level ~rank))
+(definline dtab-change! [^DTable table key level rank]
+  `(DTable/dchange ~table ~key ~level ~rank))
 (definline dtab-clear! [table]
   `(do (ond :transp-analysis
             (DTable/danalyze ~table))
@@ -352,7 +352,7 @@
   `(def ~name ~doc (Heuristic.
                     (fn [] ~@setupexprs)
                     (fn ~name [~evalarg1 ~evalarg2]
-                      (.inc ranks-count)
+                      (Counter/cinc ranks-count)
                       ~@evalexprs))))
 
 (defmacro def-ranking-function
