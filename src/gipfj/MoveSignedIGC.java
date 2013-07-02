@@ -38,11 +38,11 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
                 g1[g1_end] = q.b;
                 g1r1[g1_end] = q.r.applyDelta(player, -1, 1, 0);
                 if (player > 0) {
-                    if (q.r.p1 >= 1) {
+                    if (q.r.p1 >= 2) {
                         g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
                     }
                 } else {
-                    if (q.r.p2 >= 1) {
+                    if (q.r.p2 >= 2) {
                         g1r2[g1_end] = q.r.applyDelta(player, -2, 0, 1);
                     }
                 }

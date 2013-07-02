@@ -232,8 +232,8 @@
 
   (defn setup-ai!
     []
-    (thab-deep rank-gf1 1)
-    (qthab-deep rank-board-hybrid -1))
+    (idrnh-light rank-gf1 1)
+    (idrnh-light rank-board-hybrid -1))
  
   (defn simulate
     [mode type]

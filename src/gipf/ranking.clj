@@ -46,6 +46,8 @@
        (weighted-add-2
          5 (reserve-diff-quadratic reserves player 4 1 1)
          1 (apply-weight-array (game-state-board gamestate) player weighting-board))))))
+  
+  
 
 (def-ranking-function rank-not-at-all
   "This is the null heuristic; note that rankings still

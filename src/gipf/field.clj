@@ -42,6 +42,8 @@
 
 (definline balance-normalize [good bad]
   `(Ranking/balanceNormalize ~good ~bad))
+(definline linear-scale [val mni mxi mno mxo]
+  `(Ranking/linearScale ~val ~mni ~mxi ~mno ~mxo))
 
 (definline reserve-diff-linear [r p gipfs pieces store]
   `(Ranking/reserveLinearDiff ~r ~p ~gipfs ~pieces ~store))

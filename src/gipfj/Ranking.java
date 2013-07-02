@@ -7,11 +7,11 @@ package gipfj;
  * 
  */
 public class Ranking {
-    public static final Long POS_INF = 100000000L;
-    public static final Long NEG_INF = -100000000L;
+    public static final Long POS_INF = 1000000L;
+    public static final Long NEG_INF = -1000000L;
 
-    public static final int POS_INF_I = 100000000;
-    public static final int NEG_INF_I = -100000000;
+    public static final int POS_INF_I = 1000000;
+    public static final int NEG_INF_I = -1000000;
 
     public static long weightedAdd(long va, long ca, long vb, long cb) {
         return va * ca + vb * cb;
@@ -38,6 +38,11 @@ public class Ranking {
      */
     public static long balanceNormalize(long plus_good, long plus_bad) {
         return POS_INF * (plus_good - plus_bad) / (plus_good + plus_bad);
+    }
+
+    public static long linearScale(long val, long mini, long maxi, long mino,
+            long maxo) {
+        return (val - mini) / (maxi - mini) * (maxo - mino) + mino;
     }
 
     private static final int[][] gf1Central = GeneralizedPointWeighting
