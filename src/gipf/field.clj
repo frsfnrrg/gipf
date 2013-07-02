@@ -13,7 +13,7 @@
 
 (definline row-full? [b s e] `(GameCalc/lineFull ~b ~s ~e))
 
-(definline make-idr-node [gs playa rank] `( IDRNode/makeIDRNode ~gs ~playa ~rank))
+(definline make-idr-node [gs playa rank] `(IDRNode/makeIDRNode ~gs ~playa ~rank))
 (definline idr-node-update [node rank kids] `( IDRNode/updateIDRNode ~node ~rank ~kids))
 (definline idr-node-gamestate [a] `( IDRNode/getGameState ~a))
 (definline idr-node-player [a] `( IDRNode/getPlayer ~a))
@@ -57,26 +57,26 @@
   `(from-iterator (MoveSignedIGC/makeIncrementalGameCalc ~gamestate ~player)))
 
 (definline hist-ordering [table]
-  `(HistoryTable/hordering ~table))
+  `(.getMoveOrdering ~table))
 (definline make-hist-table []
   `(HistoryTable/hmake))
 (definline hist-add! [table depth mnum]
-  `(HistoryTable/hadd ~table ~depth ~mnum))
+  `(.addSufficientMove ~table ~depth ~mnum))
 (definline hist-clear! [table]
   `(do (ond :hist-analysis
             (HistoryTable/hanalyze ~table))
        (HistoryTable/hclear ~table)))
 
 (definline dtab-get [table key depth]
-  `(DTable/dgetd ~table ~key ~depth))
+  `(.getd ~table ~key ~depth))
 (definline dtab-geta [table key]
-  `(DTable/dgeta ~table ~key))
+  `(.geta ~table ~key))
 (definline make-dtab [sz]
   `(DTable/dmake ~sz))
 (definline dtab-add! [table key level rank]
-  `(DTable/dadd ~table ~key ~level ~rank))
+  `(.add ~table ~key ~level ~rank))
 (definline dtab-change! [table key level rank]
-  `(DTable/dchange ~table ~key ~level ~rank))
+  `(.change ~table ~key ~level ~rank))
 (definline dtab-clear! [table]
   `(do (ond :transp-analysis
             (DTable/danalyze ~table))
@@ -103,7 +103,7 @@
 (definline unordered-move-generator [gs p]
   `(MoveSignedIGC/makeIncrementalGameCalc ~gs ~p))
 (definline move-generator [gs p ordering]
-  `(MoveSignedIGC/makeMSIGC ~gs ~p ~ordering))
+  `(MoveSignedIGC. ~gs ~p ~ordering))
 
 ;; predicates/extraction
 
@@ -352,7 +352,7 @@
   `(def ~name ~doc (Heuristic.
                     (fn [] ~@setupexprs)
                     (fn ~name [~evalarg1 ~evalarg2]
-                      (Counter/cinc ranks-count)
+                      (.inc ranks-count)
                       ~@evalexprs))))
 
 (defmacro def-ranking-function
