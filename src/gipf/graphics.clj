@@ -13,13 +13,16 @@
 
 (def game-img (make-img 800 800))
 (def game-graphics ^java.awt.Graphics2D (.getGraphics ^java.awt.image.BufferedImage game-img))
-(def game-panel (proxy [javax.swing.JPanel] []
-                  (paint [^java.awt.Graphics g]
-                    (.drawImage g game-img 0 0 game-panel))))
 
-(defn repaint!
-  []
-  (.repaint ^javax.swing.JPanel game-panel))
+(let [fee (atom false)]
+  (def game-panel (proxy [javax.swing.JPanel] []
+                    (paint [^java.awt.Graphics g]
+                      (.drawImage g game-img 0 0 game-panel)
+                      (reset! fee false))))
+  (defn repaint! []
+    (when-not @fee
+      (reset! fee true)
+      (.repaint ^javax.swing.JPanel game-panel))))
 
 
 ;; DRAWING STUFF

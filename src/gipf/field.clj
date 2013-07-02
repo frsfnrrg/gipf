@@ -299,7 +299,7 @@
 (defn list-possible-boards
   "TODO: remove listPossibleBoards by putting all into MoveSignedIGC??"
   [gamestate player]
-  (vec (GameCalc/listPossibleBoards gamestate player)))
+  (vec (lazy-next-gamestates gamestate player)))
 
 ;; should make this easily changeable... (per menu?; with registering stuf)
 (def expected-max-rank* nil)
