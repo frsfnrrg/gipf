@@ -111,8 +111,7 @@
 
 (defn next-move
   [gamestate player]
-  (let [move (compound-ai-move gamestate
-                               player)]
+  (let [move (compound-ai-move gamestate player)]
     (do-linemoves (place-and-shove (do-linemoves gamestate
                                                  player
                                                  (first move))
@@ -168,7 +167,7 @@
 
 (defn move-comparison-trial
   "Requires players to be awesome. No, wait."
-  [lambda1 lambda2]
+  [sear1 heur1 sear2 heur2]
   (loop [gamestate (new-gamestate :normal)
          player 1
          counter 0]
@@ -181,10 +180,10 @@
         (ond :match-result
              (println "MCT \"winner\":" (negate player)))
         (negate player))
-      (let [m1 (do (lambda1 player)
+      (let [m1 (do (sear1 heur1 player)
                  (compound-ai-move gamestate player))
             g1 (mct-effect-move gamestate player m1)
-            m2 (do (lambda2 player)
+            m2 (do (sear2 heur2 player)
                  (compound-ai-move gamestate player))
             g2 (mct-effect-move gamestate player m2)]
         (println "ai +1:" m1)
@@ -197,10 +196,29 @@
 
 (let [dmrf (fn [& args]
              (fn [^Search s ^long p] (apply setup-move-ranking-func! p s args)))
-      cab-hybrid-light
+      cab-light
       (dmrf cls-ab-search 3 negative-infinity positive-infinity)
-      cab-transp-hybrid-light
+      cab-transp-light
       (dmrf cls-ab-transp-search 3 negative-infinity positive-infinity)
+      cab-hist-light
+      (dmrf cls-ab-hist-search 3 negative-infinity positive-infinity)
+      qthab-light
+      (dmrf qab-hist-transp simple-quiet 3 6 2 negative-infinity positive-infinity)
+      thab-light
+      (dmrf cab-transp-hist 3 negative-infinity positive-infinity)
+      
+      qthab-deep
+      (dmrf qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)
+      thab-deep
+      (dmrf cab-transp-hist 6 negative-infinity positive-infinity)      
+      cab-hist-deep
+      (dmrf cls-ab-hist-search 5 negative-infinity positive-infinity)
+      cab-transp-deep
+      (dmrf cls-ab-transp-search 6 negative-infinity positive-infinity)
+      
+      idrnh-light
+      (dmrf idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
+      
       aspire-simple
       (dmrf aspiration 80 5 (:eval rank-board-hybrid))
       mtdf-simple
@@ -208,21 +226,7 @@
       aspire-deep
       (dmrf aspiration 80 5 (:eval rank-board-hybrid))
       mtdf-deep
-      (dmrf mtd-f 5 (:eval rank-board-hybrid))
-      cab-transp-deep
-      (dmrf cls-ab-transp-search 6 negative-infinity positive-infinity)
-      cab-hist-light
-      (dmrf cls-ab-hist-search 3 negative-infinity positive-infinity)
-      cab-hist-deep
-      (dmrf cls-ab-hist-search 5 negative-infinity positive-infinity)
-      idrnh-hybrid-light
-      (dmrf idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
-      qthab-light
-      (dmrf qab-hist-transp simple-quiet 3 6 2 negative-infinity positive-infinity)
-      qthab-deep
-      (dmrf qab-hist-transp simple-quiet 6 10 2 negative-infinity positive-infinity)
-      thab-deep
-      (dmrf cab-transp-hist 6 negative-infinity positive-infinity)]
+      (dmrf mtd-f 5 (:eval rank-board-hybrid))]
   
   
 
@@ -236,12 +240,12 @@
     (println)
     (case type
       :mct
-      (move-comparison-trial cab-hist-light
-                             cab-hybrid-light)
+      (move-comparison-trial cab-hist-light rank-gf1
+                             cab-hist-light rank-board-hybrid)
       :comp
       (do
-        (cab-hybrid-light 1)
-        (thab-deep -1)
+        (cab-light rank-gf1 1)
+        (thab-deep rank-not-at-all -1)
         (loop [count 0  win1 0 win2 0]
           (if (>= count number-of-trials)
             (println "Winner ratio: 1:" win1 "-1:" win2)

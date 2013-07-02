@@ -107,6 +107,13 @@
   (let [n (reserve-delta reserve-pieces* player d-rpieces d-bpieces d-gipfs)]
     (def reserve-pieces* n)))
 
+(defn pack-gamestate
+  [board reserves advphasev]
+  (->GameState board reserves
+               (= :filling (get advphasev (player->index 1)))
+               (= :filling (get advphasev (player->index -1)))))
+
+
 (defn draw-lines-at-loc!
   [loc]
   (doseq [line lines*]
@@ -231,9 +238,11 @@
 
 (defn move-piece!
   [loc shove shovevalue]
-  (let [[newboard updated]
-        (do-move board* shovevalue loc shove)]
-    (def board* newboard)
+  (let [[newgs updated]
+        (do-move (pack-gamestate board* reserve-pieces* adv-phase*)
+                 shovevalue loc shove)]
+    (def board* (game-state-board newgs))
+    ;; set the reserves as well?
 
     (def placed-cell-value* 0)
     (redraw-loc-disk! (pt- loc shove))
@@ -306,9 +315,7 @@
     ;; one question remains: how does one cut/interrupt compound-ai-move ?
     (let [p current-player*
           key (get-next-key-num)
-          gs (->GameState board* reserve-pieces*
-                          (= :filling (get adv-phase* (player->index 1)))
-                          (= :filling (get adv-phase* (player->index -1))))
+          gs (pack-gamestate board* reserve-pieces* adv-phase*)
           thrd (proxy [java.lang.Thread] []
                  (run []
                    (try

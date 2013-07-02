@@ -136,8 +136,6 @@
          (if (some #(pt= % loc) axial-points)
            (let [dekl (pt- (pt-div-4 loc))]
              (not (row-full? board (pt+ loc dekl) dekl)))
-           ;; the second condition is a superset of the first. Why test?
-           ;; (the second is slower...) TODO pull out, optimize!
            (let [pts (filter #(= (pt-radius %) 3)
                              (map #(pt+ % loc) unit-ring-points))]
              (some #(not (row-full? board % (pt- % loc))) pts))))))
@@ -147,17 +145,11 @@
   [board loc shove]
   (vec (GameCalc/getImpactedCells board loc shove)))
 
-
-;; TODO: promote sync by passing the gamestate in,
-;; and actually _USING_ the values provided
 (defn do-move
   "Does not update properly"
-  [board value loc shove]
-  [ (game-state-board (place-and-shove
-                       (->GameState board null-reserves false false)
-                       value
-                       (->Line loc shove)))
-    (impacted-cells board loc shove)])
+  [gamestate value loc shove]
+  [ (place-and-shove gamestate value (->Line loc shove))
+    (impacted-cells (game-state-board gamestate) loc shove)])
 
 (defn do-linemoves
   [gs player move]
