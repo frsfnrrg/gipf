@@ -1,7 +1,7 @@
 package gipfj;
 
 // java internal, int, math only
-public class IMath {
+class IMath {
     public static int hexNum(int rad) {
         return 1 + 3 * rad * (rad - 1);
     }

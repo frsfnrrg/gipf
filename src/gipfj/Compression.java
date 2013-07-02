@@ -10,18 +10,23 @@ public class Compression {
             Reserves.MAX_GIPFS_ON_BOARD, Reserves.MAX_CAPACITY,
             Reserves.MAX_CAPACITY, Reserves.MAX_CAPACITY };
 
-    public static byte[] compress(Board b, Reserves r, long player) {
-        byte[] data = new byte[14];
+    private static final byte[] data = new byte[14];
+    private static final int[] A = new int[LEN];
+
+    public static Entry compress(Board b, Reserves r, long player) {
         // 105.76 bits; we can pack 75 more states in.
         byte[] bdata = b.data;
         int[] rdata = { r.g1, r.g2, r.o1, r.o2, r.p1, r.p2 };
 
-        int A[] = new int[LEN]; // 120 ; 5 * 24
         if (player > 0) {
             A[0] = 1;
         } else {
             A[0] = 2;
         }
+        for (int i = 1; i < LEN; i++) {
+            A[i] = 0;
+        }
+
         for (int v : bdata) {
             A[0] *= 5;
             A[0] += v;
@@ -62,27 +67,12 @@ public class Compression {
                 k++;
             }
         }
+        Entry e = new Entry(data, b.hashCode ^ r.hashCode ^ (int) player);
 
-        return data;
+        return e;
     }
 
-    public static class CGS {
-        public byte[] d;
-        public int hc;
-
-        public CGS(byte[] d, int hc) {
-            this.d = d;
-            this.hc = hc;
-        }
-
-        @Override
-        public int hashCode() {
-            return hc;
-        }
-    }
-
-    public static CGS compressgs(GameState g, long player) {
-        return new CGS(compress(g.b, g.r, player), g.b.hashCode ^ g.r.hashCode
-                ^ (int) player);
+    public static Entry compressgs(GameState g, long player) {
+        return compress(g.b, g.r, player);
     }
 }

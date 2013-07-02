@@ -8,7 +8,7 @@
                  :total-time true
                  :incremental-time true
                  :moves-available false
-                 :reserve-status false
+                 :reserve-status true
                  :board-snapshot false
                  :rank-value false
                  :pre-rank-value false

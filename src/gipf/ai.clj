@@ -304,16 +304,14 @@
                    (loop [cur cur recm -1]
                      (if (.hasNext rd)
                        (let [ngs (.next rd)
+                             key (compress-sgs ngs antiowner)
                              ;; transp!
                              next (if (equals depth 0)
                                     (make-idr-node
                                      ngs antiowner                
                                      (rank-func ngs good-player))
 
-                                    (let [nork (dtab-get transp (compress-sgs
-                                                                    ngs
-                                                                    antiowner)
-                                                 depth)]
+                                    (let [nork (dtab-get transp key depth)]
                                       (if (nil? nork)
                                         (itr
                                          (make-idr-node ngs antiowner 0)
@@ -323,9 +321,7 @@
                                          alpha beta)
                                         (make-idr-node ngs antiowner nork))))
                              rank (idr-node-rank next)]
-                         (dtab-add! transp (compress-sgs
-                                              (idr-node-gamestate next)
-                                              (idr-node-player next)) depth rank)
+                         (dtab-add! transp key depth rank)
                          (clist-add nchildren next rank)
                          (let [cur (mnmx rank cur)]
                            (let [recm (if (equals cur rank)
@@ -347,10 +343,9 @@
                    (loop [cur cur recm -1]
                      (if (.hasNext rq)
                        (let [onodule (.next rq)
-                             nodule (let [ttr (dtab-get transp
-                                                            (compress-sgs
-                                                           (idr-node-gamestate onodule)
-                                                           (idr-node-player onodule)) depth)]
+                             okey (compress-sgs (idr-node-gamestate onodule)
+                                               (idr-node-player onodule))
+                             nodule (let [ttr (dtab-get transp okey depth)]
                                       (if (nil? ttr)
                                         (let [nog
                                               (itr
@@ -358,11 +353,12 @@
                                                (dec-1 depth)
                                                (dec-1 trange)
                                                (not max?)
-                                               alpha beta)]
-                                          (dtab-change! transp (compress-sgs
-                                                                  (idr-node-gamestate nog)
-                                                                  (idr-node-player nog))
-                                                          depth (idr-node-rank nog))
+                                               alpha beta)
+                                              nkey (compress-sgs
+                                                    (idr-node-gamestate nog)
+                                                    (idr-node-player nog))]
+                                          (dtab-change! transp nkey
+                                                        depth (idr-node-rank nog))
                                           nog)                                       
                                         ;; note that the children are
                                         ;; not updated - would the table

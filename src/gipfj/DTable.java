@@ -6,8 +6,6 @@ package gipfj;
  * short-depth nodes. (this idea comes from <i>Replacement Schemes for
  * Transposition Tables</i>)
  * 
- * @author msto
- * 
  */
 public class DTable {
     private final int size;
@@ -64,16 +62,13 @@ public class DTable {
 
     private Entry[] store;
 
-    private void add(Compression.CGS in, int depth, int rank) {
-        // what about in.hashCode() >>> shift_cut;
-        int index = in.hashCode() >>> shift_cut;
-        // if (index < 0) {
-        // index = -2 * index - 1;
-        // } else {
-        // index = 2 * index;
-        // }
+    private void add(Entry n, int depth, int rank) {
+        int index = n.hc >>> shift_cut;
+
+        n.depth = (byte) depth;
+        n.rank = rank;
+
         Entry ff = store[index];
-        Entry n = new Entry(in, depth, rank);
         if (ff == null) {
             store[index] = n;
         } else {
@@ -136,7 +131,7 @@ public class DTable {
                 empty, single, full);
     }
 
-    private Long geta(Compression.CGS in) {
+    private Long geta(Entry in) {
         int index = in.hashCode() >>> shift_cut;
         Entry f = store[index];
         if (f == null) {
@@ -154,18 +149,19 @@ public class DTable {
         return null;
     }
 
-    private Long getd(Compression.CGS in, byte depth) {
-        int index = in.hashCode() >>> shift_cut;
+    private Long getd(Entry n, byte depth) {
+        int index = n.hashCode() >>> shift_cut;
+
         Entry f = store[index];
         if (f == null) {
             count_null++;
             return null;
         }
 
-        if (f.equals(in) && f.depth == depth) {
+        if (f.equals(n) && f.depth == depth) {
             count_first++;
             return (long) f.rank;
-        } else if (f.second != null && f.second.equals(in)
+        } else if (f.second != null && f.second.equals(n)
                 && f.second.depth == depth) {
             count_second++;
             return (long) f.second.rank;
@@ -173,26 +169,27 @@ public class DTable {
         return null;
     }
 
-    private void change(Compression.CGS in, byte depth, int rank) {
-        int index = in.hashCode() >>> shift_cut;
+    private void change(Entry n, byte depth, int rank) {
+        int index = n.hashCode() >>> shift_cut;
+
         Entry ff = store[index];
         if (ff == null) {
             count_cnull++;
-            add(in, depth, rank);
+            add(n, depth, rank);
             return;
         }
 
-        if (ff.equals(in)) {
+        if (ff.equals(n)) {
             count_cfirst++;
             ff.rank = rank;
             ff.depth = depth;
-        } else if (ff.second != null && ff.second.equals(in)) {
+        } else if (ff.second != null && ff.second.equals(n)) {
             count_csecond++;
             ff.second.rank = rank;
             ff.second.depth = depth;
         } else {
             count_cneither++;
-            add(in, depth, rank);
+            add(n, depth, rank);
         }
     }
 
@@ -200,7 +197,7 @@ public class DTable {
         return new DTable((int) size);
     }
 
-    public static void dadd(DTable d, Compression.CGS gs, long depth, long rank) {
+    public static void dadd(DTable d, Entry gs, long depth, long rank) {
         d.add(gs, (int) depth, (int) rank);
     }
 
@@ -211,7 +208,7 @@ public class DTable {
      * @param gs
      * @return
      */
-    public static Long dgeta(DTable d, Compression.CGS gs) {
+    public static Long dgeta(DTable d, Entry gs) {
         return d.geta(gs);
     }
 
@@ -223,7 +220,7 @@ public class DTable {
      * @param depth
      * @return
      */
-    public static Long dgetd(DTable d, Compression.CGS gs, long depth) {
+    public static Long dgetd(DTable d, Entry gs, long depth) {
         return d.getd(gs, (byte) depth);
     }
 
@@ -235,8 +232,7 @@ public class DTable {
      * @param depth
      * @param rank
      */
-    public static void dchange(DTable d, Compression.CGS gs, long depth,
-            long rank) {
+    public static void dchange(DTable d, Entry gs, long depth, long rank) {
         d.change(gs, (byte) depth, (int) rank);
     }
 
@@ -255,65 +251,5 @@ public class DTable {
 
     public static void danalyze(DTable d) {
         d.analyze();
-    }
-
-    private static class Entry {
-        public int hc;
-        public int rank;
-        public byte depth;
-        // this will be null for the second depth entry - we could remove it and
-        // make a 2ndEntry class
-        public Entry second;
-
-        public byte d0;
-        public byte d1;
-        public byte d2;
-        public byte d3;
-        public byte d4;
-        public byte d5;
-        public byte d6;
-        public byte d7;
-        public byte d8;
-        public byte d9;
-        public byte d10;
-        public byte d11;
-        public byte d12;
-        public byte d13;
-
-        public Entry(Compression.CGS g, int depth, int rank) {
-            hc = g.hc;
-            byte[] q = g.d;
-            this.depth = (byte) depth;
-            this.rank = rank; // force short??
-            // o yay! 27 entries
-
-            // regexes!
-            d0 = q[0];
-            d1 = q[1];
-            d2 = q[2];
-            d3 = q[3];
-            d4 = q[4];
-            d5 = q[5];
-            d6 = q[6];
-            d7 = q[7];
-            d8 = q[8];
-            d9 = q[9];
-            d10 = q[10];
-            d11 = q[11];
-            d12 = q[12];
-            d13 = q[13];
-        }
-
-        public boolean equals(Compression.CGS in) {
-            if (in.hc != hc)
-                return false;
-
-            byte[] q = in.d;
-            return (d4 == q[4]) && (d5 == q[5]) && (d6 == q[6]) && (d7 == q[7])
-                    && (d8 == q[8]) && (d9 == q[9]) && (d10 == q[10])
-                    && (d11 == q[11]) && (d12 == q[12]) && (d13 == q[13])
-                    && (d0 == q[0]) && (d1 == q[1]) && (d2 == q[2])
-                    && (d3 == q[3]);
-        }
     }
 }

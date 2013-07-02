@@ -240,12 +240,12 @@
     (println)
     (case type
       :mct
-      (move-comparison-trial cab-hist-light rank-gf1
-                             cab-hist-light rank-board-hybrid)
+      (move-comparison-trial idrnh-light rank-gf1
+                             idrnh-light rank-board-hybrid)
       :comp
       (do
-        (cab-light rank-gf1 1)
-        (thab-deep rank-not-at-all -1)
+        (idrnh-light rank-gf1 1)
+        (idrnh-light rank-board-hybrid -1)
         (loop [count 0  win1 0 win2 0]
           (if (>= count number-of-trials)
             (println "Winner ratio: 1:" win1 "-1:" win2)

@@ -5,8 +5,6 @@ import java.util.Iterator;
 /**
  * Clone of IncrementalGameCalc; signs its moves, uses a move ordering.
  * 
- * @author msto
- * 
  */
 public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
@@ -14,7 +12,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     private final Board[] g1 = new Board[3];
     private final Reserves[] g1r1 = new Reserves[3];
     private final Reserves[] g1r2 = new Reserves[3];
-    private final MoveSignedGS[] g3 = new MoveSignedGS[3];
+    private GameState[] g3;// actually MSGS
     private int plo;
     private int g3_pos;
     private int g3_end;
@@ -77,18 +75,15 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         } else {
             ready = true;
             g3_pos = 0;
-            g3_end = 0;
-            for (GameState q : GameCalc.getLineTakingResults(f, player)) {
-                g3[g3_end] = (MoveSignedGS) q;
-                g3_end++;
-            }
+            g3 = GameCalc.getLineTakingResults(f, player);
+            g3_end = g3.length;
         }
     }
 
     @Override
     public MoveSignedGS next() {
 
-        MoveSignedGS result = g3[g3_pos];
+        MoveSignedGS result = (MoveSignedGS) g3[g3_pos];
 
         g3_pos++;
 

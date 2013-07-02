@@ -1,7 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
              IDRNode GameCalc GeneralizedPointWeighting
-             Ranking Counter))
+             Ranking Counter Entry))
   (:gen-class))
 
 (set! *warn-on-reflection* true)

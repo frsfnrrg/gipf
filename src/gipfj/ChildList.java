@@ -127,6 +127,22 @@ public class ChildList {
         }
     }
 
+    private static Iterator<Object> emptyIterator = new Iterator<Object>() {
+        @Override
+        public boolean hasNext() {
+            return false;
+        }
+
+        @Override
+        public Object next() {
+            return null;
+        }
+
+        @Override
+        public void remove() {
+        }
+    };
+
     /**
      * Returns an iterator over the elements of this. No addition should be
      * attempted after this. How to save memory.. (12 + 4*k) vs. (20 + 20*k)
@@ -139,7 +155,7 @@ public class ChildList {
         final Object[] foo = new Object[length];
         Node q;
         if (length == 0) {
-            System.out.println("Packing empty childlist");
+            return emptyIterator;
         } else if (downward) {
             int i = 0;
             if (t.top == null) {
@@ -202,7 +218,7 @@ public class ChildList {
      * @return
      */
     public static void cladd(ChildList a, Object q, long r) {
-        a.add(q, (int)r);
+        a.add(q, (int) r);
     }
 
     public static String tsr(Node q) {

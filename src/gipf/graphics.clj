@@ -172,7 +172,7 @@
 
 
 (def expected-max-rank*)
-(def ^:const rank-vis-cap 10)
+(def ^:const rank-vis-cap 5)
 (defn direct-visualize-ai-ranking
   [line strength]
   (try
