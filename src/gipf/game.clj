@@ -232,7 +232,7 @@
 
   (defn setup-ai!
     []
-    (cab-hist-light rank-gf1 1)
+    (idrnh-light rank-gf1 1)
     (cab-transp-light rank-board-hybrid -1))
  
   (defn simulate

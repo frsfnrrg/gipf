@@ -25,7 +25,7 @@
 
 (defmacro ab-h-m-s
   ""
-  [source max? alpha beta hist height [next] & block]
+  [source move-extractor max? alpha beta hist height [next] & block]
   `(case-pattern
     [~max? true false]
     [cur# ~alpha ~beta
@@ -41,7 +41,7 @@
                   rank# (do ~@block)              
                   cur# (mnmx# rank# cur#)
                   recm# (if (equals cur# rank#)
-                          (signed-gs-move ~next)
+                          (~move-extractor ~next)
                           recm#)]
               (if (compo# cur# opp#)
                 (do
@@ -59,7 +59,8 @@
   "Depth: how many iterations left. Name it height?"
   [gamestate owner max? alpha beta hist height [next] & block]
   `(ab-h-m-s (move-generator ~gamestate ~owner (hist-ordering ~hist))
-            ~max? ~alpha ~beta ~hist ~height [~next] ~@block))
+             signed-gs-move
+             ~max? ~alpha ~beta ~hist ~height [~next] ~@block))
 
 
 (defmacro ab-n-m
@@ -240,122 +241,73 @@
                  lower
                  (recur next upper lower))))))))))
 
+(definline node-move
+  [node]
+  `(signed-gs-move (idr-node-gamestate ~node)))
+
 (defn-iter-with-context itr
   "Helper to idrn-ab-h"
-  [good-player rank-func depth endtime hist transp]
+  [good-player rank-func mxdepth endtime hist transp]
   [node depth trange max? alpha beta]
-  (if (and (greater-equals trange 3) (past-time? endtime))
-    node
-    (let [gamestate (idr-node-gamestate node)
-          owner (idr-node-player node)
-          antiowner (negate owner)
-          ^java.util.Iterator ochildren (idr-node-children node)
-          nchildren (clist-make)
-          orank (idr-node-rank node)
-          nrank
-          ;;
-          ;; Children:
-          ;; {} empty - terminal
-          ;; nil - expandme!
-          ;; {bob, jones, frank} - update!!
-          ;;
-          (if (and (not (nil? ochildren)) (not (.hasNext ochildren)))
-            orank
-            (case-pattern
-             [max? true false]
-             [cur alpha beta
-              opp beta alpha
-              compo greater-equals less-equals
-              mnmx fastmax fastmin
-              lossv negative-infinity positive-infinity]
+  (longify [depth trange alpha beta]
+   (if (and (greater-equals trange 3) (past-time? endtime))
+     node
+     (let [gamestate (idr-node-gamestate node)
+           owner (idr-node-player node)
+           antiowner (negate owner)
+           ^java.util.Iterator ochildren (idr-node-children node)
+           nchildren (clist-make)
+           orank (idr-node-rank node)
+           nrank
+           ;;
+           ;; Children:
+           ;; {} empty - terminal
+           ;; nil - expandme!
+           ;; {bob, jones, frank} - update!!
+           ;;
+           (if (and (not (nil? ochildren)) (not (.hasNext ochildren)))
+             orank
              (if (nil? ochildren)
-               (let [rd (move-generator gamestate owner (hist-ordering hist))]
-                 (if (.hasNext rd)
-                   (loop [cur cur recm -1]
-                     (if (.hasNext rd)
-                       (let [ngs (.next rd)
-                             key (compress-sgs ngs antiowner)
-                             ;; transp!
+               (ab-h-m gamestate owner max? alpha beta hist depth
+                       [ngs]
+                       (let [key (compress-sgs ngs antiowner)
                              next (if (equals depth 0)
                                     (make-idr-node
                                      ngs antiowner                
                                      (rank-func ngs good-player))
-
                                     (let [nork (dtab-get transp key depth)]
                                       (if (nil? nork)
-                                        (itr
-                                         (make-idr-node ngs antiowner 0)
-                                         (dec-1 depth)
-                                         (dec-1 trange)
-                                         (not max?)
-                                         alpha beta)
+                                        (itr (make-idr-node ngs antiowner 0)
+                                             (dec-1 depth) (dec-1 trange) (not max?) alpha beta)
                                         (make-idr-node ngs antiowner nork))))
                              rank (idr-node-rank next)]
                          (dtab-add! transp key depth rank)
                          (clist-add nchildren next rank)
-                         (let [cur (mnmx rank cur)]
-                           (let [recm (if (equals cur rank)
-                                        (signed-gs-move ngs)
-                                        recm)]
-                             (if (compo cur opp)
-                               (do
-                                 (when-not (equals recm -1)
-                                   (hist-add! hist depth recm))
-                                 cur)
-                               (recur cur recm)))))
-                       (do
-                         (when-not (equals recm -1)
-                           (hist-add! hist depth recm))
-                         cur)))
-                   lossv))
-               (let [rq ochildren]
-                 (if (.hasNext rq)
-                   (loop [cur cur recm -1]
-                     (if (.hasNext rq)
-                       (let [onodule (.next rq)
-                             okey (compress-sgs (idr-node-gamestate onodule)
-                                               (idr-node-player onodule))
-                             nodule (let [ttr (dtab-get transp okey depth)]
-                                      (if (nil? ttr)
-                                        (let [nog
-                                              (itr
-                                               onodule
-                                               (dec-1 depth)
-                                               (dec-1 trange)
-                                               (not max?)
-                                               alpha beta)
-                                              nkey (compress-sgs
-                                                    (idr-node-gamestate nog)
-                                                    (idr-node-player nog))]
-                                          (dtab-change! transp nkey
-                                                        depth (idr-node-rank nog))
-                                          nog)                                       
-                                        ;; note that the children are
-                                        ;; not updated - would the table
-                                        ;; entry ever dissappear, we would
-                                        ;; have to go through the entire
-                                        ;; tree again.
-                                        (idr-node-update onodule ttr
-                                                         (idr-node-children onodule))))
-                             ngs (idr-node-gamestate onodule)
-                             rank (idr-node-rank nodule)]
-                         (clist-add nchildren nodule rank)
-                         (let [cur (mnmx rank cur)]
-                           (let [recm (if (equals cur rank)
-                                        (signed-gs-move ngs)
-                                        recm)]
-                             (if (compo cur opp)
-                               (do
-                                 (when-not (equals recm -1)
-                                   (hist-add! hist depth recm))
-                                 cur)
-                               (recur cur recm)))))
-                       (do
-                         (when-not (equals recm -1)
-                           (hist-add! hist depth recm))
-                         cur)))
-                   orank)))))]
-      (idr-node-update node nrank (clist-pack nchildren max?)))))
+                         rank))
+               (ab-h-m-s ochildren node-move max? alpha beta hist depth [onodule]
+                         (let [okey (compress-sgs (idr-node-gamestate onodule)
+                                                  (idr-node-player onodule))
+                               nodule (let [ttr (dtab-get transp okey depth)]
+                                        (if (nil? ttr)
+                                          (let [nog (itr onodule (dec-1 depth)
+                                                         (dec-1 trange) (not max?) alpha beta)
+                                                nkey (compress-sgs
+                                                      (idr-node-gamestate nog)
+                                                      (idr-node-player nog))]
+                                            (dtab-change! transp nkey
+                                                          depth (idr-node-rank nog))
+                                            nog)                                       
+                                          ;; note that the children are
+                                          ;; not updated - would the table
+                                          ;; entry ever dissappear, we would
+                                          ;; have to go through the entire
+                                          ;; tree again.
+                                          (idr-node-update onodule ttr
+                                                           (idr-node-children onodule))))
+                               rank (idr-node-rank nodule)]
+                           (clist-add nchildren nodule rank)
+                           rank))))]
+       (idr-node-update node nrank (clist-pack nchildren max?))))))
 
 (def-search idrn-ab-h
   "Godlike."
