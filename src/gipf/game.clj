@@ -3,7 +3,80 @@
 ;; This file should contain all the interface between the logic
 ;; and the rest of the game... Yeah. Right.
 
-(def tournament-ai-gipfs 5)
+
+;; TODO: implement the remaining search args - better yet, wrap it in with the
+;; search func, in ai.clj; (defsearch name doc {1 [foo bar bax]
+;;                                              2 [dog cow pig]}
+;;                           [] (:eval [& all] 0)
+;; then use the usual expansion
+
+(let [neg negative-infinity
+      pos positive-infinity]
+  (def search-args
+    {"qab-hist-transp"
+     {0 [simple-quiet 1 2 1 neg pos]
+      1 [simple-quiet 2 3 1 neg pos]
+      2 [simple-quiet 2 4 2 neg pos]
+      3 [simple-quiet 3 7 3 neg pos]
+      4 [simple-quiet 6 12 4 neg pos]}
+     "idrn-ab-h"
+     {0 [2 1 50 neg pos]
+      1 [2 1 100 neg pos]
+      2 [4 2 500 neg pos]
+      3 [6 2 10000 neg pos]
+      4 [6 2 20000 neg pos]}
+
+     
+     }))
+
+(definline swap-map!
+  [atom-map key funk]
+  `(swap! ~atom-map #(assoc % ~key (~funk (get % ~key)))))
+
+(let [aic (atom {1 [3 "rank-gf1" "qab-hist-transp"]
+                 -1 [3 "rank-gf1" "qab-hist-transp"]})
+      setup-player-ai!
+      (fn [player]
+        (let [opts (tget @aic player)]
+          (let [h (tget heuristic-choices (second opts)) 
+                s (tget search-choices (third opts)) 
+                a (tget (tget search-args (third opts)) (first opts))]
+            (apply setup-move-ranking-func!
+                   player h s a))))]
+  ;;
+  ;; These settings may be accessed only from gui thread
+  ;;
+  (defn init-ai-choices
+    []
+    (doseq [player [-1 1]]
+      (setup-player-ai! player)))
+
+  
+  (defn read-ai-level
+    [player]
+    (first (tget @aic player)))
+
+  (defn read-ai-search
+    [player]
+    (third (tget @aic player)))
+
+  (defn read-ai-heuristic
+    [player]
+    (second (tget @aic player)))
+
+  (defn set-ai-choices
+    [player level heur search]
+    (swap! aic #(assoc % player [level heur search]))
+    (setup-player-ai! player))
+  
+  (defn update-ai-choices
+    [player type value]
+    (case type
+      :heuristic (swap-map! aic player (fn [[a b c]] [a value c])) 
+      :level (swap-map! aic player (fn [[a b c]] [value b c]))
+      :search (swap-map! aic player (fn [[a b c]] [a b value])))
+    
+    (setup-player-ai! player)))
 
 (defn compound-ai-move
   [gamestate player]
@@ -216,7 +289,7 @@
       cab-transp-deep
       (dmrf cls-ab-transp-search 6 negative-infinity positive-infinity)
       
-      idrnh-light
+      idrnh-deep
       (dmrf idrn-ab-h 6 2 10000 negative-infinity positive-infinity)
       
       aspire-simple
@@ -232,20 +305,20 @@
 
   (defn setup-ai!
     []
-    (idrnh-light rank-gf1 1)
-    (cab-transp-light rank-board-hybrid -1))
+    (qthab-light rank-gf1 1)
+    (qthab-light rank-gf1 -1))
  
   (defn simulate
     [mode type]
     (println)
     (case type
       :mct
-      (move-comparison-trial idrnh-light rank-gf1
-                             idrnh-light rank-board-hybrid)
+      (move-comparison-trial idrnh-deep rank-gf1
+                             idrnh-deep rank-board-hybrid)
       :comp
       (do
-        (idrnh-light rank-gf1 1)
-        (idrnh-light rank-board-hybrid -1)
+        (idrnh-deep rank-gf1 1)
+        (idrnh-deep rank-board-hybrid -1)
         (loop [count 0  win1 0 win2 0]
           (if (>= count number-of-trials)
             (println "Winner ratio: 1:" win1 "-1:" win2)
@@ -253,3 +326,4 @@
               (if (= r 1)
                 (recur (inc count) (inc win1) win2)
                 (recur (inc count)  win1 (inc win2))))))))))
+

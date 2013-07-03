@@ -344,16 +344,21 @@
 
 (def ranks-count (Counter/cmake))
 
+(def heuristic-choices {})
 (defn dfr-helper
   [name doc setupexprs evalarg1 evalarg2 evalexprs]
   ;; odd behavior: (instance? Heuristic %) only always works if the Heuristic
   ;; was made using the (Heuristic. ) method, not the (->Heuristic
   ;; map) method. Whatever
-  `(def ~name ~doc (Heuristic.
-                    (fn [] ~@setupexprs)
-                    (fn ~name [~evalarg1 ~evalarg2]
-                      (Counter/cinc ranks-count)
-                      ~@evalexprs))))
+  (let [sn (str name)]
+    `(do
+       (def ~name ~doc (Heuristic.
+                        (fn [] ~@setupexprs)
+                        (fn ~name [~evalarg1 ~evalarg2]
+                          (Counter/cinc ranks-count)
+                          ~@evalexprs)))
+       (def heuristic-choices (assoc heuristic-choices ~sn ~name))
+       ~sn)))
 
 (defmacro def-ranking-function
   "Example input:
@@ -385,12 +390,14 @@
   [thing val]
   `(reset! ~thing ~val))
 
+(def search-choices {})
 (defn dfsh
   [name docs common sargs sbody targs tbody rargs rbody]
   (let [nil-atoms (alternating common (map (fn [_] `(atom nil)) (range)))
         rebounds (reduce concat (map (fn [symb] [symb `(deref ~symb)]) common))
         newname (symbol (str name "-func"))
-        empty-atoms (map (fn [symb] `(reset! ~symb nil)) common)]
+        empty-atoms (map (fn [symb] `(reset! ~symb nil)) common)
+        sn (str name)]
     `(let [~@nil-atoms]
        (def ~name ~docs
          (Search.
@@ -402,7 +409,9 @@
             (let [~@rebounds]
               ~@tbody)
             ~@empty-atoms)))
-       (def ~newname ~docs (:eval ~name)))))
+       (def ~newname ~docs (:eval ~name))
+       (def search-choices (assoc search-choices ~sn ~name))
+       ~sn)))
 
 (defmacro def-search
   ([name [& common]

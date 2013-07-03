@@ -75,8 +75,8 @@
 
 (def-ranking-function rank-gf1
   "Should be identical to Gipf for One's ranking function."
-  (:setup []
-    (def expected-max-rank* positive-infinity))
+  (:setup
+   []
+   (def expected-max-rank* (divide positive-infinity 3)))
   (:eval [gamestate player]
-    ;; calls a literal translate of gf1's strategy.
     (Ranking/gf1Rank gamestate player)))

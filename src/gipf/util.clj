@@ -75,7 +75,6 @@
              v))
          vec))
 
-
 (defn from-iterator
   [^java.util.Iterator i]
   (if (.hasNext i)
@@ -512,6 +511,13 @@
   (let [alt (mapcat (fn [symb] (list symb `(long ~symb))) binds)]
     `(let [~@alt]
        ~@block)))
+
+(defmacro tget
+  [mp indx]
+  `(let [f# (get ~mp ~indx)]
+    (if (nil? f#)
+      (throw (java.lang.Exception. (str "tget: Item " ~indx " not found")))
+      f#)))
 
 ;;
 ;; Idea 1

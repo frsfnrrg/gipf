@@ -46,6 +46,7 @@
 (llload "ranking")
 (llload "ai")
 (llload "game")
+(llload "window")
 
 ;; NEXT on the TODO list;
 ;;
@@ -605,121 +606,6 @@
       (let [hoverpt (screenpx-to-loc (xy (second input) (third input)))]
         (when (and (<= (pt-radius hoverpt) 4) (not= game-phase* :gameover))
           (update-hover! hoverpt))))))
-
-(defn runGUI
-  []
-  (let [window (javax.swing.JFrame. "GIPF")
-        menubar (javax.swing.JMenuBar.)
-        mode-basic (javax.swing.JRadioButtonMenuItem. "Basic")
-        mode-normal (javax.swing.JRadioButtonMenuItem. "Normal")
-        mode-advanced (javax.swing.JRadioButtonMenuItem. "Advanced")
-        
-        button-new (javax.swing.JMenuItem. "New")
-        button-quit (javax.swing.JMenuItem. "Quit")
-
-        iai-one (javax.swing.JCheckBoxMenuItem. "Player 1: AI?")
-        iai-two (javax.swing.JCheckBoxMenuItem. "Player 2: AI?")]
-
-    ;; we call a new game;
-    (update-game (list [:state :new]))
-    
-    (.setSelected (case mode*
-                    :basic  mode-basic
-                    :normal mode-normal
-                    :advanced mode-advanced) true)
-
-    (.setSelected iai-one (ai-player? 1))
-    (.setSelected iai-two (ai-player? -1))
-    
-    (set-on-button-select! mode-basic
-                           (fn []
-                             (update-game (list [:state :basic]
-                                                [:state :new]))))
-    (set-on-button-select! mode-normal
-                           (fn []
-                             (update-game (list [:state :normal]
-                                                [:state :new]))))
-    (set-on-button-select! mode-advanced
-                           (fn []
-                             (update-game (list [:state :advanced]
-                                                [:state :new]))))
-
-    ;; we do not call a new game, in case the player wants to switch
-    ;; ai on
-    (set-on-state-change! iai-one
-                          (fn [s]
-                            (update-game (list [:state :player-ai 1 s]))))
-    (set-on-state-change! iai-two
-                          (fn [s]
-                            (update-game (list [:state :player-ai -1 s]))))
-    
-    (doto (javax.swing.ButtonGroup.)
-      (.add mode-basic)
-      (.add mode-normal)
-      (.add mode-advanced))
-    
-    (set-on-button-click! button-quit
-                          (fn [] (doto window
-                                  (.setVisible false)
-                                  (.dispose))))
-    
-    (set-on-button-click! button-new
-                          (fn [] (update-game (list [:state :new]))))
-    
-    (doto menubar
-      ;; selector menu... use radiobutton?
-      (.add (doto (javax.swing.JMenu. "Mode")
-              (.add mode-basic)
-              (.add mode-normal)
-              (.add mode-advanced)))
-      (.add (doto (javax.swing.JMenu. "Game")
-              (.add button-new)
-              (.add button-quit)))
-      (.add (doto (javax.swing.JMenu. "Player Types")
-              (.add iai-one)
-              (.add iai-two))))
-    
-    (doto ^javax.swing.JPanel game-panel
-          (.setMinimumSize (java.awt.Dimension. 800 800))
-          (.setMaximumSize (java.awt.Dimension. 800 800))
-          (.setPreferredSize (java.awt.Dimension. 800 800))
-          (.addMouseListener (proxy [java.awt.event.MouseListener] []
-                               (mouseClicked [^java.awt.event.MouseEvent e]
-                                 (update-game (list [:click (.getX e) (.getY e) (.getButton e)])))
-                               (mouseEntered [^java.awt.event.MouseEvent e] nil)
-                               (mouseExited [^java.awt.event.MouseEvent e] nil)
-                               (mousePressed [^java.awt.event.MouseEvent e] nil)
-                               (mouseReleased [^java.awt.event.MouseEvent e] nil)))
-          (.addMouseMotionListener (proxy [java.awt.event.MouseMotionListener] []
-                                     (mouseDragged [^java.awt.event.MouseEvent e] nil)
-                                     (mouseMoved [^java.awt.event.MouseEvent e] 
-                                       (update-game (list [:hover (.getX e) (.getY e)]))))))
-    
-    (doto window
-      (.setJMenuBar menubar)
-      (.setDefaultCloseOperation javax.swing.WindowConstants/DISPOSE_ON_CLOSE)
-      (.addWindowListener (proxy [java.awt.event.WindowListener] []
-                            (windowOpened [_])
-                            (windowClosed [_])
-                            (windowActivated [_])
-                            (windowDeactivated [_])
-                            (windowIconified [_])
-                            (windowDeiconified [_])
-                            (windowClosing [^java.awt.event.WindowEvent _]
-                              (interrupt-ai-threads!))))
-      (.setContentPane game-panel)
-      (.addKeyListener (proxy [java.awt.event.KeyListener] []
-                         (keyPressed [^java.awt.event.KeyEvent e] nil)
-                         (keyTyped [^java.awt.event.KeyEvent e] nil)
-                         (keyReleased [^java.awt.event.KeyEvent e]
-                           (when (= java.awt.event.KeyEvent/VK_ESCAPE (.getKeyCode e))
-                             (println "Quitting on ESC key! Yay!")
-                             (interrupt-ai-threads!)
-                             (.setVisible window false)
-                             (.dispose ^javax.swing.JFrame window)))))
-      (.pack)
-      (.setResizable false)
-      (.setVisible true))))
 
 ;; how do we know if this has been run before?
 (defn runSimulation
