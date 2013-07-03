@@ -15,12 +15,14 @@ public class Reserves {
     private final static int[][] hashArray = makeHashArray();
     public final static int MAX_CAPACITY = 18;
     public final static int MAX_GIPFS_ON_BOARD = 9;
+
     public static Reserves change(Reserves r, int player,
             int delta_reserve_pieces, int delta_board_pieces,
             int delta_board_gipfs) {
         return r.applyDelta(player, delta_reserve_pieces, delta_board_pieces,
                 delta_board_gipfs);
     }
+
     /**
      * Are these reserves equal?
      * 
@@ -33,6 +35,7 @@ public class Reserves {
                 || ((a.p1 == b.p1) && (a.p2 == b.p2) && (a.g1 == b.g1)
                         && (a.g2 == a.g2) && (a.o1 == b.o1) && (a.o2 == a.o2));
     }
+
     public static long getGipfs(Reserves r, long player) {
         if (player > 0) {
             return r.g1;
@@ -48,6 +51,7 @@ public class Reserves {
             return r.o2;
         }
     }
+
     public static long getReserves(Reserves r, long player) {
         if (player > 0) {
             return r.p1;
@@ -106,9 +110,9 @@ public class Reserves {
      * @param b
      * @return
      */
-    public static boolean wasTaken(Reserves a, Reserves b) {
-        return (a.g1 == b.g1) && (a.g2 == b.g2)
-                && ((a.o1 + a.p1) == (b.o1 + b.p1));
+    public static boolean wasTaken(Reserves prev, Reserves next) {
+        return (prev.g1 > next.g1) || (prev.g2 > next.g2)
+                || ((prev.o1 + prev.p1) != (prev.o1 + prev.p1));
     }
 
     public final int g1;
@@ -250,7 +254,7 @@ public class Reserves {
      * @param player
      * @return
      */
-    public boolean overextended(int player) {
+    public boolean overexetended(int player) {
         if (player > 0) {
             return g1 < 0;
         } else {

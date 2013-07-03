@@ -207,7 +207,12 @@
    (loop [cb (game-state-board gamestate)
           rr (game-state-reserves gamestate)
           taken [] protected []]
-     (let [found (filter #(same-sign? (line-sig %) player) (get-lines-of-four cb))]
+     (let [found (filter
+                  (fn [l]
+                    (not (some (fn [k] (line= k l)) taken)))
+                   (filter
+                     #(same-sign? (line-sig %) player)
+                     (get-lines-of-four cb)))]
        (if (empty? found)
          [(concat [protected] taken) (game-state-changebr gamestate cb rr)]
 
