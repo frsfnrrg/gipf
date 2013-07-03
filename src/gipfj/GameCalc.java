@@ -283,8 +283,6 @@ public class GameCalc {
             q = Geometry.padd(q, d);
         }
 
-        System.out.format("%s %b %b %d\n", foo.r.toString(), foo.gphase1,
-                foo.gphase2, pieceval);
         if (pieceval > 0) {
             if (foo.gphase1 && pieceval == 2) {
                 return foo.change(new Board(cdata, hc),
