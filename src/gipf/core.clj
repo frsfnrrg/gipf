@@ -106,7 +106,8 @@
 (defn change-reserves!
   [player d-rpieces d-bpieces d-gipfs]
   (let [n (reserve-delta reserve-pieces* player d-rpieces d-bpieces d-gipfs)]
-    (def reserve-pieces* n)))
+    (def reserve-pieces* n))
+  (draw-pieces-left! player))
 
 (defn pack-gamestate
   [board reserves advphasev]
