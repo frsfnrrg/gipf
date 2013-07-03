@@ -239,12 +239,14 @@
   (def placed-cell-value* player))
 
 (defn move-piece!
-  [loc shove shovevalue]
+  [loc shove shovevalue changeres]
   (let [[newgs updated]
         (do-move (pack-gamestate board* reserve-pieces* adv-phase*)
                  shovevalue loc shove)]
     (def board* (game-state-board newgs))
-    ;; set the reserves as well?
+    (when changeres
+      (def reserve-pieces* (game-state-reserves newgs))
+      (draw-pieces-left! current-player*))
 
     (def placed-cell-value* 0)
     (redraw-loc-disk! (pt- loc shove))
@@ -383,7 +385,6 @@
   (def selected* nil)
   (def lines* (list))
   (def rings* (list))
-  (setup-ai!)  
 
   (if (= mode* :advanced)
     (def adv-phase* [:filling :filling])
@@ -489,7 +490,7 @@
             (set-adv-phase! :playing)
             (def placed-cell-value* current-player*))))
   (def selected* nil)
-  (move-piece! clickpt delvec placed-cell-value*)
+  (move-piece! clickpt delvec placed-cell-value* false)
 
   (post-human-move!)
 
@@ -528,10 +529,14 @@
         advline (advance-line move)]
     (when (and (= (get-adv-phase) :filling) (= degree 1))
       (set-adv-phase! :playing))
-    (if (= degree 2)
-      (change-reserves! current-player* -2 0 1)
-      (change-reserves! current-player* -1 1 0))
-    (move-piece! (line-start advline) (line-delta advline) (* current-player* degree)))
+    (move-piece! (line-start advline) (line-delta advline)
+                 (* current-player* degree) true)
+    ;; why after move-piece? because move piece has internal decrementors.
+    ;; crazy, right??
+    ;; (if (= degree 2)
+    ;;   (change-reserves! current-player* -2 0 1)
+    ;;   (change-reserves! current-player* -1 1 0))
+    )
 
   ;; clear
   (def rings* (ffirst clear2))

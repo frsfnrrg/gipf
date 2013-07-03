@@ -2,11 +2,11 @@
 
 (let [dia (atom {:move-newlines true
                  :move-numbers false
-                 :hist-analysis true
-                 :transp-analysis true
+                 :hist-analysis false
+                 :transp-analysis false
                  :match-result false
                  :total-time true
-                 :incremental-time true
+                 :incremental-time false
                  :moves-available false
                  :reserve-status true
                  :board-snapshot false

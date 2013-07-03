@@ -4,16 +4,11 @@
 ;; and the rest of the game... Yeah. Right.
 
 
-;; TODO: implement the remaining search args - better yet, wrap it in with the
-;; search func, in ai.clj; (defsearch name doc {1 [foo bar bax]
-;;                                              2 [dog cow pig]}
-;;                           [] (:eval [& all] 0)
-;; then use the usual expansion
-
 (definline swap-map!
   [atom-map key funk]
   `(swap! ~atom-map #(assoc % ~key (~funk (get % ~key)))))
 
+;; TODO shift all into settings.clj
 (let [aic (atom {1 [3 "rank-gf1" "qab-hist-transp"]
                  -1 [3 "rank-gf1" "qab-hist-transp"]})
       setup-player-ai!
@@ -31,7 +26,6 @@
     []
     (doseq [player [-1 1]]
       (setup-player-ai! player)))
-
   
   (defn read-ai-level
     [player]
@@ -52,6 +46,7 @@
   
   (defn update-ai-choices
     [player type value]
+    (println "prev:" (tget @aic player))
     (case type
       :heuristic (swap-map! aic player (fn [[a b c]] [a value c])) 
       :level (swap-map! aic player (fn [[a b c]] [value b c]))
@@ -69,8 +64,6 @@
   (ond :pre-calc-message
        (println "Beginning move"))
 
-  ;; we assume the opening strategy ignores the gipfiness when in
-  ;; :filling mode. Should we? I do not think so..
   (clear-counter ranks-count) 
   (let [move-ranking-func (get-move-ranking-func player)
         possible-moves (shuffle
@@ -281,13 +274,6 @@
       (dmrf aspiration 80 5 (:eval rank-board-hybrid))
       mtdf-deep
       (dmrf mtd-f 5 (:eval rank-board-hybrid))]
-  
-  
-
-  (defn setup-ai!
-    []
-    (qthab-light rank-gf1 1)
-    (qthab-light rank-gf1 -1))
  
   (defn simulate
     [mode type]

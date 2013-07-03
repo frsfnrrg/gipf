@@ -192,19 +192,17 @@
          (dtab-clear! mtable))
   (:eval
    [gamestate player rank-func depth alpha beta]
-   (letfn [(rec [gamestate owner level alpha beta max?]
-             (if (equals level depth)
+   (letfn [(rec [gamestate owner depth alpha beta max?]
+             (if (equals 0 depth)
                (rank-func gamestate player)
                (ab-h-m gamestate owner max? alpha beta
-                       hist (subtract level depth) [ngs]
+                       hist depth [ngs]
                        (let [key (compress-sgs ngs owner)
                              lrnk (dtab-geta mtable key)]
                          (if lrnk lrnk
-                             (let [r (rec ngs (negate owner) (inc-1 level)
-                                          alpha
-                                          beta
-                                          (not max?))]
-                               (dtab-add! mtable key (negate level) r)
+                             (let [r (rec ngs (negate owner) (dec-1 depth)
+                                          alpha beta (not max?))]
+                               (dtab-add! mtable key depth r)
                                r))))))]
      (when (<= beta alpha)
        (println "What's up with the window??"))

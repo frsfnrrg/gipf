@@ -8,6 +8,7 @@
 (declare read-ai-search)
 (declare read-ai-heuristic)
 (declare update-ai-choices)
+(declare init-at-choices)
 
 (def difficulty-labels ["Trivial" "Simple" "Easy" "Middle" "Long"])
 
@@ -16,7 +17,8 @@
   `(let [res# ~chosen
          ^javax.swing.ButtonGroup bgroup# (javax.swing.ButtonGroup.)]
      (vec (map (fn [[^String ~name ~obj]]
-                 (let [~button (javax.swing.JRadioButtonMenuItem. ^String ~name)]
+                 (let [~button (javax.swing.JRadioButtonMenuItem.
+                                (str ~name))]
                    (when (= ~name res#)
                      (.setSelected ~button true))
                    (.add bgroup# ~button)
@@ -33,10 +35,10 @@
                        (range)))]
   (defn make-difficulty-choices
     [id]
-    (generate-buttons (get difficulty-labels (read-ai-level id))
+    (generate-buttons (tget difficulty-labels (read-ai-level id))
                       (map list difficulty-labels (range))
                       [name thing b]
-                      (update-ai-choices id :level (get invd name)))))
+                      (update-ai-choices id :level (tget invd name)))))
 
 (defn make-search-options
   [id]
@@ -82,10 +84,11 @@
         iai-one (javax.swing.JCheckBoxMenuItem. "Player 1: AI?")
         iai-two (javax.swing.JCheckBoxMenuItem. "Player 2: AI?")
 
-        menusystem-1 (make-ai-menu-system "1" 1)
-        menusystem-2 (make-ai-menu-system "2" -1)]
+        ^javax.swing.JMenu menusystem-1 (make-ai-menu-system "1" 1)
+        ^javax.swing.JMenu menusystem-2 (make-ai-menu-system "2" -1)]
 
     ;; we call a new game;
+    (init-ai-choices)
     (update-game (list [:state :new]))
     
     (.setSelected (case mode*
