@@ -1,5 +1,7 @@
 (ns gipf.core)
 
+(def neginf negative-infinity)
+(def posinf positive-infinity)
 
 ;; AI.clj
 
@@ -88,6 +90,11 @@
 
 (def-search cls-ab-search
   ""
+  {0 [1 neginf posinf]
+   1 [2 neginf posinf]
+   2 [3 neginf posinf]
+   3 [5 neginf posinf]
+   4 [8 neginf posinf]}
   []
   (:eval
    [gamestate player rank-func depth alpha beta]
@@ -109,6 +116,11 @@
 
 (def-search cls-ab-hist-search
   "History heuristic alpha beta search."
+  {0 [1 neginf posinf]
+   1 [2 neginf posinf]
+   2 [3 neginf posinf]
+   3 [5 neginf posinf]
+   4 [8 neginf posinf]}
   [hihi]
   (:pre [& args]
         (export hihi (make-hist-table)))
@@ -130,6 +142,11 @@
 
 (def-search cls-ab-transp-search
   "So what if I indent five times?"
+  {0 [1 neginf posinf]
+   1 [2 neginf posinf]
+   2 [3 neginf posinf]
+   3 [5 neginf posinf]
+   4 [8 neginf posinf]}
   [mtable]
   (:pre [& args]
         (export mtable (make-dtab 21)))
@@ -161,6 +178,11 @@
 
 (def-search cab-transp-hist
   "Awesomeness."
+  {0 [1 neginf posinf]
+   1 [2 neginf posinf]
+   2 [3 neginf posinf]
+   3 [5 neginf posinf]
+   4 [8 neginf posinf]}
   [mtable hist]
   (:pre [& args]
         (export mtable (make-dtab 21))
@@ -193,6 +215,11 @@
    WARNING: do not use a transp-table using
    guess func until the search-structure is well
    developed."
+  {0 [80 1 (:eval rank-board-hybrid)]
+   1 [80 2 (:eval rank-board-hybrid)]
+   2 [80 3 (:eval rank-board-hybrid)]
+   3 [80 5 (:eval rank-board-hybrid)]
+   4 [80 8 (:eval rank-board-hybrid)]}
   []
   (:pre [& args]
         ((:pre cls-ab-transp-search)))
@@ -217,6 +244,11 @@
 
 (def-search mtd-f
   "MTD-F works best with quantized heuristics."
+  {0 [1 (:eval rank-board-hybrid)]
+   1 [2 (:eval rank-board-hybrid)]
+   2 [3 (:eval rank-board-hybrid)]
+   3 [5 (:eval rank-board-hybrid)]
+   4 [8 (:eval rank-board-hybrid)]}
   []
   (:pre [& args]
         ((:pre cls-ab-transp-search)))
@@ -311,6 +343,11 @@
 
 (def-search idrn-ab-h
   "Godlike."
+  {0 [2 1 50 neginf posinf]
+   1 [2 1 100 neginf posinf]
+   2 [4 2 500 neginf posinf]
+   3 [6 2 10000 neginf posinf]
+   4 [6 2 20000 neginf posinf]}
   [hist transp]
   (:pre [& args]
         ;; could we do a fully static, with overwrites? saves
@@ -359,6 +396,11 @@
 
 ;; just mix quiescient, hist, transp. simple. right??>
 (def-search qab-hist-transp
+  {0 [simple-quiet 1 2 1 neginf posinf]
+   1 [simple-quiet 2 3 1 neginf posinf]
+   2 [simple-quiet 2 4 2 neginf posinf]
+   3 [simple-quiet 3 7 3 neginf posinf]
+   4 [simple-quiet 6 12 4 neginf posinf]}
   [hist transp]
   (:pre [& args]
         (export transp (make-dtab 21))
@@ -372,3 +414,12 @@
                   hist transp
                   gamestate (negate good-player)
                   mindepth maxdepth alpha beta false)))
+
+(def-config deep-quiescent
+  "Focus on unpredicability"
+  qab-hist-transp
+  {0 [simple-quiet 1 2 1 neginf posinf]
+   1 [simple-quiet 2 4 2 neginf posinf]
+   2 [simple-quiet 3 6 3 neginf posinf]
+   3 [simple-quiet 4 10 4 neginf posinf]
+   4 [simple-quiet 5 12 4 neginf posinf]})

@@ -10,25 +10,6 @@
 ;;                           [] (:eval [& all] 0)
 ;; then use the usual expansion
 
-(let [neg negative-infinity
-      pos positive-infinity]
-  (def search-args
-    {"qab-hist-transp"
-     {0 [simple-quiet 1 2 1 neg pos]
-      1 [simple-quiet 2 3 1 neg pos]
-      2 [simple-quiet 2 4 2 neg pos]
-      3 [simple-quiet 3 7 3 neg pos]
-      4 [simple-quiet 6 12 4 neg pos]}
-     "idrn-ab-h"
-     {0 [2 1 50 neg pos]
-      1 [2 1 100 neg pos]
-      2 [4 2 500 neg pos]
-      3 [6 2 10000 neg pos]
-      4 [6 2 20000 neg pos]}
-
-     
-     }))
-
 (definline swap-map!
   [atom-map key funk]
   `(swap! ~atom-map #(assoc % ~key (~funk (get % ~key)))))

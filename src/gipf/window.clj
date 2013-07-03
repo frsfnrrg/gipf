@@ -14,9 +14,9 @@
 (defmacro generate-buttons
   [chosen dataset [name obj button] & block]
   `(let [res# ~chosen
-         bgroup# (javax.swing.ButtonGroup.)]
+         ^javax.swing.ButtonGroup bgroup# (javax.swing.ButtonGroup.)]
      (vec (map (fn [[^String ~name ~obj]]
-                 (let [~button (javax.swing.JRadioButtonMenuItem. ~name)]
+                 (let [~button (javax.swing.JRadioButtonMenuItem. ^String ~name)]
                    (when (= ~name res#)
                      (.setSelected ~button true))
                    (.add bgroup# ~button)
@@ -60,11 +60,11 @@
         menu (doto (javax.swing.JMenu. (str "Player " key " AI"))
                     (.add search)
                     (.add heuristic))]
-    (doseq [ch levels]
+    (doseq [^javax.swing.JRadioButtonMenuItem ch levels]
       (.add menu ch))
-    (doseq [ch heuristic-options]
+    (doseq [^javax.swing.JRadioButtonMenuItem ch heuristic-options]
       (.add heuristic ch))
-    (doseq [ch search-options]
+    (doseq [^javax.swing.JRadioButtonMenuItem ch search-options]
       (.add search ch))
     menu))
 

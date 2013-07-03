@@ -391,30 +391,46 @@
   `(reset! ~thing ~val))
 
 (def search-choices {})
+(def search-args {})
 (defn dfsh
-  [name docs common sargs sbody targs tbody rargs rbody]
+  [name docs cw common sargs sbody targs tbody rargs rbody]
   (let [nil-atoms (alternating common (map (fn [_] `(atom nil)) (range)))
         rebounds (reduce concat (map (fn [symb] [symb `(deref ~symb)]) common))
         newname (symbol (str name "-func"))
         empty-atoms (map (fn [symb] `(reset! ~symb nil)) common)
         sn (str name)]
-    `(let [~@nil-atoms]
-       (def ~name ~docs
-         (Search.
-          (fn [~@sargs] ~@sbody)
-          (fn [~@rargs] ;; could do targs collision avoidance... nah..
-            (let [~@rebounds]
-              ~@rbody))
-          (fn [~@targs]
-            (let [~@rebounds]
-              ~@tbody)
-            ~@empty-atoms)))
-       (def ~newname ~docs (:eval ~name))
-       (def search-choices (assoc search-choices ~sn ~name))
-       ~sn)))
+    `(do (let [~@nil-atoms]
+           (def ~name ~docs
+             (Search.
+              (fn [~@sargs] ~@sbody)
+              (fn [~@rargs] ;; could do targs collision avoidance... nah..
+                (let [~@rebounds]
+                  ~@rbody))
+              (fn [~@targs]
+                (let [~@rebounds]
+                  ~@tbody)
+                ~@empty-atoms))))
+         (def ~newname ~docs (:eval ~name))
+         (def search-choices (assoc search-choices ~sn ~name))
+         (def search-args (assoc search-args ~sn ~cw))
+         ~sn)))
+
+(defn dch
+  [n d r a]
+  (let [s (str n)]
+    `(do
+       (def ~n ~d nil)
+       (def search-choices (assoc search-choices ~s ~r))
+       (def search-args (assoc search-args ~s ~a)))))
+
+(defmacro def-config
+  ([name doc derived argmap]
+     (dch name doc derived argmap))
+  ([name derived argmap]
+     (dch name "" derived argmap)))
 
 (defmacro def-search
-  ([name [& common]
+  ([name callb [& common]
     [key1 [& args1] & body1]
     [key2 [& args2] & body2]
     [key3 [& args3] & body3]]
@@ -429,18 +445,18 @@
        (let [[sargs sbody] (:pre @aba)
              [targs tbody] (:post @aba)
              [rargs rbody] (:eval @aba)]
-         (dfsh name "" common sargs sbody targs tbody rargs rbody))))
-  ([name docstring
+         (dfsh name "" callb common sargs sbody targs tbody rargs rbody))))
+  ([name docstring callb
     [& common]
     [key1 [& args1] & body1]
     [key2 [& args2] & body2]
     [key3 [& args3] & body3]]
-     (dfsh name docstring common args1 body1 args2 body2 args3 body3))
-  ([name [] [key [& args] & body]]
-     (dfsh name "" [] (list (symbol "&") (symbol "args")) (list)
+     (dfsh name docstring callb common args1 body1 args2 body2 args3 body3))
+  ([name callb [] [key [& args] & body]]
+     (dfsh name "" callb [] (list (symbol "&") (symbol "args")) (list)
            (list (symbol "&") (symbol "args")) (list) args body))
-  ([name docstring [] [key [& args] & body]]
-     (dfsh name docstring [] (list (symbol "&") (symbol "args")) (list)
+  ([name docstring callb [] [key [& args] & body]]
+     (dfsh name docstring callb [] (list (symbol "&") (symbol "args")) (list)
            (list (symbol "&") (symbol "args")) (list) args body)))
 
 
