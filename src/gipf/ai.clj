@@ -27,7 +27,7 @@
 
 (defmacro ab-h-m-s
   ""
-  [source move-extractor max? alpha beta hist height [next] & block]
+  [source move-extractor cleanup max? alpha beta hist height [next] & block]
   `(case-pattern
     [~max? true false]
     [cur# ~alpha ~beta
@@ -61,7 +61,7 @@
   "Depth: how many iterations left. Name it height?"
   [gamestate owner max? alpha beta hist height [next] & block]
   `(ab-h-m-s (move-generator ~gamestate ~owner (hist-ordering ~hist))
-             signed-gs-move
+             signed-gs-move dispose-move-generator!
              ~max? ~alpha ~beta ~hist ~height [~next] ~@block))
 
 
@@ -275,6 +275,10 @@
   [node]
   `(signed-gs-move (idr-node-gamestate ~node)))
 
+(definline do-nothing
+  [thing]
+  `nil)
+
 (defn-iter-with-context itr
   "Helper to idrn-ab-h"
   [good-player rank-func mxdepth endtime hist transp]
@@ -314,7 +318,7 @@
                          (dtab-add! transp key depth rank)
                          (clist-add nchildren next rank)
                          rank))
-               (ab-h-m-s ochildren node-move max? alpha beta hist depth [onodule]
+               (ab-h-m-s ochildren node-move do-nothing max? alpha beta hist depth [onodule]
                          (let [okey (compress-sgs (idr-node-gamestate onodule)
                                                   (idr-node-player onodule))
                                nodule (let [ttr (dtab-get transp okey depth)]
