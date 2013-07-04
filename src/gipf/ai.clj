@@ -390,7 +390,9 @@
                                    (not max?))]
                    (dtab-add! transp key ltdepth ww)
                    ww)
-                 llrk))))))
+                 (do
+                   (destroy-key! key)
+                   llrk)))))))
 
 ;; just mix quiescient, hist, transp. simple. right??>
 (def-search qab-hist-transp

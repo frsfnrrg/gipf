@@ -46,7 +46,6 @@
   
   (defn update-ai-choices
     [player type value]
-    (println "prev:" (tget @aic player))
     (case type
       :heuristic (swap-map! aic player (fn [[a b c]] [a value c])) 
       :level (swap-map! aic player (fn [[a b c]] [value b c]))

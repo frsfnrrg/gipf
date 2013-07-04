@@ -17,6 +17,7 @@ public class DTable {
     private int count_cneither;
     private int count_cfirst;
     private int count_cnull;
+    private int pushouts;
 
     private DTable(int sexp) {
         // 48 bytes/elem; 4 bytes at reference; "approximation" of overhead.
@@ -58,11 +59,17 @@ public class DTable {
         count_cfirst = 0;
         count_csecond = 0;
         count_cneither = 0;
+
+        pushouts = 0;
     }
 
     private Entry[] store;
 
     private void add(Entry n, int depth, int rank) {
+        if (store == null) {
+            store = new Entry[size];
+        }
+
         int index = n.hc >>> shift_cut;
 
         n.depth = (byte) depth;
@@ -74,19 +81,23 @@ public class DTable {
         } else {
             // first entry always has greater depth;
             // second entry is pushed out
+            if (ff.second != null) {
+                EntryPool.EPOOL.returnEntry(ff.second);
+            }
+
             if (n.depth > ff.depth) {
                 store[index] = n;
                 n.second = ff;
                 ff.second = null;
+                pushouts++;
             } else {
                 ff.second = n;
             }
-
         }
     }
 
     /**
-     * This does not do a memcheck. You might as well make a new instance.
+     * This does not do a memory check. You might as well make a new instance.
      * 
      */
     private void load() {
@@ -103,7 +114,10 @@ public class DTable {
         count_cfirst = 0;
         count_csecond = 0;
         count_cneither = 0;
+        Entry.allocated = 0;
+        pushouts = 0;
         store = null;
+        EntryPool.EPOOL.flush();
         System.gc();
     }
 
@@ -129,6 +143,11 @@ public class DTable {
                 count_cnull, count_cfirst, count_csecond, count_cneither);
         System.out.format("== State: empty %d; single entry %d; full %d\n",
                 empty, single, full);
+        System.out.format("== Allocated: %d; Resident: %d; Pushouts: %d;\n",
+                Entry.allocated, single + 2 * full, pushouts);
+        System.out.format("== Entrypool size: %d; returned: %d; nsize: %d\n",
+                EntryPool.EPOOL.size, EntryPool.EPOOL.returned,
+                EntryPool.EPOOL.getSize());
     }
 
     private Long geta(Entry in) {

@@ -68,7 +68,9 @@ public class Compression {
                 k++;
             }
         }
-        Entry e = new Entry(data, g.b.hashCode ^ r.hashCode ^ (int) player);
+        Entry e = EntryPool.EPOOL.getEntry(data, g.b.hashCode ^ r.hashCode
+                ^ (int) player);
+        // Entry e = new Entry(data, g.b.hashCode ^ r.hashCode ^ (int) player);
 
         return e;
     }
