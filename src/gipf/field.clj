@@ -94,6 +94,8 @@
   `(Compression/compress ~gamestate ~player))
 (definline destroy-key! [key]
   `(EntryPool/destroyEntry ~key))
+(definline dispose-move-generator! [gen]
+  `(MoveSignedIGC/dispose ~gen))
 
 (definline clist-make  []
   `(ChildList/clmake))

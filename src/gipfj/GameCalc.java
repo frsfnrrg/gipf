@@ -149,6 +149,15 @@ public class GameCalc {
 
     private static int[] gfbl_buf = new int[21];
 
+    /**
+     * The null-return is a way to avoid allocating memory - most of the time,
+     * there are no lines, and a (12-16 byte allocation * 2 * nodes) is
+     * overkill.
+     * 
+     * @param b
+     * @param player
+     * @return
+     */
     private static int[] getFilteredBoardLines(Board b, int player) {
         int m = 0;
         for (int num = 0; num < 21; num++) {
@@ -171,6 +180,10 @@ public class GameCalc {
                     break;
                 }
             }
+        }
+
+        if (m == 0) {
+            return null;
         }
 
         int[] foo = new int[m];
@@ -198,6 +211,10 @@ public class GameCalc {
         int[] found;
         while (true) {
             found = getFilteredBoardLines(g.b, player);
+            if (found == null) {
+                break;
+            }
+
             boolean k = false;
             for (int f : found) {
                 boolean c = false;

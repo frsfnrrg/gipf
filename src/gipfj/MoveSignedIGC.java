@@ -203,4 +203,16 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return new MoveSignedIGC(g, player, ordering);
     }
 
+    /**
+     * Recycles the resources from the MSIGC; specifically, the ordering int[]
+     * array. Do NOT dispose an unordered move generator - it may ruin the
+     * default move ordering. Then again, so what if that ordering changes every
+     * now and then??
+     * 
+     * @param k
+     */
+    public static void dispose(MoveSignedIGC k) {
+        OrderingPool.OPOOL.dispose(k.order);
+    }
+
 }

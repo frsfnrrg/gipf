@@ -1,8 +1,6 @@
 package gipfj;
 
 /**
- * @author msto
- * 
  */
 public class GeneralizedPointWeighting {
     private final static int[] amid2 = { 8, 10, 12, 14, 16, 18 };

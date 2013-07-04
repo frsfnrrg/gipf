@@ -5,9 +5,6 @@ package gipfj;
  * This is a simple history heuristic table.
  * 
  * Each move is assigned a number 0:42 (array style).
- * 
- * @author msto
- * 
  */
 public class HistoryTable {
     public static final Line[] listOfPushes = doubleAndMirror(GameCalc.listOfLines);
@@ -85,7 +82,7 @@ public class HistoryTable {
      * @return
      */
     public int[] getMoveOrdering() {
-        int[] moves = new int[MOVES];
+        int[] moves = OrderingPool.OPOOL.get();
         Rk c = best;
         for (int i = 0; i < MOVES; i++) {
             moves[i] = c.pos;

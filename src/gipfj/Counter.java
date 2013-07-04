@@ -3,10 +3,7 @@ package gipfj;
 /**
  * 
  * Class purely for optimization - the (swap! atoooom inc) is horribly slow.
- * Here, we really are just mutating - so let it be Coffee.
- * 
- * @author msto
- * 
+ * Here, we really are just mutating - so let it be Coffee. *
  */
 public class Counter {
     private int i;
