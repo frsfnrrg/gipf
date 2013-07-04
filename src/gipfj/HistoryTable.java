@@ -168,6 +168,7 @@ public class HistoryTable {
         otable[MOVES - 2].next = otable[MOVES - 1];
 
         best = otable[MOVES - 1];
+        OrderingPool.OPOOL.flush();
     }
 
     /**
@@ -212,6 +213,13 @@ public class HistoryTable {
         }
         System.out.println();
 
+        System.out
+                .format("** Ordering pool: disposed: %d; recieved %d; delta %d; size: %d\n",
+                        OrderingPool.OPOOL.disposed,
+                        OrderingPool.OPOOL.delivered,
+                        OrderingPool.OPOOL.disposed
+                                - OrderingPool.OPOOL.delivered,
+                        OrderingPool.OPOOL.maxind);
     }
 
     public static void hclear(HistoryTable t) {

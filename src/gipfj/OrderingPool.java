@@ -11,11 +11,16 @@ class OrderingPool {
     public final static OrderingPool OPOOL = new OrderingPool();
 
     private int[][] cache;
-    private int maxind;
+    public int maxind;
+
+    public int delivered;
+    public int disposed;
 
     public OrderingPool() {
-        cache = new int[1 << 16][];
+        cache = new int[1 << 10][];
         maxind = 0;
+        delivered = 0;
+        disposed = 0;
     }
 
     public int[] get() {
@@ -25,6 +30,7 @@ class OrderingPool {
         maxind--;
         int[] r = cache[maxind];
         cache[maxind] = null;
+        delivered++;
         return r;
     }
 
@@ -37,13 +43,16 @@ class OrderingPool {
             cache = new int[sz * 2][];
             System.arraycopy(old, 0, cache, 0, sz);
         }
+        disposed++;
     }
 
     /**
      * Reduces the cache size
      */
     public void flush() {
-        cache = new int[1 << 16][];
+        cache = new int[1 << 10][];
         maxind = 0;
+        delivered = 0;
+        disposed = 0;
     }
 }

@@ -35,7 +35,8 @@
      compo# greater-equals less-equals
      mnmx# fastmax fastmin
      lossv# negative-infinity positive-infinity]
-    (let [rd# ~source]
+    (let [rd# ~source
+          qfrp#
       (if (.hasNext rd#)
         (loop [cur# cur# recm# -1]
           (if (.hasNext rd#)
@@ -55,7 +56,9 @@
               (when-not (equals recm# -1)
                 (hist-add! ~hist ~height recm#))
               cur#)))
-        lossv#))))
+        lossv#)]
+      (~cleanup rd#)
+      qfrp#)))
 
 (defmacro ab-h-m
   "Depth: how many iterations left. Name it height?"
