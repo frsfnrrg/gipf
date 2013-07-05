@@ -26,6 +26,7 @@ public class ThreadBuffer {
      * Compression - Large numbers
      */
     public final int[] A;
+    public final int[] r;
 
     public final int id;
 
@@ -37,6 +38,7 @@ public class ThreadBuffer {
         linebuf = new int[21];
         data = new byte[Compression.BYTES];
         A = new int[Compression.LEN];
+        r = new int[6];
     }
 
     public void analyze() {

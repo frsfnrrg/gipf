@@ -1,6 +1,5 @@
 package gipfj;
 
-
 /**
  * A depth two transposition table with depth-based replacement scheme - new
  * nodes are always accepted, and nodes that were searched deeper replace
@@ -171,8 +170,6 @@ public class DTable {
     }
 
     private Long getd(Entry n, byte depth) {
-        // read_lock.lock();
-        // try {
         int index = n.hashCode() >>> shift_cut;
 
         Entry f = store[index];
