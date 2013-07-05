@@ -1,10 +1,13 @@
 package gipfj;
 
+
 /**
  * A depth two transposition table with depth-based replacement scheme - new
  * nodes are always accepted, and nodes that were searched deeper replace
  * short-depth nodes. (this idea comes from <i>Replacement Schemes for
  * Transposition Tables</i>)
+ * 
+ * NOTE: using the public synchronized whatever() strategy is slow.
  * 
  */
 public class DTable {
@@ -65,7 +68,7 @@ public class DTable {
 
     private Entry[] store;
 
-    private synchronized void add(ThreadBuffer buf, Entry n, int depth, int rank) {
+    private void add(ThreadBuffer buf, Entry n, int depth, int rank) {
         if (store == null) {
             store = new Entry[size];
         }
@@ -147,7 +150,9 @@ public class DTable {
 
     }
 
-    private synchronized Long geta(Entry in) {
+    private Long geta(Entry in) {
+        // read_lock.lock();
+        // try {
         int index = in.hashCode() >>> shift_cut;
         Entry f = store[index];
         if (f == null) {
@@ -165,7 +170,9 @@ public class DTable {
         return null;
     }
 
-    private synchronized Long getd(Entry n, byte depth) {
+    private Long getd(Entry n, byte depth) {
+        // read_lock.lock();
+        // try {
         int index = n.hashCode() >>> shift_cut;
 
         Entry f = store[index];
@@ -185,8 +192,15 @@ public class DTable {
         return null;
     }
 
-    private synchronized void change(ThreadBuffer buf, Entry n, byte depth,
-            int rank) {
+    /**
+     * WARNING: synchronization of this has NOT been tested
+     * 
+     * @param buf
+     * @param n
+     * @param depth
+     * @param rank
+     */
+    private void change(ThreadBuffer buf, Entry n, byte depth, int rank) {
         int index = n.hashCode() >>> shift_cut;
 
         Entry ff = store[index];

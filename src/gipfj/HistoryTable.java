@@ -1,5 +1,7 @@
 package gipfj;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * 
  * This is a simple history heuristic table.
@@ -16,6 +18,8 @@ public class HistoryTable {
     private final Rk[] otable;
     private Rk best;
 
+    private final ReentrantLock locky;
+
     /**
      * Only 42 moves exist: we can burn memory!!
      * 
@@ -24,6 +28,7 @@ public class HistoryTable {
     public HistoryTable(int depth) {
         otable = new Rk[Const.MOVES];
         clear();
+        locky = new ReentrantLock(false);
     }
 
     private class Rk {
@@ -48,15 +53,20 @@ public class HistoryTable {
      * @param depth
      * @return
      */
-    public synchronized int[] getMoveOrdering(ThreadBuffer b) {
-        int[] moves = b.OPOOL.get();
-        Rk c = best;
-        for (int i = 0; i < Const.MOVES; i++) {
-            moves[i] = c.pos;
-            c = c.prev;
-        }
+    public int[] getMoveOrdering(ThreadBuffer b) {
+        locky.lock();
+        try {
+            int[] moves = b.OPOOL.get();
+            Rk c = best;
+            for (int i = 0; i < Const.MOVES; i++) {
+                moves[i] = c.pos;
+                c = c.prev;
+            }
 
-        return moves;
+            return moves;
+        } finally {
+            locky.unlock();
+        }
     }
 
     /**
@@ -68,56 +78,61 @@ public class HistoryTable {
      * @param depth
      * @param move
      */
-    public synchronized void addSufficientMove(int depth, int move) {
-        int weight = 1 << depth;
-        Rk o = otable[move];
-        o.rank += weight;
+    public void addSufficientMove(int depth, int move) {
+        locky.lock();
+        try {
+            int weight = 1 << depth;
+            Rk o = otable[move];
+            o.rank += weight;
 
-        int r = o.rank;
+            int r = o.rank;
 
-        // already the best
-        if (o.next == null) {
-            return;
-        }
+            // already the best
+            if (o.next == null) {
+                return;
+            }
 
-        Rk c = o;
-        if (c.next.rank < r) {
-            boolean end = false;
-            do {
-                c = c.next;
+            Rk c = o;
+            if (c.next.rank < r) {
+                boolean end = false;
+                do {
+                    c = c.next;
 
-                if (c.next == null) {
-                    end = true;
-                    break;
+                    if (c.next == null) {
+                        end = true;
+                        break;
+                    }
+
+                } while (c.next.rank < r);
+
+                // seam up start
+                if (o.prev == null) {
+                    o.next.prev = null;
+                } else {
+                    o.prev.next = o.next;
+                    o.next.prev = o.prev;
                 }
 
-            } while (c.next.rank < r);
+                // insert later on
+                if (end) {
+                    o.next = null;
+                    o.prev = c;
 
-            // seam up start
-            if (o.prev == null) {
-                o.next.prev = null;
-            } else {
-                o.prev.next = o.next;
-                o.next.prev = o.prev;
+                    c.next = o;
+
+                    best = o;
+                } else {
+                    Rk e = c.next;
+
+                    e.prev = o;
+                    o.next = e;
+
+                    o.prev = c;
+                    c.next = o;
+                }
             }
-
-            // insert later on
-            if (end) {
-                o.next = null;
-                o.prev = c;
-
-                c.next = o;
-
-                best = o;
-            } else {
-                Rk e = c.next;
-
-                e.prev = o;
-                o.next = e;
-
-                o.prev = c;
-                c.next = o;
-            }
+        } finally {
+            locky.unlock();
         }
 
     }
