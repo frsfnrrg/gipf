@@ -6,13 +6,6 @@ package gipfj;
  * 
  */
 public class EntryPool {
-    //
-    // for use when multiple regions need one.
-    // technically, this should be made thread-local
-    // when we finally get to parallelizing
-    //
-    public static final EntryPool EPOOL = new EntryPool();
-
     private Entry head;
     public int size;
     public int returned;
@@ -31,10 +24,6 @@ public class EntryPool {
         head = null;
         size = 0;
         returned = 0;
-    }
-
-    public static void destroyEntry(Entry e) {
-        EPOOL.returnEntry(e);
     }
 
     public int getSize() {

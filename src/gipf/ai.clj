@@ -62,15 +62,15 @@
 
 (defmacro ab-h-m
   "Depth: how many iterations left. Name it height?"
-  [gamestate owner max? alpha beta hist height [next] & block]
-  `(ab-h-m-s (move-generator ~gamestate ~owner (hist-ordering ~hist))
+  [buffer gamestate owner max? alpha beta hist height [next] & block]
+  `(ab-h-m-s (move-generator ~buffer ~gamestate ~owner (hist-ordering ~hist ~buffer))
              signed-gs-move dispose-move-generator!
              ~max? ~alpha ~beta ~hist ~height [~next] ~@block))
 
 
 (defmacro ab-n-m
   "Alpha beta loop holder. Read the damn source."
-  [gamestate owner max? alpha beta [next] & block]
+  [buffer gamestate owner max? alpha beta [next] & block]
   `(case-pattern
     [~max? true false]
     [cur# ~alpha ~beta
@@ -78,7 +78,7 @@
      compo# greater-equals less-equals
      mnmx# fastmax fastmin
      lossv# negative-infinity positive-infinity]
-    (let [rd# (unordered-move-generator ~gamestate ~owner)]
+    (let [rd# (unordered-move-generator ~buffer ~gamestate ~owner)]
       (if (.hasNext rd#)
         (loop [cur# cur#]
           (if (.hasNext rd#)
@@ -100,11 +100,11 @@
    4 [8 neginf posinf]}
   []
   (:eval
-   [gamestate player rank-func depth alpha beta]
+   [buffer gamestate player rank-func depth alpha beta]
    (letfn [(rec [gamestate owner depth alpha beta max?]
              (if (equals depth 0)
                (rank-func gamestate player)
-               (ab-n-m gamestate owner max? alpha beta [ngs]
+               (ab-n-m buffer gamestate owner max? alpha beta [ngs]
                        (rec ngs (negate owner) (dec-1 depth)
                             alpha beta (not max?)))))]
      (when (<= beta alpha)
@@ -130,13 +130,13 @@
   (:post [& args]
          (hist-clear! hihi))
   (:eval
-   [gamestate player rank-func depth alpha beta]
+   [buffer gamestate player rank-func depth alpha beta]
    (longify [player]
      (letfn [(rec [gamestate owner depth alpha beta max?]
                (longify [depth alpha beta]
                  (if (equals 0 depth)
                    (rank-func gamestate player)
-                   (ab-h-m gamestate owner max? alpha beta hihi depth [ngs]
+                   (ab-h-m buffer gamestate owner max? alpha beta hihi depth [ngs]
                            (rec ngs (negate owner) (dec-1 depth)
                                 alpha beta (not max?))))))]
        (when (<= beta alpha)
@@ -156,20 +156,20 @@
   (:post [& args]
          (dtab-clear! mtable))
   (:eval
-   [gamestate player rank-func depth alpha beta]
+   [buffer gamestate player rank-func depth alpha beta]
    (letfn [(rec [gamestate owner level alpha beta max?]
              (if (equals level depth)
                (rank-func gamestate player)
-               (ab-n-m gamestate owner max? alpha beta [ngs]
+               (ab-n-m buffer gamestate owner max? alpha beta [ngs]
                         (if (less-equals level 3)
-                          (let [key (compress-sgs ngs owner)
+                          (let [key (compress-sgs buffer ngs owner)
                                 lrnk (dtab-geta mtable key)]
                             (if lrnk lrnk
                                 (let [r (rec ngs (negate owner) (inc-1 level)
                                              alpha
                                              beta
                                              (not max?))]
-                                  (dtab-add! mtable key (negate level) r)
+                                  (dtab-add! mtable buffer key (negate level) r)
                                   r)))
                           (rec ngs (negate owner) (inc-1 level)
                                alpha
@@ -194,18 +194,18 @@
          (hist-clear! hist)
          (dtab-clear! mtable))
   (:eval
-   [gamestate player rank-func depth alpha beta]
+   [buffer gamestate player rank-func depth alpha beta]
    (letfn [(rec [gamestate owner depth alpha beta max?]
              (if (equals 0 depth)
                (rank-func gamestate player)
-               (ab-h-m gamestate owner max? alpha beta
+               (ab-h-m buffer gamestate owner max? alpha beta
                        hist depth [ngs]
-                       (let [key (compress-sgs ngs owner)
+                       (let [key (compress-sgs buffer ngs owner)
                              lrnk (dtab-geta mtable key)]
                          (if lrnk lrnk
                              (let [r (rec ngs (negate owner) (dec-1 depth)
                                           alpha beta (not max?))]
-                               (dtab-add! mtable key depth r)
+                               (dtab-add! mtable buffer key depth r)
                                r))))))]
      (when (<= beta alpha)
        (println "What's up with the window??"))
@@ -227,19 +227,19 @@
   (:post [& args]
          ((:post cls-ab-transp-search)))
   (:eval
-   [gamestate player rankf radius depth guess-func & guess-args]
+   [buffer gamestate player rankf radius depth guess-func & guess-args]
    (let [guess (apply guess-func gamestate player guess-args)]
      (let [alpha (subtract guess radius)
            beta (add guess radius)
-           res (cls-ab-transp-search-func gamestate player rankf depth alpha beta)]
+           res (cls-ab-transp-search-func buffer gamestate player rankf depth alpha beta)]
        (cond (equals res alpha)
              (do
                ;; (println "Failed low")
-               (cls-ab-transp-search-func gamestate player rankf depth negative-infinity beta))
+               (cls-ab-transp-search-func buffer gamestate player rankf depth negative-infinity beta))
              (equals res beta)
              (do
                ;; (println "Failed high")
-               (cls-ab-transp-search-func gamestate player rankf depth alpha positive-infinity))
+               (cls-ab-transp-search-func buffer gamestate player rankf depth alpha positive-infinity))
              :else
              res)))))
 
@@ -256,14 +256,14 @@
   (:post [& args]
          ((:post cls-ab-transp-search)))
   (:eval
-   [gamestate player rankf depth guess-func & guess-args]
+   [buffer gamestate player rankf depth guess-func & guess-args]
    (let [guess (apply guess-func gamestate player guess-args)]
      (loop [guess guess upper positive-infinity lower negative-infinity]
        (let [beta 
              (if (equals guess lower)
                (inc-1 guess)
                guess)]
-         (let [next (cls-ab-transp-search-func gamestate player rankf depth (dec-1 beta) beta)]
+         (let [next (cls-ab-transp-search-func buffer gamestate player rankf depth (dec-1 beta) beta)]
            (if (less next beta)
              (let [upper next]
                (if (less-equals upper lower)
@@ -284,7 +284,7 @@
 
 (defn-iter-with-context itr
   "Helper to idrn-ab-h"
-  [good-player rank-func mxdepth endtime hist transp]
+  [buffer good-player rank-func mxdepth endtime hist transp]
   [node depth trange max? alpha beta]
   (longify [depth trange alpha beta]
    (if (and (greater-equals trange 3) (past-time? endtime))
@@ -305,9 +305,9 @@
            (if (and (not (nil? ochildren)) (not (.hasNext ochildren)))
              orank
              (if (nil? ochildren)
-               (ab-h-m gamestate owner max? alpha beta hist depth
+               (ab-h-m buffer gamestate owner max? alpha beta hist depth
                        [ngs]
-                       (let [key (compress-sgs ngs antiowner)
+                       (let [key (compress-sgs buffer ngs antiowner)
                              next (if (equals depth 0)
                                     (make-idr-node
                                      ngs antiowner                
@@ -318,20 +318,20 @@
                                              (dec-1 depth) (dec-1 trange) (not max?) alpha beta)
                                         (make-idr-node ngs antiowner nork))))
                              rank (idr-node-rank next)]
-                         (dtab-add! transp key depth rank)
+                         (dtab-add! transp buffer key depth rank)
                          (clist-add nchildren next rank)
                          rank))
                (ab-h-m-s ochildren node-move do-nothing max? alpha beta hist depth [onodule]
-                         (let [okey (compress-sgs (idr-node-gamestate onodule)
+                         (let [okey (compress-sgs buffer (idr-node-gamestate onodule)
                                                   (idr-node-player onodule))
                                nodule (let [ttr (dtab-get transp okey depth)]
                                         (if (nil? ttr)
                                           (let [nog (itr onodule (dec-1 depth)
                                                          (dec-1 trange) (not max?) alpha beta)
-                                                nkey (compress-sgs
+                                                nkey (compress-sgs buffer
                                                       (idr-node-gamestate nog)
                                                       (idr-node-player nog))]
-                                            (dtab-change! transp nkey
+                                            (dtab-change! transp buffer nkey
                                                           depth (idr-node-rank nog))
                                             nog)                                       
                                           ;; note that the children are
@@ -363,7 +363,7 @@
          (hist-clear! hist)
          (dtab-clear! transp))
   (:eval
-   [gamestate good-player rank-func depth istep time alpha beta]
+   [buffer gamestate good-player rank-func depth istep time alpha beta]
    (let [endtime (add (System/nanoTime) (* 1e6 time))]
      (when (greater-equals alpha beta)
        (println "Warning: alpha and beta have incorrect ordering."))
@@ -371,20 +371,20 @@
             level 0]
        (if (or (past-time? endtime) (greater level depth))
          (idr-node-rank nodetree)
-         (recur (itr good-player rank-func depth endtime hist transp
+         (recur (itr buffer good-player rank-func depth endtime hist transp
                      nodetree level 4 false alpha beta)
                 (add level istep)))))))
 
 (defn-iter-with-context qht-sub
   "lt - long term depth; s - short term depth"
-  [good-player rank-func quiet-func qboost hist transp]
+  [buffer good-player rank-func quiet-func qboost hist transp]
   [gamestate owner sdepth ltdepth alpha beta max?]
   (longify
    [sdepth ltdepth alpha beta]
    (if (or (equals sdepth 0) (equals ltdepth 0))
      (rank-func gamestate good-player)
-     (ab-h-m gamestate owner max? alpha beta hist ltdepth [ngs]
-             (let [key (compress-sgs ngs (negate owner))
+     (ab-h-m buffer gamestate owner max? alpha beta hist ltdepth [ngs]
+             (let [key (compress-sgs buffer ngs (negate owner))
                    llrk (dtab-get transp key ltdepth)]
                (if (nil? llrk)
                  (let [ww (qht-sub ngs (negate owner)
@@ -395,10 +395,10 @@
                                    alpha
                                    beta
                                    (not max?))]
-                   (dtab-add! transp key ltdepth ww)
+                   (dtab-add! transp buffer key ltdepth ww)
                    ww)
                  (do
-                   (destroy-key! key)
+                   (destroy-key! buffer key)
                    llrk)))))))
 
 ;; just mix quiescient, hist, transp. simple. right??>
@@ -415,8 +415,8 @@
   (:post [& args]
          (hist-clear! hist)
          (dtab-clear! transp))
-  (:eval [gamestate good-player rank-func quiet-func mindepth maxdepth qboost alpha beta]
-         (qht-sub good-player rank-func
+  (:eval [buffer gamestate good-player rank-func quiet-func mindepth maxdepth qboost alpha beta]
+         (qht-sub buffer good-player rank-func
                   quiet-func qboost
                   hist transp
                   gamestate (negate good-player)

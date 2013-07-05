@@ -25,7 +25,7 @@ class OrderingPool {
 
     public int[] get() {
         if (maxind == 0) {
-            return new int[HistoryTable.MOVES];
+            return new int[Const.MOVES];
         }
         maxind--;
         int[] r = cache[maxind];

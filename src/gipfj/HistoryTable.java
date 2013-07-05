@@ -7,44 +7,11 @@ package gipfj;
  * Each move is assigned a number 0:42 (array style).
  */
 public class HistoryTable {
-    public static final Line[] listOfPushes = doubleAndMirror(GameCalc.listOfLines);
-    public static final int[][] listOfPushPoints = doubleAndMirror(GameCalc.listOfLinePoints);
-    public static final int MOVES = 42;
 
     /**
      * If this is increased, we may need to switch to longs.
      */
     public static final int MAX_DEPTH = 24;
-
-    private static Line[] doubleAndMirror(Line[] lines) {
-        Line[] r = new Line[lines.length * 2];
-        for (int i = 0; i < lines.length; i++) {
-            r[2 * i] = Line.sign(lines[i], 2 * i);
-            Line rv = lines[i];
-            int nend = Geometry.lend(Line.getStart(rv), Line.getDelta(rv));
-            int antidelt = Geometry.pnegate(Line.getDelta(rv));
-            r[2 * i + 1] = Line.makeSignedLine(2 * i + 1, nend, antidelt);
-        }
-        return r;
-    }
-
-    private static int[][] doubleAndMirror(int[][] lps) {
-        int[][] r = new int[lps.length * 2][];
-        for (int i = 0; i < lps.length; i++) {
-            r[2 * i] = lps[i];
-
-            r[2 * i + 1] = reverse(lps[i]);
-        }
-        return r;
-    }
-
-    private static int[] reverse(int[] is) {
-        int[] cl = new int[is.length];
-        for (int i = 0, j = is.length - 1; i < is.length; i++, j--) {
-            cl[i] = is[j];
-        }
-        return cl;
-    }
 
     private final Rk[] otable;
     private Rk best;
@@ -55,7 +22,7 @@ public class HistoryTable {
      * @param depth
      */
     public HistoryTable(int depth) {
-        otable = new Rk[MOVES];
+        otable = new Rk[Const.MOVES];
         clear();
     }
 
@@ -81,10 +48,10 @@ public class HistoryTable {
      * @param depth
      * @return
      */
-    public int[] getMoveOrdering() {
-        int[] moves = OrderingPool.OPOOL.get();
+    public synchronized int[] getMoveOrdering(ThreadBuffer b) {
+        int[] moves = b.OPOOL.get();
         Rk c = best;
-        for (int i = 0; i < MOVES; i++) {
+        for (int i = 0; i < Const.MOVES; i++) {
             moves[i] = c.pos;
             c = c.prev;
         }
@@ -101,7 +68,7 @@ public class HistoryTable {
      * @param depth
      * @param move
      */
-    public void addSufficientMove(int depth, int move) {
+    public synchronized void addSufficientMove(int depth, int move) {
         int weight = 1 << depth;
         Rk o = otable[move];
         o.rank += weight;
@@ -156,18 +123,18 @@ public class HistoryTable {
     }
 
     public void clear() {
-        for (int i = 0; i < MOVES; i++) {
+        for (int i = 0; i < Const.MOVES; i++) {
             otable[i] = new Rk(0, i, null, null);
         }
 
         otable[1].prev = otable[0];
-        for (int i = 1; i < MOVES - 1; i++) {
+        for (int i = 1; i < Const.MOVES - 1; i++) {
             otable[i - 1].next = otable[i];
             otable[i + 1].prev = otable[i];
         }
-        otable[MOVES - 2].next = otable[MOVES - 1];
+        otable[Const.MOVES - 2].next = otable[Const.MOVES - 1];
 
-        best = otable[MOVES - 1];
+        best = otable[Const.MOVES - 1];
         OrderingPool.OPOOL.flush();
     }
 
@@ -184,13 +151,13 @@ public class HistoryTable {
         String fstring = String.format("%%%dd ", maxwidth);
 
         System.out.print("** ");
-        for (int i = 0; i < MOVES; i++) {
+        for (int i = 0; i < Const.MOVES; i++) {
             System.out.format(fstring, i);
         }
         System.out.println();
 
         System.out.print("** ");
-        for (int i = 0; i < MOVES; i++) {
+        for (int i = 0; i < Const.MOVES; i++) {
             System.out.format(fstring, otable[i].rank);
         }
         System.out.println();
@@ -199,7 +166,7 @@ public class HistoryTable {
                 .println("** History table analysis results: sorted by rank.");
         System.out.print("** ");
         Rk b = best;
-        for (int i = 0; i < MOVES; i++) {
+        for (int i = 0; i < Const.MOVES; i++) {
             System.out.format(fstring, b.pos);
             b = b.prev;
         }
@@ -207,19 +174,11 @@ public class HistoryTable {
 
         System.out.print("** ");
         Rk c = best;
-        for (int i = 0; i < MOVES; i++) {
+        for (int i = 0; i < Const.MOVES; i++) {
             System.out.format(fstring, c.rank);
             c = c.prev;
         }
         System.out.println();
-
-        System.out
-                .format("** Ordering pool: disposed: %d; recieved %d; delta %d; size: %d\n",
-                        OrderingPool.OPOOL.disposed,
-                        OrderingPool.OPOOL.delivered,
-                        OrderingPool.OPOOL.disposed
-                                - OrderingPool.OPOOL.delivered,
-                        OrderingPool.OPOOL.maxind);
     }
 
     public static void hclear(HistoryTable t) {
@@ -234,8 +193,8 @@ public class HistoryTable {
         t.addSufficientMove((int) depth, (int) move);
     }
 
-    public static int[] hordering(HistoryTable t) {
-        return t.getMoveOrdering();
+    public static int[] hordering(HistoryTable t, ThreadBuffer b) {
+        return t.getMoveOrdering(b);
     }
 
     public static void hanalyze(HistoryTable t) {
@@ -243,6 +202,6 @@ public class HistoryTable {
     }
 
     public static Line moveToLine(long move) {
-        return listOfPushes[(int) move];
+        return Const.listOfPushes[(int) move];
     }
 }

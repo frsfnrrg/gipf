@@ -201,7 +201,8 @@ public class Reserves {
         }
     }
 
-    private int calcHashCode(int p1, int p2, int g1, int g2, int o1, int o2) {
+    private static int calcHashCode(int p1, int p2, int g1, int g2, int o1,
+            int o2) {
 
         // debug on crash
         if (DEBUG) {

@@ -2,7 +2,8 @@
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc GeneralizedPointWeighting
                   Ranking MoveSignedGS HistoryTable MoveSignedIGC
-                  Counter Compression DTable ChildList Entry EntryPool)))
+                  Counter Compression DTable ChildList Entry EntryPool
+                  ThreadBuffer)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b c1 c2] `(GameState/makeGameState ~a ~b ~c1 ~c2))
@@ -52,12 +53,14 @@
 (definline reserve-diff-cubic [r p gipfs pieces store]
   `(Ranking/reserveCubicDiff ~r ~p ~gipfs ~pieces ~store))
 
+
+(def default-buffer ThreadBuffer/DEFAULT)
 (definline lazy-next-gamestates
   [gamestate player]
-  `(from-iterator (MoveSignedIGC/makeIncrementalGameCalc ~gamestate ~player)))
+  `(from-iterator (MoveSignedIGC/makeIncrementalGameCalc default-buffer ~gamestate ~player)))
 
-(definline hist-ordering [^HistoryTable table]
-  `(HistoryTable/hordering ~table))
+(definline hist-ordering [^HistoryTable table buffer]
+  `(HistoryTable/hordering ~table ~buffer))
 (definline make-hist-table []
   `(HistoryTable/hmake))
 (definline hist-add! [^HistoryTable table depth mnum]
@@ -73,10 +76,10 @@
   `(DTable/dgeta ~table ~key))
 (definline make-dtab [sz]
   `(DTable/dmake ~sz))
-(definline dtab-add! [^DTable table key level rank]
-  `(DTable/dadd ~table ~key ~level ~rank))
-(definline dtab-change! [^DTable table key level rank]
-  `(DTable/dchange ~table ~key ~level ~rank))
+(definline dtab-add! [^DTable table buffer key level rank]
+  `(DTable/dadd ~table ~buffer ~key ~level ~rank))
+(definline dtab-change! [^DTable table buffer key level rank]
+  `(DTable/dchange ~table ~buffer ~key ~level ~rank))
 (definline dtab-clear! [table]
   `(do (ond :transp-analysis
             (DTable/danalyze ~table))
@@ -90,10 +93,10 @@
 (definline clear-counter [counter]
   `(Counter/cclear ~counter))
 
-(definline compress-sgs  [gamestate player]
-  `(Compression/compress ~gamestate ~player))
-(definline destroy-key! [key]
-  `(EntryPool/destroyEntry ~key))
+(definline compress-sgs  [buffer gamestate player]
+  `(Compression/compress ~buffer ~gamestate ~player))
+(definline destroy-key! [buffer key]
+  `(ThreadBuffer/recycleEntry ~buffer ~key))
 (definline dispose-move-generator! [gen]
   `(MoveSignedIGC/dispose ~gen))
 
@@ -104,16 +107,23 @@
 (definline clist-pack  [cl desc]
   `(ChildList/clpack ~cl ~desc))
 
-(definline unordered-move-generator [gs p]
-  `(MoveSignedIGC/makeIncrementalGameCalc ~gs ~p))
-(definline move-generator [gs p ordering]
-  `(MoveSignedIGC. ~gs ~p ~ordering))
+(definline unordered-move-generator [buf gs p]
+  `(MoveSignedIGC/makeIncrementalGameCalc ~buf ~gs ~p))
+(definline move-generator [buf gs p ordering]
+  `(MoveSignedIGC. ~buf ~gs ~p ~ordering))
 
-;; predicates/extraction
+(definline make-thread-buffer [id]
+  `(ThreadBuffer/create ~id))
+
+(defn get-line-taking-results
+  [gamestate player]
+  (vec (GameCalc/getLineTakingResults default-buffer gamestate player)))
 
 (defn get-lines-of-four
   [board]
   (vec (GameCalc/getBoardLines board)))
+
+;; predicates/extraction
 
 (def list-of-move-lines
   (doall (reduce concat
@@ -257,17 +267,9 @@
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
-(defn expand-gamestate
-  [gs]
-  [(game-state-board gs) (game-state-reserves gs)])
-
 (defn do-shove
   [gamestate player shove]
   (place-and-shove gamestate player shove))
-
-(defn get-line-taking-results
-  [gamestate player]
-  (vec (GameCalc/getLineTakingResults gamestate player)))
 
 (defn list-possible-moves-and-board
   "Like list-possible-boards, just returns the moves along with the boards.

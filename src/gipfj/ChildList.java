@@ -152,6 +152,7 @@ public class ChildList {
     public static Iterator<Object> clpack(ChildList t, boolean downward) {
         // t.mid _must_ exist (length >= 1)
         final int length = t.length;
+        // TODO: maybe, recycle these
         final Object[] foo = new Object[length];
         Node q;
         if (length == 0) {

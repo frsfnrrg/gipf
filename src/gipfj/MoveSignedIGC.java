@@ -3,6 +3,9 @@ package gipfj;
 import java.util.Iterator;
 
 /**
+ * We can afford to use some memory on this - the real cost is in the items it
+ * creates.
+ * 
  */
 public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
@@ -22,14 +25,16 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     private boolean gipfs;
     private boolean oppg;
     private int glvl;
+    private ThreadBuffer buf;
 
-    public MoveSignedIGC(GameState g, long p, int[] ordering) {
+    public MoveSignedIGC(ThreadBuffer b, GameState g, long p, int[] ordering) {
+        buf = b;
         this.player = (byte) p;
         order = ordering;
 
         g1_pos = 0;
         g1_end = 0;
-        for (GameState q : GameCalc.getLineTakingResults(g, player)) {
+        for (GameState q : GameCalc.getLineTakingResults(buf, g, player)) {
             if (!q.losingGameState(player)) {
                 g1[g1_end] = q.b;
                 g1r1[g1_end] = q.r.applyDelta(player, -1, 1, 0);
@@ -73,7 +78,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         } else {
             ready = true;
             g3_pos = 0;
-            g3 = GameCalc.getLineTakingResults(f, player);
+            g3 = GameCalc.getLineTakingResults(buf, f, player);
             g3_end = g3.length;
         }
     }
@@ -102,7 +107,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
         int[] pd = null;
         while (plo < 42) {
-            pd = HistoryTable.listOfPushPoints[order[plo]];
+            pd = Const.listOfPushPoints[order[plo]];
             byte[] orig = g1[g1_pos].data;
 
             boolean select = false;
@@ -194,13 +199,21 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return q;
     }
 
-    public static MoveSignedIGC makeIncrementalGameCalc(GameState g, long player) {
-        return new MoveSignedIGC(g, player, DEFAULT_MOVE_ORDER);
+    /**
+     * WARNING: not to be used by multiple threads - it accesses one buffer.
+     * 
+     * @param g
+     * @param player
+     * @return
+     */
+    public static MoveSignedIGC makeIncrementalGameCalc(ThreadBuffer b,
+            GameState g, long player) {
+        return new MoveSignedIGC(b, g, player, DEFAULT_MOVE_ORDER);
     }
 
-    public static MoveSignedIGC makeMSIGC(GameState g, long player,
-            int[] ordering) {
-        return new MoveSignedIGC(g, player, ordering);
+    public static MoveSignedIGC makeMSIGC(ThreadBuffer b, GameState g,
+            long player, int[] ordering) {
+        return new MoveSignedIGC(b, g, player, ordering);
     }
 
     /**
@@ -212,7 +225,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
      * @param k
      */
     public static void dispose(MoveSignedIGC k) {
-        OrderingPool.OPOOL.dispose(k.order);
+        k.buf.OPOOL.dispose(k.order);
     }
 
 }

@@ -65,7 +65,7 @@ public class DTable {
 
     private Entry[] store;
 
-    private void add(Entry n, int depth, int rank) {
+    private synchronized void add(ThreadBuffer buf, Entry n, int depth, int rank) {
         if (store == null) {
             store = new Entry[size];
         }
@@ -82,7 +82,7 @@ public class DTable {
             // first entry always has greater depth;
             // second entry is pushed out
             if (ff.second != null) {
-                EntryPool.EPOOL.returnEntry(ff.second);
+                buf.EPOOL.returnEntry(ff.second);
             }
 
             if (n.depth > ff.depth) {
@@ -117,7 +117,6 @@ public class DTable {
         Entry.allocated = 0;
         pushouts = 0;
         store = null;
-        EntryPool.EPOOL.flush();
         System.gc();
     }
 
@@ -145,12 +144,10 @@ public class DTable {
                 empty, single, full);
         System.out.format("== Allocated: %d; Resident: %d; Pushouts: %d;\n",
                 Entry.allocated, single + 2 * full, pushouts);
-        System.out.format("== Entrypool size: %d; returned: %d; nsize: %d\n",
-                EntryPool.EPOOL.size, EntryPool.EPOOL.returned,
-                EntryPool.EPOOL.getSize());
+
     }
 
-    private Long geta(Entry in) {
+    private synchronized Long geta(Entry in) {
         int index = in.hashCode() >>> shift_cut;
         Entry f = store[index];
         if (f == null) {
@@ -168,7 +165,7 @@ public class DTable {
         return null;
     }
 
-    private Long getd(Entry n, byte depth) {
+    private synchronized Long getd(Entry n, byte depth) {
         int index = n.hashCode() >>> shift_cut;
 
         Entry f = store[index];
@@ -188,13 +185,14 @@ public class DTable {
         return null;
     }
 
-    private void change(Entry n, byte depth, int rank) {
+    private synchronized void change(ThreadBuffer buf, Entry n, byte depth,
+            int rank) {
         int index = n.hashCode() >>> shift_cut;
 
         Entry ff = store[index];
         if (ff == null) {
             count_cnull++;
-            add(n, depth, rank);
+            add(buf, n, depth, rank);
             return;
         }
 
@@ -208,7 +206,7 @@ public class DTable {
             ff.second.depth = depth;
         } else {
             count_cneither++;
-            add(n, depth, rank);
+            add(buf, n, depth, rank);
         }
     }
 
@@ -216,8 +214,9 @@ public class DTable {
         return new DTable((int) size);
     }
 
-    public static void dadd(DTable d, Entry gs, long depth, long rank) {
-        d.add(gs, (int) depth, (int) rank);
+    public static void dadd(DTable d, ThreadBuffer b, Entry gs, long depth,
+            long rank) {
+        d.add(b, gs, (int) depth, (int) rank);
     }
 
     /**
@@ -251,8 +250,9 @@ public class DTable {
      * @param depth
      * @param rank
      */
-    public static void dchange(DTable d, Entry gs, long depth, long rank) {
-        d.change(gs, (byte) depth, (int) rank);
+    public static void dchange(DTable d, ThreadBuffer b, Entry gs, long depth,
+            long rank) {
+        d.change(b, gs, (byte) depth, (int) rank);
     }
 
     public static void dclear(DTable d) {

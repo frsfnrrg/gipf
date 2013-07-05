@@ -11,13 +11,14 @@ public class Compression {
             Reserves.MAX_GIPFS_ON_BOARD, Reserves.MAX_CAPACITY,
             Reserves.MAX_CAPACITY, Reserves.MAX_CAPACITY };
 
-    private static final byte[] data = new byte[14];
-    private static final int[] A = new int[LEN];
+    public static final int BYTES = 14;
 
-    public static Entry compress(GameState g, long player) {
+    public static Entry compress(ThreadBuffer buf, GameState g, long player) {
         // 105.76 bits; we can pack 75 more states in.
         byte[] bdata = g.b.data;
         Reserves r = g.r;
+        int[] A = buf.A;
+        byte[] temp = buf.data;
 
         if (player > 0) {
             A[0] = 1;
@@ -133,7 +134,7 @@ public class Compression {
         int k = 0;
         int j = 0;
         for (int i = 0; i < 14; i++) {
-            data[i] = (byte) A[k];
+            temp[i] = (byte) A[k];
             A[k] >>= 8;
 
             j++;
@@ -142,7 +143,7 @@ public class Compression {
                 k++;
             }
         }
-        Entry e = EntryPool.EPOOL.getEntry(data, g.b.hashCode ^ r.hashCode
+        Entry e = buf.EPOOL.getEntry(temp, g.b.hashCode ^ r.hashCode
                 ^ (int) player);
         // Entry e = new Entry(data, g.b.hashCode ^ r.hashCode ^ (int) player);
 
