@@ -537,27 +537,15 @@
   (thunk))
 
 (defn buffer-map
-  ;; meh, pmap is better. what if one half takes much longer??
-  ;; yeah so? it still cuts off a lot of time
   [genf evalf targets]
   (let [n  (+ 2 (.. Runtime getRuntime availableProcessors))
         size (count targets)
         lengths (inc (int (/ size n)))
-        ;; partition drops last segment otherwise
         groups (partition lengths lengths () targets)
         qf (fn [ind block]
              (doall (map
                      (fn [b] (evalf (genf ind) b))
                      block)))
-        ;; results (pmap
-        ;;          qf 
-        ;;          (range)
-        ;;          groups)
-        ;; high worker cost
-        ;; results (map deref (map #(future
-        ;;                            (qf %1 %2))
-        ;;                         (range)
-        ;;                         groups))
         results (doall (map call
                             (doall
                              (map (fn [a b]
