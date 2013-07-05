@@ -46,7 +46,6 @@ public class Const {
     private static Line[] getLoL() {
         Line[] lol = new Line[21];
 
-        // why I love macros/regexps!
         lol[0] = Line.makeSignedLine(0, 25, 1);
         lol[2] = Line.makeSignedLine(2, 26, 1);
         lol[3] = Line.makeSignedLine(3, 27, 1);

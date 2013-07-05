@@ -5,6 +5,7 @@ package gipfj;
 // still are minimized, and we do not have interference
 // or synchonization issues.
 
+@SuppressWarnings("unused")
 public class GameCalc {
 
     private static Line[] buff = new Line[21];
@@ -64,38 +65,135 @@ public class GameCalc {
     }
 
     /**
-     * The null-return is a way to avoid allocating memory - most of the time,
-     * there are no lines, and a (12-16 byte allocation * 2 * nodes) is
-     * overkill.
+     * Helper method - the compiler will inline this.
+     * 
+     * @param data
+     * @return
+     */
+    private static int getArmLength(byte[] data, int[] arm, byte player) {
+        int k = 0;
+        int length = arm.length;
+        while (k < length && data[arm[k]] == player) {
+            k++;
+        }
+        return k;
+    }
+
+    private static int CENTER = 0;
+    private static int[] CENTER_ARM_1 = { 1, 7, 19 };
+    private static int[] CENTER_ARM_2 = { 2, 9, 22 };
+    private static int[] CENTER_ARM_3 = { 3, 11, 25 };
+    private static int[] CENTER_ARM_4 = { 4, 13, 28 };
+    private static int[] CENTER_ARM_5 = { 5, 15, 31 };
+    private static int[] CENTER_ARM_6 = { 6, 17, 34 };
+
+    private static int[] RING_A = { 1, 2, 3, 4, 5, 6 };
+    private static int[][] RING_A_PLUS = { { 18, 25 }, { 8, 20 }, { 10, 23 },
+            { 12, 26 }, { 14, 29 }, { 16, 32 } };
+    // note: test minus first.. ? or last?...
+    private static int[][] RING_A_MINUS = { { 2, 10, 24 }, { 3, 12, 27 },
+            { 4, 14, 30 }, { 5, 16, 33 }, { 6, 18, 36 }, { 1, 8, 21 } };
+
+    private static int[] RING_B = { 8, 10, 12, 14, 16, 18 };
+    private static int[][] RING_B_PLUS = { { 7, 36 }, { 9, 21 }, { 11, 24 },
+            { 13, 27 }, { 15, 30 }, { 17, 33 } };
+    private static int[][] RING_B_MINUS = { { 9, 23 }, { 11, 26 }, { 13, 29 },
+            { 15, 32 }, { 17, 35 }, { 7, 20 } };
+
+    private static int[][] RING_C_EXT = { { 22, 21, 20, 19 },
+            { 25, 24, 23, 22 }, { 28, 27, 26, 25 }, { 31, 30, 29, 28 },
+            { 34, 33, 32, 31 }, { 19, 36, 35, 34 } };
+
+    // yuck - see Const.listOfLines. And code is not even worth it.
+    private static int CENTER_MOD_1 = 4;
+    private static int CENTER_MOD_2 = 18;
+    private static int CENTER_MOD_3 = 11;
+
+    // the discrepancy is due to bad ordering in Const.listOfLines
+    private static int[] RING_A_REGISTRY = { 10, 3, 19, 12, 5, 17 };
+    private static int[] RING_B_REGISTRY = { 9, 2, 20, 13, 6, 16 };
+    private static int[] RING_C_REGISTRY = { 8, 0, 1, 14, 7, 15 };
+
+    /**
+     * Null return is to save allocation in the default state;
      * 
      * @param buf
-     * 
      * @param b
      * @param player
      * @return
      */
     private static int[] getFilteredBoardLines(ThreadBuffer buf, Board b,
             int player) {
+        byte pb = (byte) player;
+        byte[] data = b.data;
         int m = 0;
-        for (int num = 0; num < 21; num++) {
-            int[] line = Const.listOfLinePoints[num];
-            int sign = 0;
-            int count = 1;
-            int len = line.length;
-            for (int kk = 0; kk < len; kk++) {
-                int v = b.data[line[kk]];
-                if (v == 0 || (v * sign <= 0)) {
-                    count = 1;
-                    sign = v;
-                } else {
-                    count++;
-                }
+        int[] lbuf = buf.linebuf;
 
-                if (count == 4 && (sign * player) > 0) {
-                    buf.linebuf[m] = num;
-                    m++;
-                    break;
+        // plan of attack
+        //
+        // Look at key points - if they are not of the player, then
+        // there can be no line through them.. If yes, check the neighbors...
+        //
+        //
+
+        //
+        // Pick a point- follow an arm, count how far it goes;
+        // follow the opposite arm - count how far it goes;
+        // add, if it works, increment m & enjoy!
+        //
+
+        // low ends are dealt with seperately.
+        //
+
+        if (data[CENTER] == pb) {
+            int m1p = getArmLength(data, CENTER_ARM_1, pb);
+            int m1m = getArmLength(data, CENTER_ARM_4, pb);
+            if (m1p + m1m >= 3) {
+                lbuf[m] = CENTER_MOD_1;
+                m++;
+            }
+
+            int m2p = getArmLength(data, CENTER_ARM_2, pb);
+            int m2m = getArmLength(data, CENTER_ARM_5, pb);
+            if (m2p + m2m >= 3) {
+                lbuf[m] = CENTER_MOD_2;
+                m++;
+            }
+
+            int m3p = getArmLength(data, CENTER_ARM_3, pb);
+            int m3m = getArmLength(data, CENTER_ARM_6, pb);
+            if (m3p + m3m >= 3) {
+                lbuf[m] = CENTER_MOD_3;
+                m++;
+            }
+        }
+
+        for (int u = 0; u < 6; u++) {
+            if (data[RING_A[u]] == pb) {
+                int minus = getArmLength(data, RING_A_MINUS[u], pb);
+                if (minus >= 1) {
+                    int plus = getArmLength(data, RING_A_PLUS[u], pb);
+                    if (plus + minus >= 3) {
+                        lbuf[m] = RING_A_REGISTRY[u];
+                        m++;
+                    }
                 }
+            }
+
+            if (data[RING_B[u]] == pb) {
+                int minus = getArmLength(data, RING_A_MINUS[u], pb);
+                if (minus >= 1) {
+                    int plus = getArmLength(data, RING_A_PLUS[u], pb);
+                    if (plus + minus >= 3) {
+                        lbuf[m] = RING_B_REGISTRY[u];
+                        m++;
+                    }
+                }
+            }
+
+            if (getArmLength(data, RING_C_EXT[u], pb) == 4) {
+                lbuf[m] = RING_C_REGISTRY[u];
+                m++;
             }
         }
 
@@ -127,6 +225,12 @@ public class GameCalc {
         return res;
     }
 
+    //
+    // This is currently the largest time-consuming java function
+    // - about 40% cpu, probably all in getFilteredBoardLines
+    //
+    //
+    //
     public static GameState[] getLineTakingResults(ThreadBuffer buf,
             GameState g, int player) {
         // returns a sequence of stuff like this:
