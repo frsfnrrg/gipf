@@ -69,7 +69,7 @@ public class Compression {
         // flush - less tolerance
         for (int i = 0; i < LEN; i++) {
             if (A[i] > FLUSH_THR) {
-                A[i + 1] += A[i] >> FLUSH_EXP;
+                A[i + 1] += A[i] >>> FLUSH_EXP;
                 A[i] &= FLUSH_EXP;
             } else {
                 break;
@@ -136,7 +136,7 @@ public class Compression {
 
             for (int i = 0; i < LEN; i++) {
                 if (A[i] > WORKING_THR) {
-                    A[i + 1] += A[i] >> FLUSH_EXP;
+                    A[i + 1] += A[i] >>> FLUSH_EXP;
                     A[i] &= FLUSH_EXP;
                 } else {
                     break;
@@ -150,7 +150,7 @@ public class Compression {
 
             for (int i = 0; i < LEN; i++) {
                 if (A[i] > WORKING_THR) {
-                    A[i + 1] += A[i] >> FLUSH_EXP;
+                    A[i + 1] += A[i] >>> FLUSH_EXP;
                     A[i] &= FLUSH_EXP;
                 } else {
                     break;
@@ -161,7 +161,7 @@ public class Compression {
         // flush - less tolerance
         for (int i = 0; i < LEN; i++) {
             if (A[i] > FLUSH_THR) {
-                A[i + 1] += A[i] >> FLUSH_EXP;
+                A[i + 1] += A[i] >>> FLUSH_EXP;
                 A[i] &= FLUSH_EXP;
             } else {
                 break;
@@ -173,7 +173,7 @@ public class Compression {
         int j = 0;
         for (int i = 0; i < 14; i++) {
             temp[i] = (byte) A[k];
-            A[k] >>= 8;
+            A[k] >>>= 8;
 
             j++;
             if (j == DEG) {
