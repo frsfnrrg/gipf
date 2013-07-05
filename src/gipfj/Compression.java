@@ -15,7 +15,8 @@ public class Compression {
 
     public static final int BYTES = 14; // DEG * LEN should be > BYTES
 
-    public static Entry compress(ThreadBuffer buf, GameState g, long player) {
+    public static Entry compressSlower(ThreadBuffer buf, GameState g,
+            long player) {
 
         Reserves rrr = g.r;
         int[] A = buf.A;
@@ -103,8 +104,7 @@ public class Compression {
      * @param player
      * @return
      */
-    public static Entry compressMaybeFaster(ThreadBuffer buf, GameState g,
-            long player) {
+    public static Entry compress(ThreadBuffer buf, GameState g, long player) {
         // 105.76 bits; we can pack 75 more states in.
         byte[] bdata = g.b.data;
         Reserves rrr = g.r;
