@@ -519,6 +519,55 @@
       (throw (java.lang.Exception. (str "tget: Item " ~indx " not found")))
       f#)))
 
+(defn calcbox
+  [thunk]
+  (let [q (atom nil)
+        t (doto (java.lang.Thread.
+                 (fn []
+                   (println "calc started:" (.. java.lang.Thread currentThread getId))
+                   (reset! q (thunk))
+                   (println "calc ended" (.. java.lang.Thread currentThread getId))))
+            (.start))]
+    (fn []
+      (.join t)
+      @q)))
+
+(defn call
+  [thunk]
+  (thunk))
+
+(defn buffer-map
+  ;; meh, pmap is better. what if one half takes much longer??
+  ;; yeah so? it still cuts off a lot of time
+  [genf evalf targets]
+  (let [n  (+ 2 (.. Runtime getRuntime availableProcessors))
+        size (count targets)
+        lengths (inc (int (/ size n)))
+        ;; partition drops last segment otherwise
+        groups (partition lengths lengths () targets)
+        qf (fn [ind block]
+             (doall (map
+                     (fn [b] (evalf (genf ind) b))
+                     block)))
+        ;; results (pmap
+        ;;          qf 
+        ;;          (range)
+        ;;          groups)
+        ;; high worker cost
+        ;; results (map deref (map #(future
+        ;;                            (qf %1 %2))
+        ;;                         (range)
+        ;;                         groups))
+        results (doall (map call
+                            (doall
+                             (map (fn [a b]
+                                    (calcbox
+                                     (fn [] (qf a b))))
+                                  (range)
+                                  groups))))]
+    (apply concat results)))
+
+
 ;;
 ;; Idea 1
 ;;

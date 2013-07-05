@@ -9,8 +9,8 @@
   `(swap! ~atom-map #(assoc % ~key (~funk (get % ~key)))))
 
 ;; TODO shift all into settings.clj
-(let [aic (atom {1 [3 "rank-gf1" "qab-hist-transp"]
-                 -1 [3 "rank-gf1" "qab-hist-transp"]})
+(let [aic (atom {1 [2 "rank-gf1" "qab-hist-transp"]
+                 -1 [2 "rank-gf1" "qab-hist-transp"]})
       setup-player-ai!
       (fn [player]
         (let [opts (tget @aic player)]
@@ -67,21 +67,30 @@
   (let [move-ranking-func (get-move-ranking-func player)
         possible-moves (shuffle
                         (list-possible-moves-and-board gamestate player))
-        current-rank (move-ranking-func gamestate player)
+        current-rank (move-ranking-func default-buffer gamestate player)
         _ (ond :pre-rank-value (println "Starting rank:" current-rank))
-        optimal (timev (rand-best
-                        (fn [[move gamestate]]
-                          (let [rank
-                                (timev (move-ranking-func gamestate player)
-                                       (get-diagnostic-level :incremental-time))]
-                            (ond :rank-value
-                                 (println "Rank:" rank))
-                            (ond :screen-display
-                                 (direct-visualize-ai-ranking (second move) (- rank current-rank)))
-                            rank))
-                        nil -100000 possible-moves
-                        (get-diagnostic-level :equal-moves))
-                       (get-diagnostic-level :total-time))
+
+        ranked (timev (buffer-map
+                       #(make-thread-buffer %)
+                       (fn [buffer [move gamestate]]
+                         (let [rank (timev
+                                     (move-ranking-func buffer gamestate player)
+                                     (get-diagnostic-level :incremental-time))]
+                           (ond :rank-value
+                                (println "Rank:" rank))
+                           
+                           (ond :screen-display
+                                (direct-visualize-ai-ranking
+                                 (second move) (- rank current-rank)))
+
+                           [move gamestate rank]))
+                       possible-moves)
+                      (get-diagnostic-level :total-time))
+        optimal (rand-best
+                 third
+                 nil negative-infinity ranked
+                 false)
+        
         [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
 
     (ond :evaluation-count
@@ -153,7 +162,7 @@
             (println "Moves available:" (count res)))
        (empty? res)))
   ([gamestate player]
-     (not (.hasNext (unordered-move-generator gamestate player)))))
+     (not (.hasNext (unordered-move-generator default-buffer gamestate player)))))
 
 (defn next-move
   [gamestate player]

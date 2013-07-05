@@ -333,8 +333,8 @@
                    [(:setup lead-heuristic)
                     (fn [] (apply (:pre search) sfargs))
                     (fn [] (apply (:post search) sfargs))
-                    (fn [state player]
-                      (apply (:eval search) state player
+                    (fn [buf state player]
+                      (apply (:eval search) buf state player
                              (:eval lead-heuristic) sfargs))])))
   (defn init-move-ranking-func!
     [player]
