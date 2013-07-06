@@ -17,7 +17,7 @@ package gipfj;
 public class Compression {
     // criterium benchmark (pure server VM):
     // Evaluation count : 481888080 in 60 samples of 8031468 calls.
-    public static Entry compressMeMaybe(ThreadBuffer buf, GameState g,
+    public static Entry compress(ThreadBuffer buf, GameState g,
             long player) {
 
         Reserves rrr = g.r;

@@ -627,7 +627,7 @@
   (cond
       (some #(.equals "--bench" %) args)
       (let [gs (new-gamestate :advanced)]
-        (with-progress-reporting (bench (Compression/compressMeMaybe default-buffer gs 1) :verbose)))
+        (with-progress-reporting (bench (Compression/compress default-buffer gs 1) :verbose)))
       (some #(.equals "--sim" %) args)
       (runSimulation :normal :mct)
       :else
