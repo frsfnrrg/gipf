@@ -59,49 +59,50 @@
   (ond :move-newlines
        (println))
 
-  (init-move-ranking-func! player)
-  (ond :pre-calc-message
-       (println "Beginning move"))
+  (let [[setup-search! cleanup-search! move-ranking-func] (get-search player)]
+    (setup-search!)
+    (ond :pre-calc-message
+         (println "Beginning move"))
 
-  (clear-counter ranks-count) 
-  (let [move-ranking-func (get-move-ranking-func player)
-        possible-moves (shuffle
-                        (list-possible-moves-and-board gamestate player))
-        current-rank (move-ranking-func default-buffer gamestate player)
-        _ (ond :pre-rank-value (println "Starting rank:" current-rank))
+    (clear-counter ranks-count) 
+    (let [possible-moves (shuffle
+                          (list-possible-moves-and-board gamestate player))
+          current-rank (move-ranking-func default-buffer gamestate player)
+          _ (ond :pre-rank-value (println "Starting rank:" current-rank))
 
-        ranked (timev (buffer-map
-                       #(make-thread-buffer %)
-                       (fn [buffer [move gamestate]]
-                         (let [rank (timev
-                                     (move-ranking-func buffer gamestate player)
-                                     (get-diagnostic-level :incremental-time))]
-                           (ond :rank-value
-                                (println "Rank:" rank))
-                           
-                           (ond :screen-display
-                                (direct-visualize-ai-ranking
-                                 (second move) (- rank current-rank)))
+          ranked (timev (buffer-map
+                         #(make-thread-buffer %)
+                         (fn [buffer [move gamestate]]
+                           (let [rank (timev
+                                       (move-ranking-func buffer gamestate player)
+                                       (get-diagnostic-level :incremental-time))]
+                             (ond :rank-value
+                                  (println "Rank:" rank))
+                             
+                             (ond :screen-display
+                                  (println (second move) (- rank current-rank))
+                                  (direct-visualize-ai-ranking
+                                   (second move) (- rank current-rank)))
 
-                           [move gamestate rank]))
-                       possible-moves)
-                      (get-diagnostic-level :total-time))
-        optimal (rand-best
-                 third
-                 nil negative-infinity ranked
-                 false)
-        
-        [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
+                             [move gamestate rank]))
+                         possible-moves)
+                        (get-diagnostic-level :total-time))
+          optimal (rand-best
+                   third
+                   nil negative-infinity ranked
+                   false)
+          
+          [c1 m c2] (first (or optimal (rand-nth possible-moves)))]
 
-    (ond :evaluation-count
-         (println "Nodes evaluated:" (read-counter ranks-count)))
+      (ond :evaluation-count
+           (println "Nodes evaluated:" (read-counter ranks-count)))
 
-    (teardown-move-ranking-func! player)
+      (cleanup-search!)
 
-    ;; we use gipfs-on-board for compat with simple mode    
-    (if (= 0 (get-gipfs-on-board (game-state-reserves gamestate) player))
+      ;; we use gipfs-on-board for compat with simple mode    
+      (if (= 0 (get-gipfs-on-board (game-state-reserves gamestate) player))
         [c1 (sign-line m 2) c2]
-        [c1 (sign-line m (abs (line-sig m))) c2])))
+        [c1 (sign-line m (abs (line-sig m))) c2]))))
 
 
 

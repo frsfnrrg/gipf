@@ -174,18 +174,20 @@
     (.fill ^java.awt.Graphics2D game-graphics (circle-at loc 25))))
 
 
-(def expected-max-rank*)
+(declare expected-max-rank*)
 (def ^:const rank-vis-cap 5)
 (defn direct-visualize-ai-ranking
   [line strength]
   (try
     (on-swing-thread 
       ;; expected max rank comes from game.clj.
-      ;; I think we need more namespacing..
-      (let [magic-factor (/ 15 expected-max-rank*)
-            ^java.awt.Graphics2D g game-graphics
-            [e1x e1y] (loc-to-screenpx (line-start line))
-            [e2x e2y] (loc-to-screenpx (if (equals (abs (line-sig line)) 2)
+     ;; I think we need more namespacing..
+     (when (nil? expected-max-rank*)
+       (def expected-max-rank* 100))
+     (let [magic-factor (/ 15 expected-max-rank*)
+           ^java.awt.Graphics2D g game-graphics
+           [e1x e1y] (loc-to-screenpx (line-start line))
+           [e2x e2y] (loc-to-screenpx (if (equals (abs (line-sig line)) 2)
                                          (pt- (line-start line) (line-delta line))
                                          (pt+ (line-start line) (line-delta line))))]
 

@@ -308,11 +308,9 @@
     flines-board))
 
 (defn list-possible-boards
-  "TODO: remove listPossibleBoards by putting all into MoveSignedIGC??"
   [gamestate player]
   (vec (lazy-next-gamestates gamestate player)))
 
-;; should make this easily changeable... (per menu?; with registering stuf)
 (def expected-max-rank* nil)
 
 (defrecord Heuristic [setup eval])
@@ -330,27 +328,17 @@
               "Wrong types passed to setup-move-ranking-func!")))
     (swap! mrfs
            #(assoc % player
-                   [(:setup lead-heuristic)
-                    (fn [] (apply (:pre search) sfargs))
-                    (fn [] (apply (:post search) sfargs))
+                   [(fn []
+                      (:setup lead-heuristic)
+                      (apply (:pre search) sfargs))
+                    (fn []
+                      (apply (:post search) sfargs))
                     (fn [buf state player]
                       (apply (:eval search) buf state player
                              (:eval lead-heuristic) sfargs))])))
-  (defn init-move-ranking-func!
+  (defn get-search
     [player]
-    (let [rr (get @mrfs player)
-          [setuphf setupsf endf lmda] rr]
-      ;;(println rr)
-      (setuphf)
-      (setupsf)))
-  (defn get-move-ranking-func
-    [player]
-    (fourth (get @mrfs player)))
-  (defn teardown-move-ranking-func!
-    [player]
-    (let [rr (get @mrfs player)
-          [setuphf setupsf endf lmda] rr]
-      (endf))))
+    (tget @mrfs player)))
 
 
 (def ranks-count (Counter/cmake))
