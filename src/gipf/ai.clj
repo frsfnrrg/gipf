@@ -209,7 +209,7 @@
                                r))))))]
      (when (<= beta alpha)
        (println "What's up with the window??"))
-     (rec gamestate (negate player) 0 alpha beta false))))
+     (rec gamestate (negate player) depth alpha beta false))))
 
 (def-search aspiration
   "We can pass in the guess-func rather nicely.

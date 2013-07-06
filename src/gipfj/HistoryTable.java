@@ -213,7 +213,9 @@ public class HistoryTable {
     }
 
     public static void hanalyze(HistoryTable t) {
-        t.analyze();
+        if (t != null) {
+            t.analyze();
+        }
     }
 
     public static Line moveToLine(long move) {
