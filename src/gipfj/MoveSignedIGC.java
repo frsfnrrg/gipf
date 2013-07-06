@@ -71,18 +71,6 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         boostG3();
     }
 
-    private void boostG3() {
-        MoveSignedGS f = getNextMoveResult();
-        if (f == null) {
-            ready = false;
-        } else {
-            ready = true;
-            g3_pos = 0;
-            g3 = GameCalc.getLineTakingResults(buf, f, player);
-            g3_end = g3.length;
-        }
-    }
-
     @Override
     public MoveSignedGS next() {
 
@@ -102,7 +90,7 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return ready;
     }
 
-    private MoveSignedGS getNextMoveResult() {
+    private void boostG3() {
         // works off the g1 buffer; writes two at a time into g2
 
         int[] pd = null;
@@ -139,7 +127,8 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         }
 
         if (plo == 42) {
-            return null;
+            ready = false;
+            return;
         }
 
         // we want to ensure resource sharing among reserves
@@ -176,7 +165,11 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
                     order[plo]);
         }
         plo++;
-        return result;
+
+        ready = true;
+        g3_pos = 0;
+        g3 = GameCalc.getLineTakingResults(buf, result, player);
+        g3_end = g3.length;
     }
 
     /**

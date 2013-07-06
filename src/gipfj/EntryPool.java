@@ -51,6 +51,8 @@ public class EntryPool {
     /**
      * Warning: rank and depth fields may retain old data;
      * 
+     * NOTE: This is a bottleneck
+     * 
      * @param data
      * @param hc
      * @return

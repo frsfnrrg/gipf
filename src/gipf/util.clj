@@ -1,4 +1,11 @@
-(ns gipf.core) 
+(ns gipf.core
+  (:import (gipfj MathUtil))) 
+
+
+
+(definline get-thread-time []
+  `(MathUtil/getThreadTime))
+
 
 (defn clickableButton
   "Generates a button, that, when clicked, displays a popup with a message"
@@ -418,7 +425,7 @@
 
 (defmacro past-time?
   [time]
-  `(let [newtime# (System/nanoTime)]
+  `(let [newtime# (get-thread-time)]
      (greater newtime# ~time)))
 
 (defn nested-map

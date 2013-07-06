@@ -1,5 +1,8 @@
 package gipfj;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
+
 // designed for clojure consumption; please use only longs
 public class MathUtil {
     private MathUtil() {
@@ -133,5 +136,16 @@ public class MathUtil {
 
     public static boolean loddp(long a) {
         return 1 == (a % 2);
+    }
+
+    private static ThreadMXBean b = ManagementFactory.getThreadMXBean();
+
+    public static long getThreadTime() {
+        if (b.isThreadCpuTimeEnabled()) {
+            return b.getCurrentThreadCpuTime();
+        } else {
+            return System.nanoTime();
+        }
+
     }
 }

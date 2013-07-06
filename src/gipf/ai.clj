@@ -351,8 +351,8 @@
   {0 [2 1 50 neginf posinf]
    1 [2 1 100 neginf posinf]
    2 [4 2 500 neginf posinf]
-   3 [6 2 10000 neginf posinf]
-   4 [6 2 20000 neginf posinf]}
+   3 [8 2 10000 neginf posinf]
+   4 [12 2 20000 neginf posinf]}
   [hist transp]
   (:pre [& args]
         ;; could we do a fully static, with overwrites? saves
@@ -364,7 +364,7 @@
          (dtab-clear! transp))
   (:eval
    [buffer gamestate good-player rank-func depth istep time alpha beta]
-   (let [endtime (add (System/nanoTime) (* 1e6 time))]
+   (let [endtime (add (get-thread-time) (* 1e6 time))]
      (when (greater-equals alpha beta)
        (println "Warning: alpha and beta have incorrect ordering."))
      (loop [nodetree (make-idr-node gamestate (negate good-player) 0)
