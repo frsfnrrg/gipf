@@ -538,7 +538,7 @@
 
 (defn buffer-map
   [genf evalf targets]
-  (let [n  (+ 2 (.. Runtime getRuntime availableProcessors))
+  (let [n  (+ 1 (.. Runtime getRuntime availableProcessors))
         size (count targets)
         lengths (inc (int (/ size n)))
         groups (partition lengths lengths () targets)
