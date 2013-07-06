@@ -150,8 +150,6 @@ public class DTable {
     }
 
     private Long geta(Entry in) {
-        // read_lock.lock();
-        // try {
         int index = in.hashCode() >>> shift_cut;
         Entry f = store[index];
         if (f == null) {
@@ -190,7 +188,8 @@ public class DTable {
     }
 
     /**
-     * WARNING: synchronization of this has NOT been tested
+     * This should be threadsafe - changing a reference, as done in add and
+     * change, is atomic.
      * 
      * @param buf
      * @param n
@@ -208,13 +207,19 @@ public class DTable {
         }
 
         if (ff.equals(n)) {
+            n.second = ff.second;
+            n.rank = rank;
+            n.depth = depth;
+            store[index] = n;
             count_cfirst++;
-            ff.rank = rank;
-            ff.depth = depth;
+            buf.EPOOL.returnEntry(ff);
         } else if (ff.second != null && ff.second.equals(n)) {
+            buf.EPOOL.returnEntry(ff.second);
             count_csecond++;
-            ff.second.rank = rank;
-            ff.second.depth = depth;
+            n.second = null;
+            n.rank = rank;
+            n.depth = depth;
+            ff.second = n;
         } else {
             count_cneither++;
             add(buf, n, depth, rank);

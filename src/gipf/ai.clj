@@ -386,7 +386,10 @@
      (ab-h-m buffer gamestate owner max? alpha beta hist ltdepth [ngs]
              (let [key (compress-sgs buffer ngs (negate owner))
                    llrk (dtab-get transp key ltdepth)]
-               (if (nil? llrk)
+               (if llrk 
+                 (do ;; only destroy on success
+                   (destroy-key! buffer key)
+                   llrk)
                  (let [ww (qht-sub ngs (negate owner)
                                    (if (quiet-func gamestate ngs)
                                      (dec-1 sdepth)
@@ -396,10 +399,7 @@
                                    beta
                                    (not max?))]
                    (dtab-add! transp buffer key ltdepth ww)
-                   ww)
-                 (do
-                   (destroy-key! buffer key)
-                   llrk)))))))
+                   ww)))))))
 
 ;; just mix quiescient, hist, transp. simple. right??>
 (def-search qab-hist-transp
