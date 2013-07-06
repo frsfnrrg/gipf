@@ -1,7 +1,8 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
              IDRNode GameCalc GeneralizedPointWeighting
-             Ranking Counter Entry))
+             Ranking Counter Entry Compression))
+  (:require [criterium.core :refer :all])
   (:gen-class))
 
 (set! *warn-on-reflection* true)
@@ -623,8 +624,13 @@
   "See \"GIPF: I play the game\" for details."
   [& args]
   (prn "recieved args:" args)
-  (if (some #(.equals "--sim" %) args)
+  (cond
+      (some #(.equals "--bench" %) args)
+      (let [gs (new-gamestate :advanced)]
+        (with-progress-reporting (bench (Compression/compressMeMaybe default-buffer gs 1) :verbose)))
+      (some #(.equals "--sim" %) args)
       (runSimulation :normal :mct)
+      :else
       (runGUI))
   "MAIN")
 

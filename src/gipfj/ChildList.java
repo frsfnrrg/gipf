@@ -30,8 +30,7 @@ public class ChildList {
     }
 
     /**
-     * Yes, I recognize that there is massive copying in this code. It works -
-     * refactor if you ever change.
+     * Currently the largest bottleneck
      * 
      * @param n
      * @param rank
@@ -45,6 +44,7 @@ public class ChildList {
             return;
         }
 
+        Node bef, aft;
         if (rank > mid.rank) {
             if (top == null) {
                 top = thingy;
@@ -59,72 +59,38 @@ public class ChildList {
                 top = thingy;
                 return;
             }
-            // scan down from top
-            Node b = top.prev;
-            while (b.rank >= rank) {
-                b = b.prev;
+            bef = top.prev;
+            while (bef.rank > rank) {
+                bef = bef.prev;
             }
-            Node a = b.next;
-
-            thingy.next = a;
-            a.prev = thingy;
-
-            thingy.prev = b;
-            b.next = thingy;
-
-        } else if (rank == mid.rank) {
-            if (bottom == null) {
-                thingy.next = mid;
-                mid.prev = thingy;
-                bottom = thingy;
-                return;
-            }
-
-            if (bottom.rank == rank) {
-                bottom.prev = thingy;
-                thingy.next = bottom;
-
-                bottom = thingy;
-                return;
-            }
-
-            Node b = mid.prev;
-
-            b.next = thingy;
-            thingy.prev = b;
-
+            aft = bef.next;
+            // rank <= mid.rank
+        } else if (bottom == null) {
             thingy.next = mid;
             mid.prev = thingy;
-
+            bottom = thingy;
+            return;
+        } else if (bottom.rank == rank) {
+            bottom.prev = thingy;
+            thingy.next = bottom;
+            bottom = thingy;
+            return;
+        } else if (rank == mid.rank) {
+            bef = mid.prev;
+            aft = mid;
         } else { // rank < mid.rank
-            if (bottom == null) {
-                thingy.next = mid;
-                mid.prev = thingy;
-                bottom = thingy;
-                return;
+            aft = bottom.next;
+            while (aft.rank < rank) {
+                aft = aft.next;
             }
 
-            if (bottom.rank == rank) {
-                thingy.next = bottom;
-                bottom.prev = thingy;
-                bottom = thingy;
-                return;
-            }
-
-            // scan up from bottom
-            Node a = bottom.next;
-            while (a.rank <= rank) {
-                a = a.next;
-            }
-
-            Node b = a.prev;
-
-            thingy.prev = b;
-            b.next = thingy;
-
-            thingy.next = a;
-            a.prev = thingy;
+            bef = aft.prev;
         }
+
+        thingy.prev = bef;
+        bef.next = thingy;
+        thingy.next = aft;
+        aft.prev = thingy;
     }
 
     private static Iterator<Object> emptyIterator = new Iterator<Object>() {
@@ -152,7 +118,7 @@ public class ChildList {
     public static Iterator<Object> clpack(ChildList t, boolean downward) {
         // t.mid _must_ exist (length >= 1)
         final int length = t.length;
-        // TODO: maybe, recycle these
+        // TODO: maybe, recycle these - how? by length?
         final Object[] foo = new Object[length];
         Node q;
         if (length == 0) {

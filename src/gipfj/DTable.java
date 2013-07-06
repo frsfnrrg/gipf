@@ -150,7 +150,7 @@ public class DTable {
     }
 
     private Long geta(Entry in) {
-        int index = in.hashCode() >>> shift_cut;
+        int index = in.hc >>> shift_cut;
         Entry f = store[index];
         if (f == null) {
             count_null++;
@@ -168,7 +168,7 @@ public class DTable {
     }
 
     private Long getd(Entry n, byte depth) {
-        int index = n.hashCode() >>> shift_cut;
+        int index = n.hc >>> shift_cut;
 
         Entry f = store[index];
         if (f == null) {
@@ -197,7 +197,7 @@ public class DTable {
      * @param rank
      */
     private void change(ThreadBuffer buf, Entry n, byte depth, int rank) {
-        int index = n.hashCode() >>> shift_cut;
+        int index = n.hc >>> shift_cut;
 
         Entry ff = store[index];
         if (ff == null) {

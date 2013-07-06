@@ -18,15 +18,6 @@ public class ThreadBuffer {
      * List of found lines
      */
     public final int[] linebuf;
-    /**
-     * Compression - Temporary
-     */
-    public final byte[] data;
-    /**
-     * Compression - Large numbers
-     */
-    public final int[] A;
-    public final int[] r;
 
     public final int id;
 
@@ -36,9 +27,6 @@ public class ThreadBuffer {
         EPOOL = new EntryPool();
         tried = new int[21];
         linebuf = new int[21];
-        data = new byte[Compression.BYTES];
-        A = new int[Compression.LEN];
-        r = new int[6];
     }
 
     public void analyze() {

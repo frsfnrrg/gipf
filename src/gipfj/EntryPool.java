@@ -55,14 +55,14 @@ public class EntryPool {
      * @param hc
      * @return
      */
-    public Entry getEntry(byte[] data, int hc) {
+    public Entry getEntry(long a, int b, int hc) {
         if (head == null) {
-            return new Entry(data, hc);
+            return new Entry(a, b, hc);
         }
         Entry e = head;
         head = e.second;
         size--;
-        e.reset(data, hc);
+        e.reset(a, b, hc);
         return e;
     }
 }
