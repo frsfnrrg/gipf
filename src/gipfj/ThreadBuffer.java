@@ -8,7 +8,6 @@ package gipfj;
  */
 public class ThreadBuffer {
     public final OrderingPool OPOOL;
-    public final EntryPool EPOOL;
 
     /**
      * Which lines have been attempted??
@@ -24,7 +23,6 @@ public class ThreadBuffer {
     public ThreadBuffer(int id) {
         this.id = id;
         OPOOL = new OrderingPool();
-        EPOOL = new EntryPool();
         tried = new int[21];
         linebuf = new int[21];
     }
@@ -35,8 +33,6 @@ public class ThreadBuffer {
                 .format("XX Ordering pool: disposed: %d; recieved %d; delta %d; size: %d\n",
                         OPOOL.disposed, OPOOL.delivered, OPOOL.disposed
                                 - OrderingPool.OPOOL.delivered, OPOOL.maxind);
-        System.out.format("XX Entrypool size: %d; returned: %d; nsize: %d\n",
-                EPOOL.size, EPOOL.returned, EPOOL.getSize());
     }
 
     // Solely for use outside of the ai search proper
@@ -44,9 +40,5 @@ public class ThreadBuffer {
 
     public static ThreadBuffer create(Long id) {
         return new ThreadBuffer((int) (long) id);
-    }
-
-    public static void recycleEntry(ThreadBuffer b, Entry e) {
-        b.EPOOL.returnEntry(e);
     }
 }

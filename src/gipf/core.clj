@@ -1,7 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
              IDRNode GameCalc GeneralizedPointWeighting
-             Ranking Counter Entry Compression))
+             Ranking Counter Compression STable Ident))
   (:require [criterium.core :refer :all])
   (:gen-class))
 
@@ -626,8 +626,17 @@
   (prn "recieved args:" args)
   (cond
       (some #(.equals "--bench" %) args)
-      (let [gs (new-gamestate :advanced)]
-        (with-progress-reporting (bench (Compression/compress default-buffer gs 1) :verbose)))
+      (let [stable (STable. 10)
+            maximum Integer/MAX_VALUE
+            rand-entry (fn []
+                         (Ident. (rand-int maximum) (rand-int maximum) (rand-int maximum))) 
+            _ (doseq [i (range 4000000)]
+                (STable/sadd stable (rand-entry) 1 1))
+            entry nil]
+        (with-progress-reporting (bench (STable/sget stable
+                                          (rand-entry)
+                                          1)
+                                   :verbose)))
       (some #(.equals "--sim" %) args)
       (runSimulation :normal :mct)
       :else

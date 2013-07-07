@@ -2,8 +2,7 @@
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc GeneralizedPointWeighting
                   Ranking MoveSignedGS HistoryTable MoveSignedIGC
-                  Counter Compression DTable ChildList Entry EntryPool
-                  ThreadBuffer)))
+                  Counter Compression Ident ChildList STable ThreadBuffer)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b c1 c2] `(GameState/makeGameState ~a ~b ~c1 ~c2))
@@ -71,19 +70,17 @@
        (HistoryTable/hclear ~table)))
 
 (definline dtab-get [table key depth]
-  `(DTable/dgetd ~table ~key ~depth))
-(definline dtab-geta [table key]
-  `(DTable/dgeta ~table ~key))
+  `(STable/sget ~table ~key ~depth))
 (definline make-dtab [sz]
-  `(DTable/dmake ~sz))
-(definline dtab-add! [^DTable table buffer key level rank]
-  `(DTable/dadd ~table ~buffer ~key ~level ~rank))
-(definline dtab-change! [^DTable table buffer key level rank]
-  `(DTable/dchange ~table ~buffer ~key ~level ~rank))
+  `(STable. ~sz))
+(definline dtab-add! [table key level rank]
+  `(STable/sadd ~table ~key ~level ~rank))
+(definline dtab-change! [table  key level rank]
+  `(STable/supdate ~table ~key ~level ~rank))
 (definline dtab-clear! [table]
   `(do (ond :transp-analysis
-            (DTable/danalyze ~table))
-       (DTable/dempty ~table)))
+            (STable/sanalyze ~table))
+       (STable/sempty ~table)))
 
 (definline signed-gs-move [sgs]
   `(MoveSignedGS/getMove ~sgs))
@@ -95,8 +92,6 @@
 
 (definline compress-sgs  [buffer gamestate player]
   `(Compression/compress ~buffer ~gamestate ~player))
-(definline destroy-key! [buffer key]
-  `(ThreadBuffer/recycleEntry ~buffer ~key))
 (definline dispose-move-generator! [gen]
   `(MoveSignedIGC/dispose ~gen))
 

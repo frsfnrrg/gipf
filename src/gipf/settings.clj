@@ -3,7 +3,7 @@
 (let [dia (atom {:move-newlines true
                  :move-numbers false
                  :hist-analysis true
-                 :transp-analysis false
+                 :transp-analysis true
                  :match-result false
                  :total-time true
                  :incremental-time true

@@ -17,8 +17,7 @@ package gipfj;
 public class Compression {
     // criterium benchmark (pure server VM):
     // Evaluation count : 481888080 in 60 samples of 8031468 calls.
-    public static Entry compress(ThreadBuffer buf, GameState g,
-            long player) {
+    public static Ident compress(ThreadBuffer buf, GameState g, long player) {
 
         Reserves rrr = g.r;
 
@@ -51,12 +50,9 @@ public class Compression {
             y += bdata[i] + 2;
         }
 
-        long a = ((long) x) * ((long) y) * (bdata[36] + 2);
+        long a = ((long) x) * ((long) y) * 5 + bdata[36] + 2;
 
         // end phase
-
-        Entry e = buf.EPOOL.getEntry(a, b, g.b.hashCode ^ rrr.hashCode
-                ^ (int) player);
-        return e;
+        return new Ident(a, b, g.b.hashCode ^ rrr.hashCode ^ (int) player);
     }
 }

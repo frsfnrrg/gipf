@@ -163,13 +163,13 @@
                (ab-n-m buffer gamestate owner max? alpha beta [ngs]
                         (if (less-equals level 3)
                           (let [key (compress-sgs buffer ngs owner)
-                                lrnk (dtab-geta mtable key)]
+                                lrnk (dtab-get mtable key (negate level))]
                             (if lrnk lrnk
                                 (let [r (rec ngs (negate owner) (inc-1 level)
                                              alpha
                                              beta
                                              (not max?))]
-                                  (dtab-add! mtable buffer key (negate level) r)
+                                  (dtab-add! mtable key (negate level) r)
                                   r)))
                           (rec ngs (negate owner) (inc-1 level)
                                alpha
@@ -201,11 +201,11 @@
                (ab-h-m buffer gamestate owner max? alpha beta
                        hist depth [ngs]
                        (let [key (compress-sgs buffer ngs owner)
-                             lrnk (dtab-geta mtable key)]
+                             lrnk (dtab-get mtable key depth)]
                          (if lrnk lrnk
                              (let [r (rec ngs (negate owner) (dec-1 depth)
                                           alpha beta (not max?))]
-                               (dtab-add! mtable buffer key depth r)
+                               (dtab-add! mtable key depth r)
                                r))))))]
      (when (<= beta alpha)
        (println "What's up with the window??"))
@@ -318,7 +318,7 @@
                                              (dec-1 depth) (dec-1 trange) (not max?) alpha beta)
                                         (make-idr-node ngs antiowner nork))))
                              rank (idr-node-rank next)]
-                         (dtab-add! transp buffer key depth rank)
+                         (dtab-add! transp key depth rank)
                          (clist-add nchildren next rank)
                          rank))
                (ab-h-m-s ochildren node-move do-nothing max? alpha beta hist depth [onodule]
@@ -331,7 +331,7 @@
                                                 nkey (compress-sgs buffer
                                                       (idr-node-gamestate nog)
                                                       (idr-node-player nog))]
-                                            (dtab-change! transp buffer nkey
+                                            (dtab-change! transp nkey
                                                           depth (idr-node-rank nog))
                                             nog)                                       
                                           ;; note that the children are
@@ -387,9 +387,7 @@
              (let [key (compress-sgs buffer ngs (negate owner))
                    llrk (dtab-get transp key ltdepth)]
                (if llrk 
-                 (do ;; only destroy on success
-                   (destroy-key! buffer key)
-                   llrk)
+                 llrk
                  (let [ww (qht-sub ngs (negate owner)
                                    (if (quiet-func gamestate ngs)
                                      (dec-1 sdepth)
@@ -398,7 +396,7 @@
                                    alpha
                                    beta
                                    (not max?))]
-                   (dtab-add! transp buffer key ltdepth ww)
+                   (dtab-add! transp key ltdepth ww)
                    ww)))))))
 
 ;; just mix quiescient, hist, transp. simple. right??>
