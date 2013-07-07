@@ -102,31 +102,19 @@ public class STable {
                 paired);
     }
 
-    public void add(Ident in, byte depth, int rank) {
-        int index = in.hc >>> shift_cut;
-        store[index].add(in, depth, rank);
-    }
-
-    public Long get(Ident in, byte depth) {
-        int index = in.hc >>> shift_cut;
-        return store[index].get(in, depth);
-    }
-
-    public void update(Ident in, byte depth, int rank) {
-        int index = in.hc >>> shift_cut;
-        store[index].update(in, depth, rank);
-    }
-
     public static void sadd(STable s, Ident in, long depth, long rank) {
-        s.add(in, (byte) depth, (int) rank);
+        int index = in.hc >>> s.shift_cut;
+        s.store[index].add(in, (byte) depth, (int) rank);
     }
 
     public static Long sget(STable s, Ident in, long depth) {
-        return s.get(in, (byte) depth);
+        int index = in.hc >>> s.shift_cut;
+        return s.store[index].get(in, (byte) depth);
     }
 
     public static void supdate(STable s, Ident in, long depth, long rank) {
-        s.update(in, (byte) depth, (int) rank);
+        int index = in.hc >>> s.shift_cut;
+        s.store[index].update(in, (byte) depth, (int) rank);
     }
 
     public static void sanalyze(STable s) {
@@ -161,8 +149,13 @@ public class STable {
         private void lock() {
             // - maybe, if we ever get serious collisions (not likely), we can
             // make this abort instead of spinning.
-            if (!unsafe.compareAndSwapInt(this, valueOffset, 0, 1)) {
+            if (unsafe.compareAndSwapInt(this, valueOffset, 0, 1)) {
+                return;
+            } else {
                 collisions++;
+                while (!unsafe.compareAndSwapInt(this, valueOffset, 0, 1)) {
+                    ;
+                }
             }
         }
 

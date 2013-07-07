@@ -73,15 +73,12 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
 
     @Override
     public MoveSignedGS next() {
-
         MoveSignedGS result = (MoveSignedGS) g3[g3_pos];
-
         g3_pos++;
 
         if (g3_pos == g3_end) {
             boostG3();
         }
-
         return result;
     }
 
