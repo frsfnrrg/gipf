@@ -206,6 +206,23 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return new MoveSignedIGC(b, g, player, ordering);
     }
 
+    public static MoveSignedIGC makeRandomMoveGenerator(ThreadBuffer b,
+            GameState g, long player) {
+        // note: need a very fast shuffle
+        for (int i = 0; i < Const.MOVES; i++) {
+            b.ordbuf[i] = i;
+        }
+
+        int[] ordering = new int[Const.MOVES];
+        for (int i = 0, cap = Const.MOVES; i < Const.MOVES; i++, cap--) {
+            int ind = b.omg.nextInt(cap);
+            ordering[i] = b.ordbuf[ind];
+            b.ordbuf[cap - 1] = b.ordbuf[ind];
+        }
+
+        return new MoveSignedIGC(b, g, player, ordering);
+    }
+
     /**
      * Recycles the resources from the MSIGC; specifically, the ordering int[]
      * array. Do NOT dispose an unordered move generator - it may ruin the

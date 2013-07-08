@@ -106,6 +106,8 @@
   `(MoveSignedIGC/makeIncrementalGameCalc ~buf ~gs ~p))
 (definline move-generator [buf gs p ordering]
   `(MoveSignedIGC. ~buf ~gs ~p ~ordering))
+(definline random-move-generator [buf gs p]
+  `(MoveSignedIGC/makeRandomMoveGenerator ~buf ~gs ~p))
 
 (definline make-thread-buffer [id]
   `(ThreadBuffer/create ~id))

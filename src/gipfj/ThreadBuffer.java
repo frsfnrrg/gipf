@@ -1,5 +1,7 @@
 package gipfj;
 
+import java.util.Random;
+
 /**
  * This object is to be passed along the functions calling the thread; It holds
  * all the needed buffers to accelerate calculations, as well as its own object
@@ -18,13 +20,19 @@ public class ThreadBuffer {
      */
     public final int[] linebuf;
 
+    public final int[] ordbuf;
+
     public final int id;
+
+    public final Random omg;
 
     public ThreadBuffer(int id) {
         this.id = id;
         OPOOL = new OrderingPool();
         tried = new int[21];
         linebuf = new int[21];
+        ordbuf = new int[Const.MOVES];
+        omg = new Random(id * 67186786786L);
     }
 
     public void analyze() {

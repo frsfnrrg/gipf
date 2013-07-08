@@ -146,6 +146,5 @@ public class MathUtil {
         } else {
             return System.nanoTime();
         }
-
     }
 }

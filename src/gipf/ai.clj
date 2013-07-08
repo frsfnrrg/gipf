@@ -436,14 +436,11 @@
    [good-player]
    
    (loop [gs gs owner owner]
-     (let [mg (unordered-move-generator buffer gs owner)]
+     (let [mg (random-move-generator buffer gs owner)]
        (if (.hasNext mg)
-         (let [q (rand-nth
-                  (loop [v (list (.next mg))]
-                    (if (.hasNext mg)
-                      (recur (cons (.next mg) v))
-                      v)))]
-           (recur q (negate owner)))
+         (let [nxt (.next mg)]
+           (dispose-move-generator! mg)
+           (recur nxt (negate owner)))
          (multiply good-player owner))))))
 
 (def-search foolish-monte-carlo
