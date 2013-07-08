@@ -428,3 +428,39 @@
    2 [simple-quiet 3 6 3 neginf posinf]
    3 [simple-quiet 4 10 4 neginf posinf]
    4 [simple-quiet 5 12 4 neginf posinf]})
+
+;; inline it??
+(defn play-game
+  [buffer good-player gs owner]
+  (longify
+   [good-player]
+   
+   (loop [gs gs owner owner]
+     (let [mg (unordered-move-generator buffer gs owner)]
+       (if (.hasNext mg)
+         (let [q (rand-nth
+                  (loop [v (list (.next mg))]
+                    (if (.hasNext mg)
+                      (recur (cons (.next mg) v))
+                      v)))]
+           (recur q (negate owner)))
+         (multiply good-player owner))))))
+
+(def-search foolish-monte-carlo
+  "Magic"
+  {0 [10]
+   1 [200]
+   2 [5000]
+   3 [100000]
+   4 [2000000]
+   5 [50000000]}
+  []
+  (:eval
+   [buffer gamestate good-player _ iterations]
+   (let [anti (negate good-player)]
+     (loop [i 0 rnk 0]
+       (if (greater-equals i iterations)
+         rnk
+         (recur (inc-1 i)
+                (add rnk
+                     (play-game buffer good-player gamestate anti))))))))
