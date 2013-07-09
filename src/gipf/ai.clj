@@ -429,18 +429,15 @@
    3 [simple-quiet 4 10 4 neginf posinf]
    4 [simple-quiet 5 12 4 neginf posinf]})
 
-;; inline it??
+;; inline it?? nah... Large func vs. small func..
 (defn play-game
   [buffer good-player gs owner]
   (longify
    [good-player]
-   
    (loop [gs gs owner owner]
-     (let [mg (random-move-generator buffer gs owner)]
-       (if (.hasNext mg)
-         (let [nxt (.next mg)]
-           (dispose-move-generator! mg)
-           (recur nxt (negate owner)))
+     (let [nxt (get-random-progression buffer gs owner)]
+       (if nxt
+         (recur nxt (negate owner))
          (multiply good-player owner))))))
 
 (def-search foolish-monte-carlo
@@ -461,3 +458,44 @@
          (recur (inc-1 i)
                 (add rnk
                      (play-game buffer good-player gamestate anti))))))))
+
+(definline mcr
+  [buf good gs actor count]
+ `(loop [i# 0 rnk# 0]
+    (if (greater-equals i# ~count)
+      rnk#
+      (recur (inc-1 i#)
+             (add rnk# (play-game ~buf ~good ~gs ~actor))))))
+
+(def-search tree-monte-carlo
+  "Uses transp, hist, & plain alpha beta. Evaluation is monte-carlo style."
+  {0 [1 10 neginf posinf]
+   1 [2 50 neginf posinf]
+   2 [3 250 neginf posinf]
+   3 [4 1250 neginf posinf]
+   4 [5 6250 neginf posinf]}
+  [transp hist]
+  (:pre [& args]
+        (export transp (make-dtab 21))
+        (export hist (make-hist-table)))
+  (:post [& args]
+         (hist-clear! hist)
+         (dtab-clear! transp))
+  (:eval
+   [buffer gamestate good-player _ depth iterations alpha beta]
+   (longify
+    [good-player depth iterations alpha beta]
+    (letfn [(tmc [gamestate owner depth alpha beta max?]
+              (let [opp (negate owner)
+                    dd (dec-1 depth)]
+                (if (equals depth 0)
+                  (mcr buffer good-player gamestate opp iterations)
+                  (ab-h-m buffer gamestate owner max? alpha beta hist depth [ngs]
+                          (let [key (compress-sgs buffer ngs opp)
+                                llrk (dtab-get transp key depth)]
+                            (if llrk llrk
+                              (let [ww (tmc ngs opp dd
+                                            alpha beta (not max?))]
+                                (dtab-add! transp key depth ww)
+                                ww)))))))]
+      (tmc gamestate (negate good-player) depth alpha beta false)))))

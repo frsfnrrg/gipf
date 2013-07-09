@@ -24,15 +24,13 @@ public class ThreadBuffer {
 
     public final int id;
 
-    public final Random omg;
-
     public ThreadBuffer(int id) {
         this.id = id;
         OPOOL = new OrderingPool();
         tried = new int[21];
         linebuf = new int[21];
         ordbuf = new int[Const.MOVES];
-        omg = new Random(id * 67186786786L);
+        seed = new Random().nextInt();
     }
 
     public void analyze() {
@@ -41,6 +39,32 @@ public class ThreadBuffer {
                 .format("XX Ordering pool: disposed: %d; recieved %d; delta %d; size: %d\n",
                         OPOOL.disposed, OPOOL.delivered, OPOOL.disposed
                                 - OrderingPool.OPOOL.delivered, OPOOL.maxind);
+    }
+
+    private long seed;
+    // MODULUS_I is to be used for integer random calculation - warning - this
+    // _may_ be problematic. log2(I) <= 15.5; log2(L) <= 31.5
+    public static final int MODULUS_I = 41989;
+    public static final long MODULUS_L = 1696286587; // 41183 * 41189
+
+    /**
+     * Goals: to be fast, uniformly distributed.. TODO: distribution test
+     * (generate 10 * 9 primes at each normal max)
+     * 
+     * @param max
+     * @return
+     */
+    public int nextRandomInt(int max) {
+        long m2 = MODULUS_L - 2;
+        long cap = m2 - (m2 % max) + 2;
+
+        do {
+            seed = (seed * seed) % MODULUS_L;
+        } while (seed > cap);
+
+        long dqt = (seed - 2) % max;
+
+        return (int) dqt;
     }
 
     // Solely for use outside of the ai search proper

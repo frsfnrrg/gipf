@@ -206,6 +206,13 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return new MoveSignedIGC(b, g, player, ordering);
     }
 
+    // TODO: eventually, make a fast, static, get-random-move function in
+    // GameCalc
+    // - using an MSIGC is too much overhead.
+
+    //
+    // DO NOT USE STOCK RANDOM
+    //
     public static MoveSignedIGC makeRandomMoveGenerator(ThreadBuffer b,
             GameState g, long player) {
         // note: need a very fast shuffle
@@ -213,9 +220,9 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             b.ordbuf[i] = i;
         }
 
-        int[] ordering = new int[Const.MOVES];
+        int[] ordering = b.OPOOL.get();
         for (int i = 0, cap = Const.MOVES; i < Const.MOVES; i++, cap--) {
-            int ind = b.omg.nextInt(cap);
+            int ind = b.nextRandomInt(cap);
             ordering[i] = b.ordbuf[ind];
             b.ordbuf[cap - 1] = b.ordbuf[ind];
         }

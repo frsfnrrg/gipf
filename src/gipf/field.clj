@@ -109,6 +109,9 @@
 (definline random-move-generator [buf gs p]
   `(MoveSignedIGC/makeRandomMoveGenerator ~buf ~gs ~p))
 
+(definline get-random-progression [buf gs p]
+  `(GameCalc/getRandomProgression ~buf ~gs ~p))
+
 (definline make-thread-buffer [id]
   `(ThreadBuffer/create ~id))
 

@@ -396,6 +396,97 @@ public class GameCalc {
         }
     }
 
+    public static GameState getRandomProgression(ThreadBuffer buf, GameState g,
+            long ppp) {
+        int player = (int) ppp;
+
+        int[] ord = buf.ordbuf;
+
+        for (int i = 0; i < Const.MOVES; i++) {
+            ord[i] = i;
+        }
+
+        int cx = 0;
+
+        boolean mxv = g.getPhase(player);
+
+        GameState[] opts = getLineTakingResults(buf, g, player);
+
+        byte[] data = g.b.data;
+
+        while (cx < Const.MOVES) {
+            int rr = cx + buf.nextRandomInt(Const.MOVES - cx);
+            int tmp = ord[cx];
+            ord[cx] = ord[rr];
+            ord[rr] = tmp;
+
+            int[] pp = Const.listOfPushPoints[ord[cx]];
+            boolean good = false;
+            for (int i = 0; i < pp.length; i++) {
+                if (data[pp[i]] == 0) {
+                    good = true;
+                    break;
+                }
+            }
+
+            cx++;
+
+            if (!good) {
+                continue;
+            }
+
+            // final stage
+
+            boolean gp1 = g.gphase1;
+            boolean gp2 = g.gphase2;
+            byte last;
+            Reserves fnl;
+            // 2/3rds preference toward gipfs..
+            int rem = g.r.numReserves(player);
+            if (mxv) {
+                if (buf.nextRandomInt(3) != 0 && rem >= 2) {
+                    last = (byte) (player * 2);
+                    fnl = g.r.applyDelta(player, -2, 0, 1);
+                } else if (rem >= 1) {
+                    if (player > 0) {
+                        gp1 = false;
+                    } else {
+                        gp2 = false;
+                    }
+                    last = (byte) player;
+                    fnl = g.r.applyDelta(player, -1, 1, 0);
+                } else {
+                    continue;
+                }
+            } else if (rem >= 1) {
+                last = (byte) player;
+                fnl = g.r.applyDelta(player, -1, 1, 0);
+            } else {
+                continue;
+            }
+
+            byte[] r = new byte[Board.SIZE];
+            System.arraycopy(data, 0, r, 0, Board.SIZE);
+            int hcr = g.b.hashCode;
+
+            for (int j = 0; j < pp.length; j++) {
+                int ind = pp[j];
+                byte v = r[ind];
+                hcr ^= Board.hashArray[ind][v + 2]
+                        ^ Board.hashArray[ind][last + 2];
+                r[ind] = last;
+                if (v == 0) {
+                    break;
+                }
+                last = v;
+            }
+
+            return new MoveSignedGS(new Board(data, hcr), fnl, gp1, gp2,
+                    ord[cx - 1]);
+        }
+        return null;
+    }
+
     public static String toString(Board b) {
         return "<board ...>";
     }

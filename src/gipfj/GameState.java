@@ -38,6 +38,12 @@ public class GameState {
         }
     }
 
+    /**
+     * Returns true iff the current player can place a GIPF piece.
+     * 
+     * @param player
+     * @return
+     */
     public boolean getPhase(int player) {
         if (player > 0) {
             return gphase1;
