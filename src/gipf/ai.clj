@@ -430,15 +430,13 @@
    4 [simple-quiet 5 12 4 neginf posinf]})
 
 ;; inline it?? nah... Large func vs. small func..
-(defn play-game
+(definline play-game
   [buffer good-player gs owner]
-  (longify
-   [good-player]
-   (loop [gs gs owner owner]
-     (let [nxt (get-random-progression buffer gs owner)]
-       (if nxt
-         (recur nxt (negate owner))
-         (multiply good-player owner))))))
+  `(loop [gs# ~gs owner# ~owner]
+     (let [nxt# (get-random-progression ~buffer gs# owner#)]
+       (if nxt#
+         (recur nxt# (negate owner#))
+         (multiply ~good-player owner#)))))
 
 (def-search foolish-monte-carlo
   "Magic"
