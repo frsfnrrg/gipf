@@ -7,7 +7,7 @@ import java.util.Iterator;
  * creates.
  * 
  */
-public class MoveSignedIGC implements Iterator<MoveSignedGS> {
+public class MoveSignedIGC implements Iterator<GameState> {
 
     private final int[] order;
     private final Board[] g1 = new Board[3];
@@ -72,8 +72,8 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
     }
 
     @Override
-    public MoveSignedGS next() {
-        MoveSignedGS result = (MoveSignedGS) g3[g3_pos];
+    public GameState next() {
+        GameState result = g3[g3_pos];
         g3_pos++;
 
         if (g3_pos == g3_end) {
@@ -153,13 +153,13 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
             last = v;
         }
 
-        MoveSignedGS result;
+        GameState result;
         if (player > 0) {
-            result = new MoveSignedGS(new Board(r, hcr), ruk, glvl == 2, oppg,
-                    order[plo]);
+            result = new GameState(new Board(r, hcr), ruk, glvl == 2, oppg,
+                    (byte) order[plo]);
         } else {
-            result = new MoveSignedGS(new Board(r, hcr), ruk, oppg, glvl == 2,
-                    order[plo]);
+            result = new GameState(new Board(r, hcr), ruk, oppg, glvl == 2,
+                    (byte) order[plo]);
         }
         plo++;
 
@@ -206,16 +206,16 @@ public class MoveSignedIGC implements Iterator<MoveSignedGS> {
         return new MoveSignedIGC(b, g, player, ordering);
     }
 
-    // TODO: eventually, make a fast, static, get-random-move function in
-    // GameCalc
-    // - using an MSIGC is too much overhead.
-
-    //
-    // DO NOT USE STOCK RANDOM
-    //
+    /**
+     * Deprecated unless found useful
+     * 
+     * @param b
+     * @param g
+     * @param player
+     * @return
+     */
     public static MoveSignedIGC makeRandomMoveGenerator(ThreadBuffer b,
             GameState g, long player) {
-        // note: need a very fast shuffle
         for (int i = 0; i < Const.MOVES; i++) {
             b.ordbuf[i] = i;
         }

@@ -100,4 +100,104 @@ public class Const {
         return foo;
     }
 
+    /**
+     * Indexing scheme: [move][idx][dir] -> [arm]
+     * 
+     * dir=0,1 and dir=2,3 are opposite.
+     */
+    public static int[][][][] butterflies = getButterFlyList();
+
+    private static int[][][][] getButterFlyList() {
+        int[][][][] bfl = new int[MOVES][][][];
+
+        int[] armbuffer = new int[7];
+        // in the last array, 0-1 are a p-m pair, as are 2-3
+
+        for (int i = 0; i < MOVES; i++) {
+            int[] pts = listOfPushPoints[i];
+            int delta = Line.getDelta(listOfPushes[i]);
+
+            // xdp, xdm oppose, as do ydp, ydm
+            int xdp, xdm, ydp, ydm;
+            xdm = Geometry.protm60(delta);
+            ydm = Geometry.protm60(xdm);
+            ydp = Geometry.protp60(delta);
+            xdp = Geometry.protp60(ydp);
+            int[] dlts = { xdp, xdm, ydp, ydm };
+
+            int[][][] mptl = new int[pts.length][4][];
+            bfl[i] = mptl;
+            for (int k = 0; k < pts.length; k++) {
+                for (int j = 0; j < 4; j++) {
+                    int d = dlts[j];
+                    int nx = Geometry.padd(pts[k], d);
+                    if (Geometry.pradius(nx) > 3) {
+                        mptl[k][j] = new int[0];
+                        continue;
+                    }
+                    int armlen = 0;
+                    armbuffer[0] = nx;
+                    while (true) {
+                        nx = Geometry.padd(nx, d);
+                        if (Geometry.pradius(nx) > 3) {
+                            break;
+                        }
+
+                        armbuffer[armlen] = nx;
+                        armlen++;
+                    }
+
+                    int[] ne = new int[armlen];
+                    System.arraycopy(armbuffer, 0, ne, 0, armlen);
+                    mptl[k][j] = ne;
+                }
+            }
+        }
+
+        return bfl;
+    }
+
+    /**
+     * Lookup: [moves][idx][dir] -> line
+     * 
+     * dirh is like with the butterflies, but dir 0,1 -> 0 and 2,3 -> 1
+     */
+    public static int[][][] named_caterpillars = getNamedCaterpillars();
+
+    /**
+     * Given a line , return its identifying number.
+     * 
+     * @param l
+     * @return
+     */
+    private static int identifyLine(Line l) {
+        for (int i = 0; i < listOfLines.length; i++) {
+            if (Line.same(l, listOfLines[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int[][][] getNamedCaterpillars() {
+        int[][][] foo = new int[42][][];
+        for (int i = 0; i < MOVES; i++) {
+            int sz = butterflies[i].length;
+            int[] pts = listOfPushPoints[i];
+            int delta = Line.getDelta(listOfPushes[i]);
+
+            int xdp, ydp;
+            ydp = Geometry.protp60(delta);
+            xdp = Geometry.protp60(ydp);
+            int[] dlts = { xdp, ydp };
+            int[][] bar = new int[sz][2];
+            foo[i] = bar;
+            for (int k = 0; k < sz; k++) {
+                for (int l = 0; l < 2; l++) {
+                    bar[k][l] = identifyLine(Line.makeLine(pts[k], dlts[l]));
+                }
+            }
+        }
+        return foo;
+    }
 }

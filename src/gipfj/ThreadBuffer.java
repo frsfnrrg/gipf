@@ -24,6 +24,10 @@ public class ThreadBuffer {
 
     public final int id;
 
+    public final int[] pbuf;
+
+    public final int[] mbuf;
+
     public ThreadBuffer(int id) {
         this.id = id;
         OPOOL = new OrderingPool();
@@ -31,6 +35,8 @@ public class ThreadBuffer {
         linebuf = new int[21];
         ordbuf = new int[Const.MOVES];
         seed = new Random().nextInt();
+        pbuf = new int[21];
+        mbuf = new int[21];
     }
 
     public void analyze() {
@@ -42,6 +48,7 @@ public class ThreadBuffer {
     }
 
     private long seed;
+
     // MODULUS_I is to be used for integer random calculation - warning - this
     // _may_ be problematic. log2(I) <= 15.5; log2(L) <= 31.5
     public static final int MODULUS_I = 41989;

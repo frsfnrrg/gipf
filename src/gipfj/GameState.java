@@ -10,16 +10,35 @@ public class GameState {
     public final boolean gphase1; // positive
     public final boolean gphase2; // negative
 
-    public GameState(Board b, Reserves r, boolean gphase1, boolean gphase2) {
+    public final byte move;
+
+    // these are deliberately not final
+    public int[] plus_lines;
+    public int[] minus_lines;
+
+    public GameState(Board b, Reserves r, boolean gphase1, boolean gphase2,
+            byte move) {
         this.b = b;
         this.r = r;
         this.gphase1 = gphase1;
         this.gphase2 = gphase2;
+        this.move = move;
+        plus_lines = null;
+        minus_lines = null;
     }
 
+    /**
+     * Clojure use only
+     * 
+     * @param b
+     * @param r
+     * @param gipfp
+     * @param gipfm
+     * @return
+     */
     public static GameState makeGameState(Board b, Reserves r, Boolean gipfp,
             Boolean gipfm) {
-        return new GameState(b, r, gipfp, gipfm);
+        return new GameState(b, r, gipfp, gipfm, (byte) -1);
     }
 
     public static Board getBoard(GameState g) {
@@ -54,9 +73,9 @@ public class GameState {
 
     public GameState endGipf(int player) {
         if (player > 0) {
-            return new GameState(b, r, false, gphase2);
+            return new GameState(b, r, false, gphase2, move);
         } else {
-            return new GameState(b, r, gphase1, false);
+            return new GameState(b, r, gphase1, false, move);
         }
     }
 
@@ -72,15 +91,14 @@ public class GameState {
     }
 
     /**
-     * To be overridden by subclasses of GameState, so key data is not lost.
      * 
      * @param board
      * @param rr
      * @return
      */
     public GameState change(Board board, Reserves rr, boolean gphase1,
-            boolean gphase2) {
-        return new GameState(board, rr, gphase1, gphase2);
+            boolean gphase2, byte move) {
+        return new GameState(board, rr, gphase1, gphase2, move);
     }
 
     public boolean losingGameState(int player) {
@@ -92,7 +110,7 @@ public class GameState {
     }
 
     public static GameState changeBR(GameState in, Board nb, Reserves nr) {
-        return new GameState(nb, nr, in.gphase1, in.gphase2);
+        return new GameState(nb, nr, in.gphase1, in.gphase2, in.move);
     }
 
     // todo: make losingGameState =eqv= .r.losingReserve(p, .getPhase(p))

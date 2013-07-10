@@ -5,7 +5,6 @@ package gipfj;
 // still are minimized, and we do not have interference
 // or synchonization issues.
 
-@SuppressWarnings("unused")
 public class GameCalc {
 
     private static Line[] buff = new Line[21];
@@ -181,9 +180,9 @@ public class GameCalc {
             }
 
             if (data[RING_B[u]] == pb) {
-                int minus = getArmLength(data, RING_A_MINUS[u], pb);
+                int minus = getArmLength(data, RING_B_MINUS[u], pb);
                 if (minus >= 1) {
-                    int plus = getArmLength(data, RING_A_PLUS[u], pb);
+                    int plus = getArmLength(data, RING_B_PLUS[u], pb);
                     if (plus + minus >= 3) {
                         lbuf[m] = RING_B_REGISTRY[u];
                         m++;
@@ -204,6 +203,100 @@ public class GameCalc {
         int[] foo = new int[m];
         System.arraycopy(buf.linebuf, 0, foo, 0, m);
         return foo;
+    }
+
+    /**
+     * Checks the viability of all remaining lines.
+     * 
+     * @param buf
+     * @param g
+     * @param player
+     */
+    public static void reduceListsOfLines(ThreadBuffer buf, GameState g,
+            int player) {
+
+    }
+
+    /**
+     * Creates a list of lines that result from a move.
+     * 
+     * This must be done after a move has been made and signed.
+     * 
+     * @param buf
+     * @param g
+     * @param player
+     */
+    public static void primeListsOfLines(ThreadBuffer buf, GameState g,
+            int player) {
+        // safety
+        if (g.move == -1) {
+            g.minus_lines = getFilteredBoardLines(buf, g.b, -1);
+            g.plus_lines = getFilteredBoardLines(buf, g.b, 1);
+            return;
+        }
+
+        // buffers
+        int[] pbuf = buf.pbuf;
+        int pc = 0;
+        int[] mbuf = buf.mbuf;
+        int mc = 0;
+
+        // do a change analysis:
+        int[] shvl = Const.listOfLinePoints[g.move];
+        byte[] data = g.b.data;
+
+        byte pb = (byte) player;
+        boolean selfrow = true;
+        byte cur = data[shvl[0]];
+        int[][][] wings = Const.butterflies[g.move];
+        int[][] legs = Const.named_caterpillars[g.move];
+        for (int i = 0; i < shvl.length - 1; i++) {
+            byte nxt = data[shvl[i + 1]];
+            if (selfrow && nxt != pb) {
+                selfrow = false;
+            }
+
+            if (nxt != cur) {
+                // do butterfly search - spread out.
+                int[][] arms = wings[i];
+                int xp = getArmLength(data, arms[0], cur);
+                int xm = getArmLength(data, arms[1], cur);
+                int yp = getArmLength(data, arms[2], cur);
+                int ym = getArmLength(data, arms[3], cur);
+
+                if (xp + xm >= 3) {
+                    int line = legs[i][0];
+                    if (cur > 0) {
+                        pbuf[pc] = line;
+                        pc++;
+                    } else {
+                        mbuf[mc] = line;
+                        mc++;
+                    }
+                }
+
+                if (yp + ym >= 3) {
+                    int line = legs[i][1];
+                    if (cur > 0) {
+                        pbuf[pc] = line;
+                        pc++;
+                    } else {
+                        mbuf[mc] = line;
+                        mc++;
+                    }
+                }
+            }
+        }
+
+        if (selfrow) {
+            if (player > 0) {
+                pbuf[pc] = g.move;
+                pc++;
+            } else {
+                mbuf[mc] = g.move;
+                mc++;
+            }
+        }
     }
 
     public static int[] getImpactedCells(Board b, int loc, int delta) {
@@ -314,7 +407,7 @@ public class GameCalc {
 
         // .change preserves superclass metadata
         return curr.change(new Board(cdata, hc), new Reserves(res),
-                curr.gphase1, curr.gphase2);
+                curr.gphase1, curr.gphase2, curr.move);
     }
 
     public static boolean lineFull(Board b, int start, int delta) {
@@ -377,21 +470,21 @@ public class GameCalc {
             if (foo.gphase1 && pieceval == 2) {
                 return foo.change(new Board(cdata, hc),
                         foo.r.applyDelta((int) pieceval, -2, 0, 1), true,
-                        foo.gphase2);
+                        foo.gphase2, (byte) -1);
             } else {
                 return foo.change(new Board(cdata, hc),
                         foo.r.applyDelta((int) pieceval, -1, 1, 0), false,
-                        foo.gphase2);
+                        foo.gphase2, (byte) -1);
             }
         } else {
             if (foo.gphase2 && pieceval == -2) {
                 return foo.change(new Board(cdata, hc),
                         foo.r.applyDelta((int) pieceval, -2, 0, 1),
-                        foo.gphase1, true);
+                        foo.gphase1, true, (byte) -1);
             } else {
                 return foo.change(new Board(cdata, hc),
                         foo.r.applyDelta((int) pieceval, -1, 1, 0),
-                        foo.gphase1, false);
+                        foo.gphase1, false, (byte) -1);
             }
         }
     }
@@ -409,8 +502,6 @@ public class GameCalc {
         int cx = 0;
 
         boolean mxv = g.getPhase(player);
-
-        GameState[] opts = getLineTakingResults(buf, g, player);
 
         byte[] data = g.b.data;
 
