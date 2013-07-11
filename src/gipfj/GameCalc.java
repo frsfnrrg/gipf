@@ -205,6 +205,43 @@ public class GameCalc {
         return foo;
     }
 
+    private static int[] srlol(ThreadBuffer buf, GameState g, int[] lp, byte p) {
+        int[] bf = buf.pbuf;
+        int pc = 0;
+
+        byte[] data = g.b.data;
+        for (int q : lp) {
+
+            int sign = p;
+            int count = 1;
+            int[] line = Const.listOfLinePoints[q];
+            // count longest continuous set
+            for (int kk = 0; kk < line.length; kk++) {
+                int v = data[line[kk]];
+                if (v == 0 || (v * sign <= 0)) {
+                    count = 1;
+                    sign = v;
+                } else {
+                    count++;
+                }
+            }
+
+            // sign _must_ be p anyway
+            if (count == 4 && sign * p > 0) {
+                bf[pc] = q;
+                pc++;
+            }
+        }
+
+        if (pc == 0) {
+            return null;
+        }
+
+        int[] rq = new int[pc];
+        System.arraycopy(bf, 0, rq, 0, pc);
+        return rq;
+    }
+
     /**
      * Checks the viability of all remaining lines.
      * 
@@ -212,9 +249,13 @@ public class GameCalc {
      * @param g
      * @param player
      */
-    public static void reduceListsOfLines(ThreadBuffer buf, GameState g,
-            int player) {
-
+    public static void reduceListsOfLines(ThreadBuffer buf, GameState g) {
+        if (g.plus_lines != null) {
+            g.plus_lines = srlol(buf, g, g.plus_lines, (byte) 1);
+        }
+        if (g.minus_lines != null) {
+            g.minus_lines = srlol(buf, g, g.minus_lines, (byte) -1);
+        }
     }
 
     /**
@@ -252,7 +293,7 @@ public class GameCalc {
         int[][] legs = Const.named_caterpillars[g.move];
         for (int i = 0; i < shvl.length - 1; i++) {
             byte nxt = data[shvl[i + 1]];
-            if (selfrow && nxt != pb) {
+            if (selfrow && nxt * pb <= 0) {
                 selfrow = false;
             }
 
@@ -296,6 +337,20 @@ public class GameCalc {
                 mbuf[mc] = g.move;
                 mc++;
             }
+        }
+
+        if (pc == 0) {
+            g.plus_lines = null;
+        } else {
+            g.plus_lines = new int[pc];
+            System.arraycopy(pbuf, 0, g.plus_lines, 0, pc);
+        }
+
+        if (mc == 0) {
+            g.minus_lines = null;
+        } else {
+            g.minus_lines = new int[mc];
+            System.arraycopy(mbuf, 0, g.minus_lines, 0, mc);
         }
     }
 

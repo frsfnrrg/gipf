@@ -28,7 +28,7 @@ public class GameState {
     }
 
     /**
-     * Clojure use only
+     * Clojure use only.
      * 
      * @param b
      * @param r
@@ -38,7 +38,11 @@ public class GameState {
      */
     public static GameState makeGameState(Board b, Reserves r, Boolean gipfp,
             Boolean gipfm) {
-        return new GameState(b, r, gipfp, gipfm, (byte) -1);
+        GameState g = new GameState(b, r, gipfp, gipfm, (byte) -1);
+        // ensure that all GameStates in the system are well cared for.
+        // so what is we duplicate effort at the beginning??
+        GameCalc.primeListsOfLines(ThreadBuffer.DEFAULT, g, 0);
+        return g;
     }
 
     public static Board getBoard(GameState g) {
