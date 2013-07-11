@@ -1,6 +1,5 @@
 package gipfj;
 
-
 // LONGTERM: create instances of this for passable
 // use inside threads... That way allocation, buffers 
 // still are minimized, and we do not have interference
@@ -580,6 +579,14 @@ public class GameCalc {
         }
     }
 
+    /**
+     * WARNING: does not take lines into account
+     * 
+     * @param buf
+     * @param g
+     * @param ppp
+     * @return
+     */
     public static GameState getRandomProgression(ThreadBuffer buf, GameState g,
             long ppp) {
         int player = (int) ppp;
@@ -594,7 +601,9 @@ public class GameCalc {
 
         boolean mxv = g.getPhase(player);
 
-        byte[] data = g.b.data;
+        GameState[] options = primedLineRemoval(buf, g, player);
+
+        byte[] data;
 
         while (cx < Const.MOVES) {
             int rr = cx + buf.nextRandomInt(Const.MOVES - cx);
@@ -603,68 +612,75 @@ public class GameCalc {
             ord[rr] = tmp;
 
             int[] pp = Const.listOfPushPoints[ord[cx]];
-            boolean good = false;
-            for (int i = 0; i < pp.length; i++) {
-                if (data[pp[i]] == 0) {
-                    good = true;
-                    break;
-                }
-            }
 
-            cx++;
+            for (GameState bob : options) {
+                data = bob.b.data;
 
-            if (!good) {
-                continue;
-            }
-
-            // final stage
-
-            boolean gp1 = g.gphase1;
-            boolean gp2 = g.gphase2;
-            byte last;
-            Reserves fnl;
-            // 2/3rds preference toward gipfs..
-            int rem = g.r.numReserves(player);
-            if (mxv) {
-                if (buf.nextRandomInt(3) != 0 && rem >= 2) {
-                    last = (byte) (player * 2);
-                    fnl = g.r.applyDelta(player, -2, 0, 1);
-                } else if (rem >= 1) {
-                    if (player > 0) {
-                        gp1 = false;
-                    } else {
-                        gp2 = false;
+                boolean good = false;
+                for (int i = 0; i < pp.length; i++) {
+                    if (data[pp[i]] == 0) {
+                        good = true;
+                        break;
                     }
+                }
+
+                cx++;
+
+                if (!good) {
+                    continue;
+                }
+
+                // final stage
+
+                boolean gp1 = bob.gphase1;
+                boolean gp2 = bob.gphase2;
+                byte last;
+                Reserves fnl;
+                // 2/3rds preference toward gipfs..
+                int rem = bob.r.numReserves(player);
+                if (mxv) {
+                    if (buf.nextRandomInt(3) != 0 && rem >= 2) {
+                        last = (byte) (player * 2);
+                        fnl = bob.r.applyDelta(player, -2, 0, 1);
+                    } else if (rem >= 1) {
+                        if (player > 0) {
+                            gp1 = false;
+                        } else {
+                            gp2 = false;
+                        }
+                        last = (byte) player;
+                        fnl = bob.r.applyDelta(player, -1, 1, 0);
+                    } else {
+                        continue;
+                    }
+                } else if (rem >= 1) {
                     last = (byte) player;
-                    fnl = g.r.applyDelta(player, -1, 1, 0);
+                    fnl = bob.r.applyDelta(player, -1, 1, 0);
                 } else {
                     continue;
                 }
-            } else if (rem >= 1) {
-                last = (byte) player;
-                fnl = g.r.applyDelta(player, -1, 1, 0);
-            } else {
-                continue;
-            }
 
-            byte[] r = new byte[Board.SIZE];
-            System.arraycopy(data, 0, r, 0, Board.SIZE);
-            int hcr = g.b.hashCode;
+                byte[] r = new byte[Board.SIZE];
+                System.arraycopy(data, 0, r, 0, Board.SIZE);
+                int hcr = bob.b.hashCode;
 
-            for (int j = 0; j < pp.length; j++) {
-                int ind = pp[j];
-                byte v = r[ind];
-                hcr ^= Board.hashArray[ind][v + 2]
-                        ^ Board.hashArray[ind][last + 2];
-                r[ind] = last;
-                if (v == 0) {
-                    break;
+                for (int j = 0; j < pp.length; j++) {
+                    int ind = pp[j];
+                    byte v = r[ind];
+                    hcr ^= Board.hashArray[ind][v + 2]
+                            ^ Board.hashArray[ind][last + 2];
+                    r[ind] = last;
+                    if (v == 0) {
+                        break;
+                    }
+                    last = v;
                 }
-                last = v;
-            }
 
-            return new GameState(new Board(data, hcr), fnl, gp1, gp2,
-                    (byte) ord[cx - 1]);
+                GameState woah = new GameState(new Board(data, hcr), fnl, gp1,
+                        gp2, (byte) ord[cx - 1]);
+                primeListsOfLines(buf, woah, player);
+                return primedLineRemoval(buf, woah, player)[0];
+            }
         }
         return null;
     }
