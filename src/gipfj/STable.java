@@ -103,19 +103,22 @@ public class STable {
         s.flush();
     }
 
-    private static class Block {
+    public static class Block {
+        public static final long SIZE = 48; // size of this object in bytes.
         // it doesn't recognize unsafe
         @SuppressWarnings("unused")
         private volatile int lock;
+
         public boolean f_open;
+        public boolean s_open;
+        private byte f_depth;
+        private byte s_depth;
+
         private long f_a;
         private int f_b;
-        private byte f_depth;
         private int f_rank;
-        public boolean s_open;
         private long s_a;
         private int s_b;
-        private byte s_depth;
         private int s_rank;
 
         public Block() {
