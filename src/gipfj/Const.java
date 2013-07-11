@@ -1,5 +1,6 @@
 package gipfj;
 
+
 /**
  * 
  */
@@ -35,6 +36,10 @@ public class Const {
             cl[i] = is[j];
         }
         return cl;
+    }
+
+    public static int pushToLine(int push) {
+        return push >> 1;
     }
 
     public static final Line[] listOfLines = getLoL();
@@ -105,7 +110,7 @@ public class Const {
      * 
      * dir=0,1 and dir=2,3 are opposite.
      */
-    public static int[][][][] butterflies = getButterFlyList();
+    public static final int[][][][] butterflies = getButterFlyList();
 
     private static int[][][][] getButterFlyList() {
         int[][][][] bfl = new int[MOVES][][][];
@@ -135,8 +140,8 @@ public class Const {
                         mptl[k][j] = new int[0];
                         continue;
                     }
-                    int armlen = 0;
                     armbuffer[0] = nx;
+                    int armlen = 1;
                     while (true) {
                         nx = Geometry.padd(nx, d);
                         if (Geometry.pradius(nx) > 3) {
@@ -154,6 +159,8 @@ public class Const {
             }
         }
 
+        // System.out.println(Arrays.deepToString(bfl));
+
         return bfl;
     }
 
@@ -162,7 +169,7 @@ public class Const {
      * 
      * dirh is like with the butterflies, but dir 0,1 -> 0 and 2,3 -> 1
      */
-    public static int[][][] named_caterpillars = getNamedCaterpillars();
+    public static final int[][][] named_caterpillars = getNamedCaterpillars();
 
     /**
      * Given a line , return its identifying number.
@@ -172,11 +179,12 @@ public class Const {
      */
     private static int identifyLine(Line l) {
         for (int i = 0; i < listOfLines.length; i++) {
-            if (Line.same(l, listOfLines[i])) {
+            if (l.equiv(listOfLines[i])) {
                 return i;
             }
         }
-        return -1;
+        System.out.format("lnf %s\n", l.toString());
+        return -9999;
     }
 
     private static int[][][] getNamedCaterpillars() {
@@ -198,6 +206,8 @@ public class Const {
                 }
             }
         }
+
+        // System.out.println(Arrays.deepToString(foo));
         return foo;
     }
 }

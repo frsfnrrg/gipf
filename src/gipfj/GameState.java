@@ -94,6 +94,10 @@ public class GameState {
         return "{" + b.toString() + " " + r.toString() + "}";
     }
 
+    public static long getMove(GameState g) {
+        return g.move;
+    }
+
     /**
      * 
      * @param board

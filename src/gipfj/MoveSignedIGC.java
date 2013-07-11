@@ -34,7 +34,7 @@ public class MoveSignedIGC implements Iterator<GameState> {
 
         g1_pos = 0;
         g1_end = 0;
-        for (GameState q : GameCalc.getLineTakingResults(buf, g, player)) {
+        for (GameState q : GameCalc.primedLineRemoval(buf, g, player)) {
             if (!q.losingGameState(player)) {
                 g1[g1_end] = q.b;
                 g1r1[g1_end] = q.r.applyDelta(player, -1, 1, 0);
@@ -165,7 +165,8 @@ public class MoveSignedIGC implements Iterator<GameState> {
 
         ready = true;
         g3_pos = 0;
-        g3 = GameCalc.getLineTakingResults(buf, result, player);
+        GameCalc.primeListsOfLines(buf, result, player);
+        g3 = GameCalc.primedLineRemoval(buf, result, player);
         g3_end = g3.length;
     }
 

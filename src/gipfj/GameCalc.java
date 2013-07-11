@@ -1,5 +1,6 @@
 package gipfj;
 
+
 // LONGTERM: create instances of this for passable
 // use inside threads... That way allocation, buffers 
 // still are minimized, and we do not have interference
@@ -206,6 +207,10 @@ public class GameCalc {
     }
 
     private static int[] srlol(ThreadBuffer buf, GameState g, int[] lp, byte p) {
+        if (lp == null) {
+            return null;
+        }
+
         int[] bf = buf.pbuf;
         int pc = 0;
 
@@ -243,22 +248,6 @@ public class GameCalc {
     }
 
     /**
-     * Checks the viability of all remaining lines.
-     * 
-     * @param buf
-     * @param g
-     * @param player
-     */
-    public static void reduceListsOfLines(ThreadBuffer buf, GameState g) {
-        if (g.plus_lines != null) {
-            g.plus_lines = srlol(buf, g, g.plus_lines, (byte) 1);
-        }
-        if (g.minus_lines != null) {
-            g.minus_lines = srlol(buf, g, g.minus_lines, (byte) -1);
-        }
-    }
-
-    /**
      * Creates a list of lines that result from a move.
      * 
      * This must be done after a move has been made and signed.
@@ -283,7 +272,7 @@ public class GameCalc {
         int mc = 0;
 
         // do a change analysis:
-        int[] shvl = Const.listOfLinePoints[g.move];
+        int[] shvl = Const.listOfPushPoints[g.move];
         byte[] data = g.b.data;
 
         byte pb = (byte) player;
@@ -307,6 +296,7 @@ public class GameCalc {
 
                 if (xp + xm >= 3) {
                     int line = legs[i][0];
+                    // System.out.format("XLine: %d\n", line);
                     if (cur > 0) {
                         pbuf[pc] = line;
                         pc++;
@@ -318,6 +308,7 @@ public class GameCalc {
 
                 if (yp + ym >= 3) {
                     int line = legs[i][1];
+                    // System.out.format("YLine: %d\n", line);
                     if (cur > 0) {
                         pbuf[pc] = line;
                         pc++;
@@ -330,11 +321,12 @@ public class GameCalc {
         }
 
         if (selfrow) {
+            // System.out.format("Selfer %d %d\n", player, g.move);
             if (player > 0) {
-                pbuf[pc] = g.move;
+                pbuf[pc] = Const.pushToLine(g.move);
                 pc++;
             } else {
-                mbuf[mc] = g.move;
+                mbuf[mc] = Const.pushToLine(g.move);
                 mc++;
             }
         }
@@ -342,6 +334,7 @@ public class GameCalc {
         if (pc == 0) {
             g.plus_lines = null;
         } else {
+            // System.out.format("PLUS %d %d\n", player, pc);
             g.plus_lines = new int[pc];
             System.arraycopy(pbuf, 0, g.plus_lines, 0, pc);
         }
@@ -349,6 +342,7 @@ public class GameCalc {
         if (mc == 0) {
             g.minus_lines = null;
         } else {
+            // System.out.format("MINUS %d %d\n", player, pc);
             g.minus_lines = new int[mc];
             System.arraycopy(mbuf, 0, g.minus_lines, 0, mc);
         }
@@ -442,7 +436,7 @@ public class GameCalc {
     public static GameState[] primedLineRemoval(ThreadBuffer buf, GameState g,
             int player) {
 
-        GameState[] ee = new GameState[0];
+        GameState[] ee = new GameState[1];
         GameState curr = g;
 
         int[] ml, ol;
@@ -450,6 +444,7 @@ public class GameCalc {
             ml = g.plus_lines;
             ol = g.minus_lines;
             while (ml != null) {
+                // System.out.println(Arrays.toString(ml));
                 curr = lineEmpty(curr, ml[0], player);
                 ml = srlol(buf, curr, ml, (byte) 1);
                 ol = srlol(buf, curr, ol, (byte) -1);
@@ -460,6 +455,7 @@ public class GameCalc {
             ol = g.plus_lines;
             ml = g.minus_lines;
             while (ml != null) {
+                // System.out.println(Arrays.toString(ml));
                 curr = lineEmpty(curr, ml[0], player);
                 ml = srlol(buf, curr, ml, (byte) -1);
                 ol = srlol(buf, curr, ol, (byte) 1);
@@ -477,7 +473,9 @@ public class GameCalc {
         System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
         int hc = curr.b.hashCode;
         int[] res = curr.r.toArray();
-
+        // speed up, by branching into plus/minus player, and not using
+        // arrays to store data. Hmm. _maybe_ hotspot removes it - I can't tell.
+        // it is still an allocation (bad)
         for (int q : Const.listOfLinePoints[found]) {
             int v = player * cdata[q];
             // System.out.format("v: %d p:%d d:%d d:%d q:%d %s\n", v, player,
@@ -540,9 +538,6 @@ public class GameCalc {
 
         int q = Line.getStart(shove);
         int d = Line.getDelta(shove);
-
-        // TODO: make this return a MoveSignedGameState, by means of a
-        // line-lookup-hook
 
         int hc = foo.b.hashCode;
 
@@ -668,8 +663,8 @@ public class GameCalc {
                 last = v;
             }
 
-            return new MoveSignedGS(new Board(data, hcr), fnl, gp1, gp2,
-                    ord[cx - 1]);
+            return new GameState(new Board(data, hcr), fnl, gp1, gp2,
+                    (byte) ord[cx - 1]);
         }
         return null;
     }

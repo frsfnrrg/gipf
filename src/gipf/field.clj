@@ -1,7 +1,7 @@
 (ns gipf.core
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc GeneralizedPointWeighting
-                  Ranking MoveSignedGS HistoryTable MoveSignedIGC
+                  Ranking HistoryTable MoveSignedIGC
                   Counter Compression Ident ChildList STable ThreadBuffer)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
@@ -83,7 +83,7 @@
        (STable/sempty ~table)))
 
 (definline signed-gs-move [sgs]
-  `(MoveSignedGS/getMove ~sgs))
+  `(GameState/getMove ~sgs))
 
 (definline read-counter  [counter]
   `(Counter/cget ~counter))

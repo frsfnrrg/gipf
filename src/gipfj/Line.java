@@ -5,10 +5,12 @@ public class Line {
     public static Line advanceLine(Line q) {
         return new Line(q.sig, Geometry.padd(q.start, q.delta), q.delta);
     }
+
     public static boolean equals(Line a, Line b) {
         // order is proportional to possibilities
         return (a.start == b.start && a.delta == b.delta && a.sig == b.sig);
     }
+
     public static int getDelta(Line q) {
         return q.delta;
     }
@@ -62,5 +64,15 @@ public class Line {
         return String.format("%d %d - %d", this.start, this.delta, this.sig);
         // return String.format("<Line G: %d S: %s D: %s>", this.sig,
         // Geometry.toString(this.start), Geometry.toString(this.delta));
+    }
+
+    public boolean equiv(Line line) {
+        if (delta == line.delta) {
+            return Line.onLine(line.start, this);
+        } else if (Geometry.pnegate(delta) == line.delta) {
+            return Line.onLine(line.start, this);
+        } else {
+            return false;
+        }
     }
 }
