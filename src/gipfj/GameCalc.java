@@ -336,7 +336,7 @@ public class GameCalc {
 
         byte pb = (byte) player;
         int selfrow = 1;
-        // 1st one is already pb
+        // 1st one is already pb. Inefficient?
         for (Butterfly fu : wings) {
             selfrow++;
             if (data[fu.v] * pb <= 0) {
@@ -488,7 +488,7 @@ public class GameCalc {
                     }
                 }
             }
-            curr.plus_lines = null;
+            curr.plus_lines = ml;
             curr.minus_lines = ol;
         } else {
             ol = g.plus_lines;
@@ -517,7 +517,7 @@ public class GameCalc {
                 }
             }
             curr.plus_lines = ol;
-            curr.minus_lines = null;
+            curr.minus_lines = ml;
         }
 
         ee[0] = curr;
