@@ -431,6 +431,47 @@ public class GameCalc {
         return results;
     }
 
+    /**
+     * To be called only on already "primed" GameStates.
+     * 
+     * @param buf
+     * @param g
+     * @param player
+     * @return
+     */
+    public static GameState[] primedLineRemoval(ThreadBuffer buf, GameState g,
+            int player) {
+
+        GameState[] ee = new GameState[0];
+        GameState curr = g;
+
+        int[] ml, ol;
+        if (player > 0) {
+            ml = g.plus_lines;
+            ol = g.minus_lines;
+            while (ml != null) {
+                curr = lineEmpty(curr, ml[0], player);
+                ml = srlol(buf, curr, ml, (byte) 1);
+                ol = srlol(buf, curr, ol, (byte) -1);
+            }
+            curr.plus_lines = null;
+            curr.minus_lines = ol;
+        } else {
+            ol = g.plus_lines;
+            ml = g.minus_lines;
+            while (ml != null) {
+                curr = lineEmpty(curr, ml[0], player);
+                ml = srlol(buf, curr, ml, (byte) -1);
+                ol = srlol(buf, curr, ol, (byte) 1);
+            }
+            curr.plus_lines = ol;
+            curr.minus_lines = null;
+        }
+
+        ee[0] = curr;
+        return ee;
+    }
+
     private static GameState lineEmpty(GameState curr, int found, int player) {
         byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
