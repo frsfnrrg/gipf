@@ -1,6 +1,5 @@
 package gipfj;
 
-
 /**
  * 
  */
@@ -110,10 +109,44 @@ public class Const {
      * 
      * dir=0,1 and dir=2,3 are opposite.
      */
-    public static final int[][][][] butterflies = getButterFlyList();
+    public static final Butterfly[][] butterflies = getButterFlyList();
 
-    private static int[][][][] getButterFlyList() {
-        int[][][][] bfl = new int[MOVES][][][];
+    public static class Butterfly {
+        public int[] xp;
+        public int[] yp;
+        public int[] ym;
+        public int[] xm;
+        public final int x;
+        public final int y;
+        public final int v;
+
+        public Butterfly(int v, int x, int y, int[] xp, int[] yp, int[] xm,
+                int[] ym) {
+            this.xp = xp;
+            this.yp = yp;
+            this.xm = xm;
+            this.ym = ym;
+            this.x = x;
+            this.y = y;
+            this.v = v;
+        }
+
+        private void set(int idx, int[] val) {
+            switch (idx) {
+            case 0:
+                this.xp = val;
+            case 1:
+                this.xm = val;
+            case 2:
+                this.yp = val;
+            case 3:
+                this.ym = val;
+            }
+        }
+    }
+
+    private static Butterfly[][] getButterFlyList() {
+        Butterfly[][] bfl = new Butterfly[MOVES][];
 
         int[] armbuffer = new int[7];
         // in the last array, 0-1 are a p-m pair, as are 2-3
@@ -130,14 +163,18 @@ public class Const {
             xdp = Geometry.protp60(ydp);
             int[] dlts = { xdp, xdm, ydp, ydm };
 
-            int[][][] mptl = new int[pts.length][4][];
+            Butterfly[] mptl = new Butterfly[pts.length];
             bfl[i] = mptl;
             for (int k = 0; k < pts.length; k++) {
+                Butterfly juju = new Butterfly(pts[k],
+                        identifyLine(Line.makeLine(pts[k], dlts[0])),
+                        identifyLine(Line.makeLine(pts[k], dlts[2])), null,
+                        null, null, null);
+                mptl[k] = juju;
                 for (int j = 0; j < 4; j++) {
                     int d = dlts[j];
                     int nx = Geometry.padd(pts[k], d);
                     if (Geometry.pradius(nx) > 3) {
-                        mptl[k][j] = new int[0];
                         continue;
                     }
                     armbuffer[0] = nx;
@@ -154,8 +191,9 @@ public class Const {
 
                     int[] ne = new int[armlen];
                     System.arraycopy(armbuffer, 0, ne, 0, armlen);
-                    mptl[k][j] = ne;
+                    juju.set(j, ne);
                 }
+
             }
         }
 
@@ -163,13 +201,6 @@ public class Const {
 
         return bfl;
     }
-
-    /**
-     * Lookup: [moves][idx][dir] -> line
-     * 
-     * dirh is like with the butterflies, but dir 0,1 -> 0 and 2,3 -> 1
-     */
-    public static final int[][][] named_caterpillars = getNamedCaterpillars();
 
     /**
      * Given a line , return its identifying number.
@@ -185,29 +216,5 @@ public class Const {
         }
         System.out.format("lnf %s\n", l.toString());
         return -9999;
-    }
-
-    private static int[][][] getNamedCaterpillars() {
-        int[][][] foo = new int[42][][];
-        for (int i = 0; i < MOVES; i++) {
-            int sz = butterflies[i].length;
-            int[] pts = listOfPushPoints[i];
-            int delta = Line.getDelta(listOfPushes[i]);
-
-            int xdp, ydp;
-            ydp = Geometry.protp60(delta);
-            xdp = Geometry.protp60(ydp);
-            int[] dlts = { xdp, ydp };
-            int[][] bar = new int[sz][2];
-            foo[i] = bar;
-            for (int k = 0; k < sz; k++) {
-                for (int l = 0; l < 2; l++) {
-                    bar[k][l] = identifyLine(Line.makeLine(pts[k], dlts[l]));
-                }
-            }
-        }
-
-        // System.out.println(Arrays.deepToString(foo));
-        return foo;
     }
 }

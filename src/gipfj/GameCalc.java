@@ -1,9 +1,6 @@
 package gipfj;
 
-// LONGTERM: create instances of this for passable
-// use inside threads... That way allocation, buffers 
-// still are minimized, and we do not have interference
-// or synchonization issues.
+import gipfj.Const.Butterfly;
 
 public class GameCalc {
 
@@ -72,10 +69,19 @@ public class GameCalc {
     private static int getArmLength(byte[] data, int[] arm, byte player) {
         int k = 0;
         int length = arm.length;
-        while (k < length && data[arm[k]] == player) {
+        // (int1 ^ int2) >> 31 == 0 is faster?
+        while (k < length && data[arm[k]] * player > 0) {
             k++;
         }
         return k;
+    }
+
+    private static int getArmLengthN(byte[] data, int[] arm, byte player) {
+        if (arm == null) {
+            return 0;
+        } else {
+            return getArmLength(data, arm, player);
+        }
     }
 
     private static int CENTER = 0;
@@ -257,6 +263,12 @@ public class GameCalc {
      */
     public static void primeListsOfLines(ThreadBuffer buf, GameState g,
             int player) {
+        //
+        // Logically, this function is awesome. However, it seems to be overly
+        // slow
+        // to to array access whatever.
+        //
+        //
         // safety
         if (g.move == -1) {
             g.minus_lines = getFilteredBoardLines(buf, g.b, -1);
@@ -271,30 +283,20 @@ public class GameCalc {
         int mc = 0;
 
         // do a change analysis:
-        int[] shvl = Const.listOfPushPoints[g.move];
         byte[] data = g.b.data;
 
-        byte pb = (byte) player;
-        boolean selfrow = true;
-        byte cur = data[shvl[0]];
-        int[][][] wings = Const.butterflies[g.move];
-        int[][] legs = Const.named_caterpillars[g.move];
-        for (int i = 0; i < shvl.length - 1; i++) {
-            byte nxt = data[shvl[i + 1]];
-            if (selfrow && nxt * pb <= 0) {
-                selfrow = false;
-            }
+        Butterfly[] wings = Const.butterflies[g.move];
+        byte cur = data[wings[0].v];
+        for (int i = 0; i < wings.length - 1; i++) {
+            byte nxt = data[wings[i + 1].v];
 
-            if (nxt != cur) {
+            if (cur != 0 && nxt != cur) {
                 // do butterfly search - spread out.
-                int[][] arms = wings[i];
-                int xp = getArmLength(data, arms[0], cur);
-                int xm = getArmLength(data, arms[1], cur);
-                int yp = getArmLength(data, arms[2], cur);
-                int ym = getArmLength(data, arms[3], cur);
-
+                Butterfly henry = wings[i];
+                int xp = getArmLengthN(data, henry.xp, cur);
+                int xm = getArmLengthN(data, henry.xm, cur);
                 if (xp + xm >= 3) {
-                    int line = legs[i][0];
+                    int line = henry.x;
                     // System.out.format("XLine: %d\n", line);
                     if (cur > 0) {
                         pbuf[pc] = line;
@@ -305,8 +307,11 @@ public class GameCalc {
                     }
                 }
 
+                // what about the case where only one succeeds?
+                int yp = getArmLengthN(data, henry.yp, cur);
+                int ym = getArmLengthN(data, henry.ym, cur);
                 if (yp + ym >= 3) {
-                    int line = legs[i][1];
+                    int line = henry.y;
                     // System.out.format("YLine: %d\n", line);
                     if (cur > 0) {
                         pbuf[pc] = line;
@@ -317,10 +322,27 @@ public class GameCalc {
                     }
                 }
             }
+
+            // the push can't extend further
+            if (nxt == 0) {
+                break;
+            }
+
+            cur = nxt;
         }
 
-        if (selfrow) {
-            // System.out.format("Selfer %d %d\n", player, g.move);
+        byte pb = (byte) player;
+        int selfrow = 1;
+        // 1st one is already pb
+        for (Butterfly fu : wings) {
+            selfrow++;
+            if (data[fu.v] * pb <= 0) {
+                break;
+            }
+        }
+
+        if (selfrow >= 4) {
+            // System.out.format("Selfer %d %d\n", player,g.move);
             if (player > 0) {
                 pbuf[pc] = Const.pushToLine(g.move);
                 pc++;
@@ -341,7 +363,7 @@ public class GameCalc {
         if (mc == 0) {
             g.minus_lines = null;
         } else {
-            // System.out.format("MINUS %d %d\n", player, pc);
+            // System.out.format("MINUS %d %d\n", player, mc);
             g.minus_lines = new int[mc];
             System.arraycopy(mbuf, 0, g.minus_lines, 0, mc);
         }
@@ -366,12 +388,6 @@ public class GameCalc {
         return res;
     }
 
-    //
-    // This is currently the largest time-consuming java function
-    // - about 40% cpu, probably all in getFilteredBoardLines
-    //
-    //
-    //
     public static GameState[] getLineTakingResults(ThreadBuffer buf,
             GameState g, int player) {
         // returns a sequence of stuff like this:
@@ -438,26 +454,64 @@ public class GameCalc {
         GameState[] ee = new GameState[1];
         GameState curr = g;
 
+        int[] tried = buf.tried;
+        int tco = 0;
+
         int[] ml, ol;
         if (player > 0) {
             ml = g.plus_lines;
             ol = g.minus_lines;
-            while (ml != null) {
-                // System.out.println(Arrays.toString(ml));
-                curr = lineEmpty(curr, ml[0], player);
-                ml = srlol(buf, curr, ml, (byte) 1);
-                ol = srlol(buf, curr, ol, (byte) -1);
+            boolean found = true;
+            while (ml != null && found) {
+                found = false;
+                for (int chx : ml) {
+                    boolean good = true;
+                    for (int i = 0; i < tco; i++) {
+                        if (chx == tried[i]) {
+                            good = false;
+                            break;
+                        }
+
+                    }
+
+                    if (good) {
+                        found = true;
+                        curr = lineEmpty(curr, chx, player);
+                        ml = srlol(buf, curr, ml, (byte) 1);
+                        ol = srlol(buf, curr, ol, (byte) -1);
+                        tried[tco] = chx;
+                        tco++;
+                        break;
+                    }
+                }
             }
             curr.plus_lines = null;
             curr.minus_lines = ol;
         } else {
             ol = g.plus_lines;
             ml = g.minus_lines;
-            while (ml != null) {
-                // System.out.println(Arrays.toString(ml));
-                curr = lineEmpty(curr, ml[0], player);
-                ml = srlol(buf, curr, ml, (byte) -1);
-                ol = srlol(buf, curr, ol, (byte) 1);
+            boolean found = true;
+            while (ml != null && found) {
+                found = false;
+                for (int chx : ml) {
+                    boolean good = true;
+                    for (int i = 0; i < tco; i++) {
+                        if (chx == tried[i]) {
+                            good = false;
+                            break;
+                        }
+                    }
+
+                    if (good) {
+                        found = true;
+                        curr = lineEmpty(curr, chx, player);
+                        ml = srlol(buf, curr, ml, (byte) -1);
+                        ol = srlol(buf, curr, ol, (byte) 1);
+                        tried[tco] = chx;
+                        tco++;
+                        break;
+                    }
+                }
             }
             curr.plus_lines = ol;
             curr.minus_lines = null;
