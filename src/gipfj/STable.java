@@ -1,7 +1,5 @@
 package gipfj;
 
-import java.lang.reflect.Field;
-
 import sun.misc.Unsafe;
 
 /**
@@ -12,28 +10,8 @@ import sun.misc.Unsafe;
  * 
  */
 public class STable {
-    private static final Unsafe unsafe = getTheUnsafe();
+    private static final Unsafe unsafe = UnsafeAccess.getUnsafe();
     private static long valueOffset;
-
-    private static Unsafe getTheUnsafe() {
-        try {
-            Field singleoneInstanceField = Unsafe.class
-                    .getDeclaredField("theUnsafe");
-            singleoneInstanceField.setAccessible(true);
-            return (Unsafe) singleoneInstanceField.get(null);
-
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-
-        return null;
-    }
 
     static {
         try {

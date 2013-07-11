@@ -1,6 +1,6 @@
 package gipfj;
 
-import java.util.concurrent.locks.ReentrantLock;
+import sun.misc.Unsafe;
 
 /**
  * 
@@ -10,6 +10,21 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class HistoryTable {
 
+    private static long valueOffset;
+    private static Unsafe unsafe = UnsafeAccess.getUnsafe();
+    @SuppressWarnings("unused")
+    private volatile int lock;
+    static {
+        try {
+            valueOffset = unsafe.objectFieldOffset(HistoryTable.class
+                    .getDeclaredField("lock"));
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * If this is increased, we may need to switch to longs.
      */
@@ -18,7 +33,23 @@ public class HistoryTable {
     private final Rk[] otable;
     private Rk best;
 
-    private final ReentrantLock locky;
+    // create a lockable object class?
+
+    private void lock() {
+        // - maybe, if we ever get serious collisions (not likely), we can
+        // make this abort instead of spinning.
+        if (unsafe.compareAndSwapInt(this, valueOffset, 0, 1)) {
+            return;
+        } else {
+            while (!unsafe.compareAndSwapInt(this, valueOffset, 0, 1)) {
+                ;
+            }
+        }
+    }
+
+    private void unlock() {
+        lock = 0;
+    }
 
     /**
      * Only 42 moves exist: we can burn memory!!
@@ -28,7 +59,7 @@ public class HistoryTable {
     public HistoryTable(int depth) {
         otable = new Rk[Const.MOVES];
         clear();
-        locky = new ReentrantLock(false);
+        lock = 0;
     }
 
     private class Rk {
@@ -54,7 +85,7 @@ public class HistoryTable {
      * @return
      */
     public int[] getMoveOrdering(ThreadBuffer b) {
-        locky.lock();
+        lock();
         try {
             int[] moves = b.OPOOL.get();
             Rk c = best;
@@ -65,7 +96,7 @@ public class HistoryTable {
 
             return moves;
         } finally {
-            locky.unlock();
+            unlock();
         }
     }
 
@@ -79,7 +110,8 @@ public class HistoryTable {
      * @param move
      */
     public void addSufficientMove(int depth, int move) {
-        locky.lock();
+        // we only lock on mutation
+        lock();
         try {
             int weight = 1 << depth;
             Rk o = otable[move];
@@ -94,6 +126,7 @@ public class HistoryTable {
 
             Rk c = o;
             if (c.next.rank < r) {
+
                 boolean end = false;
                 do {
                     c = c.next;
@@ -132,9 +165,8 @@ public class HistoryTable {
                 }
             }
         } finally {
-            locky.unlock();
+            unlock();
         }
-
     }
 
     public void clear() {
@@ -150,7 +182,6 @@ public class HistoryTable {
         otable[Const.MOVES - 2].next = otable[Const.MOVES - 1];
 
         best = otable[Const.MOVES - 1];
-        OrderingPool.OPOOL.flush();
     }
 
     /**
