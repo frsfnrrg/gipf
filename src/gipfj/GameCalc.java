@@ -286,17 +286,20 @@ public class GameCalc {
         byte[] data = g.b.data;
 
         Butterfly[] wings = Const.butterflies[g.move];
-        byte cur = data[wings[0].v];
-        for (int i = 0; i < wings.length - 1; i++) {
-            byte nxt = data[wings[i + 1].v];
+        Butterfly curb = wings[0];
+        Butterfly nxtb;
+        byte nxt;
+        byte cur = data[curb.v]; // which is either a GIPF or not.
+        for (int i = 1; i < wings.length; i++) {
+            nxtb = wings[i];
+            nxt = data[nxtb.v];
 
-            if (cur != 0 && nxt != cur) {
+            if (nxt * cur <= 0) {
                 // do butterfly search - spread out.
-                Butterfly henry = wings[i];
-                int xp = getArmLengthN(data, henry.xp, cur);
-                int xm = getArmLengthN(data, henry.xm, cur);
+                int xp = getArmLengthN(data, curb.xp, cur);
+                int xm = getArmLengthN(data, curb.xm, cur);
                 if (xp + xm >= 3) {
-                    int line = henry.x;
+                    int line = curb.x;
                     // System.out.format("XLine: %d\n", line);
                     if (cur > 0) {
                         pbuf[pc] = line;
@@ -308,10 +311,10 @@ public class GameCalc {
                 }
 
                 // what about the case where only one succeeds?
-                int yp = getArmLengthN(data, henry.yp, cur);
-                int ym = getArmLengthN(data, henry.ym, cur);
+                int yp = getArmLengthN(data, curb.yp, cur);
+                int ym = getArmLengthN(data, curb.ym, cur);
                 if (yp + ym >= 3) {
-                    int line = henry.y;
+                    int line = curb.y;
                     // System.out.format("YLine: %d\n", line);
                     if (cur > 0) {
                         pbuf[pc] = line;
@@ -323,11 +326,11 @@ public class GameCalc {
                 }
             }
 
-            // the push can't extend further
             if (nxt == 0) {
                 break;
             }
 
+            curb = nxtb;
             cur = nxt;
         }
 
