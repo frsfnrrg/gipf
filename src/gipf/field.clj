@@ -119,9 +119,9 @@
   [gamestate player]
   (vec (GameCalc/getLineTakingResults default-buffer gamestate player)))
 
-(defn get-lines-of-four
-  [board]
-  (vec (GameCalc/getBoardLines board)))
+(defn get-player-lines-of-four
+  [board player]
+  (vec (GameCalc/getBoardLines board player)))
 
 ;; predicates/extraction
 
@@ -224,9 +224,7 @@
      (let [found (filter
                   (fn [l]
                     (not (some (fn [k] (line= k l)) taken)))
-                   (filter
-                     #(same-sign? (line-sig %) player)
-                     (get-lines-of-four cb)))]
+                  (get-player-lines-of-four cb player))]
        (if (empty? found)
          [(concat [protected] taken) (game-state-changebr gamestate cb rr)]
 

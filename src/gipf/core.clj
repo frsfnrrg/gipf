@@ -441,8 +441,7 @@
         (def game-phase* :waiting-for-ai)
         (start-compound-ai-move!))
       ;; human must clear...
-      (let [found (filter (partial owns-line? current-player*)
-                          (get-lines-of-four board*))]
+      (let [found (get-player-lines-of-four board* current-player*)]
         (if (seq found)
           (do
             (def game-phase* :removing-pre)
@@ -451,9 +450,7 @@
 
 (defn post-human-move!
   []
-  (let [found (filter (partial owns-line? current-player*)
-                      (filter-out-already-used-lines
-                       (get-lines-of-four board*)))]
+  (let [found (filter-out-already-used-lines (get-player-lines-of-four board* current-player*))]
     (if (seq found)
       ;; keep on removing...
       (do

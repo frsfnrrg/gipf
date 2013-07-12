@@ -28,6 +28,8 @@ public class ThreadBuffer {
 
     public final int[] mbuf;
 
+    public final int[] gicbuf;
+
     public ThreadBuffer(int id) {
         this.id = id;
         OPOOL = new OrderingPool();
@@ -37,6 +39,7 @@ public class ThreadBuffer {
         seed = new Random().nextInt();
         pbuf = new int[21];
         mbuf = new int[21];
+        gicbuf = new int[7];
     }
 
     public void analyze() {
