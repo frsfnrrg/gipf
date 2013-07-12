@@ -115,10 +115,6 @@
 (definline make-thread-buffer [id]
   `(ThreadBuffer/create ~id))
 
-(defn get-line-taking-results
-  [gamestate player]
-  (vec (GameCalc/getLineTakingResults default-buffer gamestate player)))
-
 (defn get-player-lines-of-four
   [board player]
   (vec (GameCalc/getBoardLines board player)))
@@ -168,6 +164,7 @@
     (impacted-cells (game-state-board gamestate) loc shove)])
 
 (defn do-linemoves
+  ;; WARNING: line removal pattern is incorrect: see the rules. 
   [gs player move]
   (let [prot (ffirst move)]
     (loop [lleft (rest move) gamestate gs]
@@ -265,10 +262,6 @@
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
-(defn do-shove
-  [gamestate player shove]
-  (place-and-shove gamestate player shove))
-
 (defn list-possible-moves-and-board
   "Like list-possible-boards, just returns the moves along with the boards.
   ([move board reserves] ... )"
@@ -284,16 +277,16 @@
                             (if (game-state-gipf? gamestate player)
                               (list [[lmove (sign-line shove player)]
                                      (place-and-shove gamestate
-                                       player
-                                       (advance-line shove))]
-                                [[lmove (sign-line shove (multiply 2 player))]
+                                                      player
+                                                      (advance-line shove))]
+                                    [[lmove (sign-line shove (multiply 2 player))]
                                      (place-and-shove gamestate
-                                       (multiply 2 player)
-                                       (advance-line shove))])
+                                                      (multiply 2 player)
+                                                      (advance-line shove))])
                               (list [[lmove (sign-line shove player)]
                                      (place-and-shove gamestate
-                                       player
-                                       (advance-line shove))])))
+                                                      player
+                                                      (advance-line shove))])))
                           (get-open-moves (game-state-board gamestate))))
                        lines-board)
         flines-board (expand
@@ -305,12 +298,13 @@
                       actions-board)]
     flines-board))
 
-(defn list-possible-boards
-  [gamestate player]
-  (vec (lazy-next-gamestates gamestate player)))
+;; GUNK
 
-(def expected-max-rank* nil)
-
+(let [emr (atom nil)]
+  (defn set-emr! [value]
+    (reset! emr value))
+  (defn get-emr! []
+    @emr))
 (defrecord Heuristic [setup eval])
 (defrecord Search [pre eval post])
 
@@ -327,7 +321,7 @@
     (swap! mrfs
            #(assoc % player
                    [(fn []
-                      (:setup lead-heuristic)
+                      ((:setup lead-heuristic))
                       (apply (:pre search) sfargs))
                     (fn []
                       (apply (:post search) sfargs))

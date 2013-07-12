@@ -2,44 +2,38 @@ package gipfj;
 
 import gipfj.Const.Butterfly;
 
+/**
+ * BIG FAT NOTE: technically, the line _removal_ algorithm is wrong; the pattern
+ * of removal does not extend over a clear spot: XXXXO.O removes 4 X's and 1 O
+ * 
+ * 
+ */
 public class GameCalc {
-
     private static int CENTER = 0;
-
     private static int[] CENTER_ARM_1 = { 1, 7, 19 };
-
     private static int[] CENTER_ARM_2 = { 2, 9, 22 };
-
     private static int[] CENTER_ARM_3 = { 3, 11, 25 };
     private static int[] CENTER_ARM_4 = { 4, 13, 28 };
     private static int[] CENTER_ARM_5 = { 5, 15, 31 };
     private static int[] CENTER_ARM_6 = { 6, 17, 34 };
-    // yuck - see Const.listOfLines. And code is not even worth it.
     private static int CENTER_MOD_1 = 4;
     private static int CENTER_MOD_2 = 18;
     private static int CENTER_MOD_3 = 11;
-
     private static int[] RING_A = { 1, 2, 3, 4, 5, 6 };
-    // note: test minus first.. ? or last?...
     private static int[][] RING_A_MINUS = { { 2, 10, 24 }, { 3, 12, 27 },
             { 4, 14, 30 }, { 5, 16, 33 }, { 6, 18, 36 }, { 1, 8, 21 } };
-
     private static int[][] RING_A_PLUS = { { 18, 25 }, { 8, 20 }, { 10, 23 },
             { 12, 26 }, { 14, 29 }, { 16, 32 } };
-    // the discrepancy is due to bad ordering in Const.listOfLines
     private static int[] RING_A_REGISTRY = { 10, 3, 19, 12, 5, 17 };
     private static int[] RING_B = { 8, 10, 12, 14, 16, 18 };
-
     private static int[][] RING_B_MINUS = { { 9, 23 }, { 11, 26 }, { 13, 29 },
             { 15, 32 }, { 17, 35 }, { 7, 20 } };
-
     private static int[][] RING_B_PLUS = { { 7, 36 }, { 9, 21 }, { 11, 24 },
             { 13, 27 }, { 15, 30 }, { 17, 33 } };
     private static int[] RING_B_REGISTRY = { 9, 2, 20, 13, 6, 16 };
     private static int[][] RING_C_EXT = { { 22, 21, 20, 19 },
             { 25, 24, 23, 22 }, { 28, 27, 26, 25 }, { 31, 30, 29, 28 },
             { 34, 33, 32, 31 }, { 19, 36, 35, 34 } };
-
     private static int[] RING_C_REGISTRY = { 8, 0, 1, 14, 7, 15 };
 
     /**
@@ -194,58 +188,6 @@ public class GameCalc {
         return res;
     }
 
-    public static GameState[] getLineTakingResults(ThreadBuffer buf,
-            GameState g, int player) {
-        // returns a sequence of stuff like this:
-        // ( [[[prot] take1 take2 ...] ...)
-        // but typically just:
-        //
-        // ( [[[prot] take 1 take 2..]]
-        //
-        // i.e., the cheapo take-first way
-
-        GameState[] results = new GameState[1];
-
-        GameState curr = g;
-
-        int t = 0;
-
-        int[] found;
-        while (true) {
-            found = getFilteredBoardLines(buf, g.b, player);
-            if (found == null) {
-                break;
-            }
-
-            boolean k = false;
-            for (int f : found) {
-                boolean c = false;
-                for (int i = 0; i < t; i++) {
-                    if (buf.tried[i] == f) {
-                        c = true;
-                        break;
-                    }
-                }
-
-                if (c) {
-                    continue;
-                }
-
-                curr = lineEmpty(curr, f, player);
-                buf.tried[t] = f;
-                t++;
-                k = true;
-                break;
-            }
-            if (k == false) {
-                break;
-            }
-        }
-        results[0] = curr;
-
-        return results;
-    }
-
     /**
      * WARNING: does not take lines into account
      * 
@@ -352,14 +294,19 @@ public class GameCalc {
         return null;
     }
 
+    /**
+     * NOTE: noncompliant with the game rules (removes all items in line)
+     * 
+     * @param curr
+     * @param found
+     * @param player
+     * @return
+     */
     private static GameState lineEmpty(GameState curr, int found, int player) {
         byte[] cdata = new byte[Board.SIZE];
         System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
         int hc = curr.b.hashCode;
         int[] res = curr.r.toArray();
-        // speed up, by branching into plus/minus player, and not using
-        // arrays to store data. Hmm. _maybe_ hotspot removes it - I can't tell.
-        // it is still an allocation (bad)
         for (int q : Const.listOfLinePoints[found]) {
             int v = player * cdata[q];
             // System.out.format("v: %d p:%d d:%d d:%d q:%d %s\n", v, player,

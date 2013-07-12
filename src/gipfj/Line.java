@@ -1,6 +1,12 @@
 package gipfj;
 
-// what clojure interface controls rendering?
+/**
+ * TODO: use: Line, & PUSH; both integral.
+ * 
+ * Hide everything, use lookups for line-end etc.
+ * 
+ * The current Line situation is ugly. - best to hide it all
+ */
 public class Line {
     public static Line advanceLine(Line q) {
         return new Line(q.sig, Geometry.padd(q.start, q.delta), q.delta);

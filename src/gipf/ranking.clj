@@ -27,17 +27,16 @@
 (def-ranking-function rank-board-simple
   (:setup
    []
-   (def expected-max-rank* 80))
+   (set-emr! 80))
   (:eval
-   [gamestate player]
-   (reserve-diff-linear (game-state-reserves gamestate)
+   [gamestate player]   (reserve-diff-linear (game-state-reserves gamestate)
      player 20 5 5)))
 
 (let [weighting-board (radial-weight-array 30 10 -10 -30 5 4 3 2)]
   (def-ranking-function rank-board-hybrid
     (:setup
      []
-     (def expected-max-rank* 200))
+     (set-emr! 200))
     (:eval
      [gamestate p]
      
@@ -54,7 +53,7 @@
    come from win/loss"
   (:setup
    []
-   (def expected-max-rank* (divide positive-infinity 2)))
+   (set-emr! (divide positive-infinity 2)))
   (:eval
    [gs p]
    0))
@@ -68,7 +67,7 @@
      rank-board-org, and shows more power."
     (:setup
       []
-      (def expected-max-rank* 100))
+      (set-emr! 100))
     (:eval
       [gs p]
       (apply-weight-array (game-state-board gs) p rank-tactical-weights))))
@@ -77,6 +76,6 @@
   "Should be identical to Gipf for One's ranking function."
   (:setup
    []
-   (def expected-max-rank* (divide positive-infinity 3)))
+   (set-emr! (divide positive-infinity 3)))
   (:eval [gamestate player]
     (Ranking/gf1Rank gamestate player)))
