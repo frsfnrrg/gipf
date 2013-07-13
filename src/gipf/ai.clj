@@ -440,14 +440,16 @@
            ;;(println count#) ;; This shows that most of these are failure by exhaustion (no takes)
          (multiply ~good-player owner#))))))
 
-(def-search foolish-monte-carlo
-  "Magic"
-  {0 [10]
+(def monte-carlo-difficulties {0 [10]
    1 [200]
    2 [5000]
    3 [100000]
    4 [2000000]
-   5 [50000000]}
+   5 [50000000]})
+
+(def-search foolish-monte-carlo
+  "Magic"
+  monte-carlo-difficulties
   []
   (:eval
    [buffer gamestate good-player _ iterations]
@@ -506,3 +508,12 @@
   []
   (:eval [buffer gamestate good-player rank-func]
         (rank-func gamestate good-player)))
+
+(def-search uct-search
+  "Almost direct copy from a go website."
+  monte-carlo-difficulties
+  []
+  (:eval [buffer gamestate good-player _ iterations]
+    
+    ))
+  

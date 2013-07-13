@@ -2,7 +2,8 @@
   (:import (gipfj Geometry MathUtil Board GameState Reserves Line
                   IDRNode GameCalc GeneralizedPointWeighting
                   Ranking HistoryTable MoveSignedIGC
-                  Counter Compression Ident ChildList STable ThreadBuffer)))
+                  Counter Compression Ident ChildList STable ThreadBuffer
+                  UCTNode)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b c1 c2] `(GameState/makeGameState ~a ~b ~c1 ~c2))
@@ -118,6 +119,25 @@
 (defn get-player-lines-of-four
   [board player]
   (vec (GameCalc/getBoardLines board player)))
+
+(definline make-uctn [g]
+  `(UCTNode. ~g))
+
+(definline uctn-select [u] `(UCTNode/uctselect ~u))
+
+(definline uctn-post [u g w] `(UCTNode/uctpost ~u ~g ~w))
+
+(definline uctn-gs [u] `(UCTNode/uctgs ~u))
+
+(definline uctn-terminate [u g w] `(UCTNode/uctterminate ~u  ~g ~w))
+
+(definline uctn-grow [u c] `(UCTNode/uctgrow ~u ~c))
+
+(definline uctn-rank [u g w] `(UCTNode/uctrank ~u ~g ~w))
+
+(definline uctn-final [u] `(UCTNode/uctfinal ~u))
+
+
 
 ;; predicates/extraction
 
