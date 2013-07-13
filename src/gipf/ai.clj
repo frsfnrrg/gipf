@@ -497,3 +497,10 @@
                                 (dtab-add! transp key depth ww)
                                 ww)))))))]
       (tmc gamestate (negate good-player) depth alpha beta false)))))
+
+(def-search evaluate
+  "Static evaluation."
+  {0 [] 1 [] 2 [] 3 [] 4 []}
+  []
+  (:eval [buffer gamestate good-player rank-func]
+        (rank-func gamestate good-player)))

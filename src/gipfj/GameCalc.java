@@ -75,7 +75,7 @@ public class GameCalc {
 
         Line[] foo = new Line[ls.length];
         for (int c = 0; c < ls.length; c++) {
-            foo[c] = Const.listOfLines[ls[c]];
+            foo[c] = Line.sign(Const.listOfLines[ls[c]], (int) player);
         }
         return foo;
     }

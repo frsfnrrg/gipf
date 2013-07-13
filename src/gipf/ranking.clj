@@ -29,24 +29,25 @@
    []
    (set-emr! 80))
   (:eval
-   [gamestate player]   (reserve-diff-linear (game-state-reserves gamestate)
-     player 20 5 5)))
+   [gamestate player]
+   (reserve-diff-linear (game-state-reserves gamestate)
+                        player 20 5 5)))
 
 (let [weighting-board (radial-weight-array 30 10 -10 -30 5 4 3 2)]
   (def-ranking-function rank-board-hybrid
     (:setup
      []
-     (set-emr! 200))
+     (set-emr! 5000))
     (:eval
      [gamestate p]
      
      (let [player (long p) ;; otherwise cljr does two longcasts
            reserves (game-state-reserves gamestate)]
        (weighted-add-2
-         5 (reserve-diff-quadratic reserves player 4 1 1)
-         1 (apply-weight-array (game-state-board gamestate) player weighting-board))))))
-  
-  
+        50 (reserve-diff-quadratic reserves player 4 1 1)
+        1 (apply-weight-array (game-state-board gamestate) player weighting-board))))))
+
+
 
 (def-ranking-function rank-not-at-all
   "This is the null heuristic; note that rankings still
@@ -66,11 +67,11 @@
      Ultimately dumb; however, it is more efficient than using
      rank-board-org, and shows more power."
     (:setup
-      []
-      (set-emr! 100))
+     []
+     (set-emr! 100))
     (:eval
-      [gs p]
-      (apply-weight-array (game-state-board gs) p rank-tactical-weights))))
+     [gs p]
+     (apply-weight-array (game-state-board gs) p rank-tactical-weights))))
 
 (def-ranking-function rank-gf1
   "Should be identical to Gipf for One's ranking function."
@@ -78,4 +79,4 @@
    []
    (set-emr! (divide positive-infinity 3)))
   (:eval [gamestate player]
-    (Ranking/gf1Rank gamestate player)))
+         (Ranking/gf1Rank gamestate player)))
