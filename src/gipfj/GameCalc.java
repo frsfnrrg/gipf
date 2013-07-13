@@ -245,6 +245,7 @@ public class GameCalc {
                 boolean gp1 = bob.gphase1;
                 boolean gp2 = bob.gphase2;
                 byte last;
+                byte mov = (byte) ord[cx - 1];
                 Reserves fnl;
                 // 2/3rds preference toward gipfs..
                 int rem = bob.r.numReserves(player);
@@ -252,6 +253,7 @@ public class GameCalc {
                     if (buf.nextRandomInt(3) != 0 && rem >= 2) {
                         last = (byte) (player * 2);
                         fnl = bob.r.applyDelta(player, -2, 0, 1);
+                        mov += Const.MOVES;
                     } else if (rem >= 1) {
                         if (player > 0) {
                             gp1 = false;
@@ -287,7 +289,7 @@ public class GameCalc {
                 }
 
                 GameState woah = new GameState(new Board(data, hcr), fnl, gp1,
-                        gp2, (byte) ord[cx - 1]);
+                        gp2, mov);
                 primeListsOfLines(buf, woah, player);
                 return primedLineRemoval(buf, woah, player)[0];
             }
@@ -540,6 +542,8 @@ public class GameCalc {
             System.out.println("RETAINED");
         }
 
+        int mov = g.move % Const.MOVES;
+
         // buffers ;; TODO: retain 4 in rows.
         int[] pbuf = buf.pbuf;
         int pc = 0;
@@ -549,7 +553,7 @@ public class GameCalc {
         // do a change analysis:
         byte[] data = g.b.data;
 
-        Butterfly[] wings = Const.butterflies[g.move];
+        Butterfly[] wings = Const.butterflies[mov];
         Butterfly curb = wings[0];
         Butterfly nxtb;
         byte nxt;
@@ -601,7 +605,7 @@ public class GameCalc {
         byte pb = (byte) player;
         int selfrow = 1;
         // 1st one is already pb. Inefficient?
-        int[] llp = Const.listOfPushPoints[g.move];
+        int[] llp = Const.listOfPushPoints[mov];
         for (int i = 1; i < llp.length; i++) {
             if (data[llp[i]] * pb <= 0) {
                 break;
@@ -613,10 +617,10 @@ public class GameCalc {
         if (selfrow >= 4) {
             // System.out.format("Selfer %d %d\n", player, g.move);
             if (player > 0) {
-                pbuf[pc] = Const.pushToLine(g.move);
+                pbuf[pc] = Const.pushToLine(mov);
                 pc++;
             } else {
-                mbuf[mc] = Const.pushToLine(g.move);
+                mbuf[mc] = Const.pushToLine(mov);
                 mc++;
             }
         }
@@ -677,6 +681,65 @@ public class GameCalc {
         int[] rq = new int[pc];
         System.arraycopy(bf, 0, rq, 0, pc);
         return rq;
+    }
+
+    /**
+     * The legality of the move & presence of stuff remains assumed.
+     * 
+     * @param old
+     * @param owner
+     * @param move
+     * @return
+     */
+    public static GameState applyMove(ThreadBuffer buf, GameState old,
+            long owner, long move) {
+        int player = (int) owner;
+
+        GameState snd = primedLineRemoval(buf, old, player)[0];
+
+        // Extract this move-making logic please? It is getting repeated way
+        // too often
+        boolean gp1 = snd.gphase1;
+        boolean gp2 = snd.gphase2;
+        byte value = (byte) owner;
+        if (move >= Const.MOVES) {
+            value *= 2;
+            move -= 42;
+        } else if (snd.getPhase(player)) {
+            if (player > 0) {
+                gp1 = false;
+            } else {
+                gp2 = false;
+            }
+        }
+
+        Reserves r;
+        if (player > 0 ? gp1 : gp2) {
+            r = snd.r.applyDelta(player, -2, 0, 1);
+        } else {
+            r = snd.r.applyDelta(player, -1, 1, 0);
+        }
+
+        byte[] data = new byte[Board.SIZE];
+        System.arraycopy(snd.b.data, 0, data, 0, Board.SIZE);
+        int hcr = snd.b.hashCode;
+
+        byte last = value;
+        for (int ind : Const.listOfPushPoints[(int) move]) {
+            byte v = data[ind];
+            hcr ^= Board.hashArray[ind][v + 2] ^ Board.hashArray[ind][last + 2];
+            data[ind] = last;
+            if (v == 0) {
+                break;
+            }
+            last = v;
+        }
+
+        GameState thrd = new GameState(new Board(data, hcr), r, gp1, gp2,
+                (byte) move);
+
+        primeListsOfLines(buf, old, player);
+        return primedLineRemoval(buf, thrd, player)[0];
     }
 
     public static String toString(Board b) {

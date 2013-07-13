@@ -10,6 +10,10 @@ public class GameState {
     public final boolean gphase1; // positive
     public final boolean gphase2; // negative
 
+    /**
+     * A number from 0 to 83; 0-41 corresponds to a placed piece, 42-83 to a
+     * placed GIPF potential
+     */
     public final byte move;
 
     // these are deliberately not final

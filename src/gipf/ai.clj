@@ -509,35 +509,34 @@
   (:eval [buffer gamestate good-player rank-func]
          (rank-func gamestate good-player)))
 
+(definline uct-adv
+  [buffer good-player uk gamestate node owner]
+  `(let [next# (uctn-select ~node)
+         res# (~uk next# (apply-move ~buffer ~gamestate ~owner (uctn-move next#)) (negate ~owner))]
+     (uctn-post! ~node ~good-player res#)
+     res#))
+
 (def-search uct-search
   "Almost direct copy from a go website."
   monte-carlo-difficulties
   []
   (:eval
    [buffer gamestate good-player _ iterations]
-   (letfn [(uk [node owner]
+   (letfn [(uk [node gamestate owner]
              ;; notice the three-fold repetition. definline!
              (if (uctn-untried node)
-               (let [gs (uctn-gs node)
-                     res (play-game buffer good-player gs owner)]
+               (let [res (play-game buffer good-player gamestate owner)]
                  (uctn-post! node good-player res)
                  res)
                (if (uctn-children? node)
-                 (let [next (uctn-select node)
-                       res (uk next (negate owner))]
-                   (uctn-post! node good-player res)
-                   res)
-                 (let [desc (random-move-generator buffer
-                                                   (uctn-gs node) owner)]
+                 (uct-adv buffer good-player uk gamestate node owner)
+                 (let [desc (random-move-generator buffer gamestate owner)]
                    (if (.hasNext desc)
                      (do (loop []
                            (uctn-grow! node (make-uctn (.next desc)))
                            (when (.hasNext desc)
                              (recur)))
-                         (let [next (uctn-select node)
-                               res (uk next (negate owner))]
-                           (uctn-post! node good-player res)
-                           res))
+                         (uct-adv buffer good-player uk gamestate node owner))
                      (do
                        (uctn-terminate! node good-player owner)
                        (negate owner)))))))]
@@ -545,8 +544,8 @@
            antiplayer (negate good-player)]
        (loop [i 0]
          (if (greater i iterations)
-           (uctn-rank parent)
+           (uctn-rank parent good-player good-player)
            (do
-             (uk parent anti-player)
+             (uk parent gamestate antiplayer)
              (recur (inc i)))))))))
   

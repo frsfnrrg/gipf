@@ -3,7 +3,7 @@ package gipfj;
 public class UCTNode {
     public static final float UCT_CONST = 1.0f;
 
-    public final GameState gs;
+    public final byte move;
     private int good_wins;
     private int visits;
     // another option is to use chaining, but it isn't worth it for large
@@ -12,7 +12,7 @@ public class UCTNode {
     private int kcount;
 
     public UCTNode(GameState g) {
-        this.gs = g;
+        this.move = g.move;
         kcount = 0;
         visits = 0;
         good_wins = 0;
@@ -34,7 +34,7 @@ public class UCTNode {
 
     public void addChild(UCTNode child) {
         if (children == null) {
-            children = new UCTNode[24];
+            children = new UCTNode[21];
         } else if (children.length == kcount) {
             UCTNode[] t = children;
             children = new UCTNode[kcount * 2];
@@ -92,8 +92,8 @@ public class UCTNode {
         u.postWin((int) good, (int) win);
     }
 
-    public static GameState uctgs(UCTNode u) {
-        return u.gs;
+    public static long uctmove(UCTNode u) {
+        return u.move;
     }
 
     public static void uctterminate(UCTNode u, long good, long win) {
@@ -120,11 +120,11 @@ public class UCTNode {
     public static boolean uctfinal(UCTNode u) {
         return u.terminal();
     }
-    
+
     public static boolean uctchilded(UCTNode u) {
-        return u.kcount == 0;
+        return u.kcount > 0;
     }
-    
+
     public static boolean uctunvisited(UCTNode u) {
         return u.visits == 0;
     }

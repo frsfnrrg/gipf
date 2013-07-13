@@ -123,13 +123,16 @@
 (definline make-uctn [g]  `(UCTNode. ~g))
 (definline uctn-select [u] `(UCTNode/uctselect ~u))
 (definline uctn-post! [u g w] `(UCTNode/uctpost ~u ~g ~w))
-(definline uctn-gs [u] `(UCTNode/uctgs ~u))
+(definline uctn-move [u] `(UCTNode/uctmove ~u))
 (definline uctn-terminate! [u g w] `(UCTNode/uctterminate ~u  ~g ~w))
 (definline uctn-grow! [u c] `(UCTNode/uctgrow ~u ~c))
 (definline uctn-rank [u g w] `(UCTNode/uctrank ~u ~g ~w))
 (definline uctn-final [u] `(UCTNode/uctfinal ~u))
 (definline uctn-untried [u] `(UCTNode/uctunvisited ~u))
 (definline uctn-children? [u] `(UCTNode/uctchilded ~u))
+
+(definline apply-move [buf gs p m]
+  `(GameCalc/applyMove ~buf ~gs ~p ~m))
 
 ;; predicates/extraction
 

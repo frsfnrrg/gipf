@@ -9,8 +9,8 @@
   `(swap! ~atom-map #(assoc % ~key (~funk (get % ~key)))))
 
 ;; TODO shift all into settings.clj
-(let [aic (atom {1 [2 "rank-gf1" "qab-hist-transp"]
-                 -1 [2 "rank-gf1" "qab-hist-transp"]})
+(let [aic (atom {1 [2 "rank-gf1" "uct-search"]
+                 -1 [2 "rank-gf1" "uct-search"]})
       setup-player-ai!
       (fn [player]
         (let [opts (tget @aic player)]

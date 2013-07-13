@@ -154,12 +154,22 @@ public class MoveSignedIGC implements Iterator<GameState> {
         }
 
         GameState result;
-        if (player > 0) {
-            result = new GameState(new Board(r, hcr), ruk, glvl == 2, oppg,
-                    (byte) order[plo]);
+        if (glvl == 2) {
+            if (player > 0) {
+                result = new GameState(new Board(r, hcr), ruk, true, oppg,
+                        (byte) (order[plo] + Const.MOVES));
+            } else {
+                result = new GameState(new Board(r, hcr), ruk, oppg, true,
+                        (byte) (order[plo] + Const.MOVES));
+            }
         } else {
-            result = new GameState(new Board(r, hcr), ruk, oppg, glvl == 2,
-                    (byte) order[plo]);
+            if (player > 0) {
+                result = new GameState(new Board(r, hcr), ruk, false, oppg,
+                        (byte) order[plo]);
+            } else {
+                result = new GameState(new Board(r, hcr), ruk, oppg, false,
+                        (byte) order[plo]);
+            }
         }
         plo++;
 

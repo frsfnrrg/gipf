@@ -206,8 +206,10 @@ public class Reserves {
 
         // debug on crash
         if (DEBUG) {
-            System.out.format("%d, %d, %d, %d, %d, %d\n", p1, p2, o1, o2, g1,
-                    g2);
+            System.out.format("%d, %d, %d, %d, %d, %d : %%s\n", p1, p2, o1, o2,
+                    g1, g2// , //Arrays.deepToString(Thread.currentThread()
+                          // .getStackTrace())
+                    );
         }
 
         int r = hashArray[0][p1];

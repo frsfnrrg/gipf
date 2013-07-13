@@ -110,6 +110,10 @@ public class HistoryTable {
      * @param move
      */
     public void addSufficientMove(int depth, int move) {
+        // gipf moves are ignored
+        if (move >= 42) {
+            move -= 42;
+        }
         // we only lock on mutation
         lock();
         try {
