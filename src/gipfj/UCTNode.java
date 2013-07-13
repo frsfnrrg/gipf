@@ -120,4 +120,12 @@ public class UCTNode {
     public static boolean uctfinal(UCTNode u) {
         return u.terminal();
     }
+    
+    public static boolean uctchilded(UCTNode u) {
+        return u.kcount == 0;
+    }
+    
+    public static boolean uctunvisited(UCTNode u) {
+        return u.visits == 0;
+    }
 }

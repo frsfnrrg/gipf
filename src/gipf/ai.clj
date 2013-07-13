@@ -37,26 +37,26 @@
      lossv# negative-infinity positive-infinity]
     (let [rd# ~source
           qfrp#
-      (if (.hasNext rd#)
-        (loop [cur# cur# recm# -1]
           (if (.hasNext rd#)
-            (let [~next (.next rd#)
-                  rank# (do ~@block)              
-                  cur# (mnmx# rank# cur#)
-                  recm# (if (equals cur# rank#)
-                          (~move-extractor ~next)
-                          recm#)]
-              (if (compo# cur# opp#)
+            (loop [cur# cur# recm# -1]
+              (if (.hasNext rd#)
+                (let [~next (.next rd#)
+                      rank# (do ~@block)              
+                      cur# (mnmx# rank# cur#)
+                      recm# (if (equals cur# rank#)
+                              (~move-extractor ~next)
+                              recm#)]
+                  (if (compo# cur# opp#)
+                    (do
+                      (when-not (equals recm# -1)
+                        (hist-add! ~hist ~height recm#))
+                      cur#)
+                    (recur cur# recm#)))
                 (do
                   (when-not (equals recm# -1)
                     (hist-add! ~hist ~height recm#))
-                  cur#)
-                (recur cur# recm#)))
-            (do
-              (when-not (equals recm# -1)
-                (hist-add! ~hist ~height recm#))
-              cur#)))
-        lossv#)]
+                  cur#)))
+            lossv#)]
       (~cleanup rd#)
       qfrp#)))
 
@@ -132,16 +132,16 @@
   (:eval
    [buffer gamestate player rank-func depth alpha beta]
    (longify [player]
-     (letfn [(rec [gamestate owner depth alpha beta max?]
-               (longify [depth alpha beta]
-                 (if (equals 0 depth)
-                   (rank-func gamestate player)
-                   (ab-h-m buffer gamestate owner max? alpha beta hihi depth [ngs]
-                           (rec ngs (negate owner) (dec-1 depth)
-                                alpha beta (not max?))))))]
-       (when (<= beta alpha)
-         (println "What's up with the window??"))
-       (rec gamestate (negate player) depth alpha beta false)))))
+            (letfn [(rec [gamestate owner depth alpha beta max?]
+                      (longify [depth alpha beta]
+                               (if (equals 0 depth)
+                                 (rank-func gamestate player)
+                                 (ab-h-m buffer gamestate owner max? alpha beta hihi depth [ngs]
+                                         (rec ngs (negate owner) (dec-1 depth)
+                                              alpha beta (not max?))))))]
+              (when (<= beta alpha)
+                (println "What's up with the window??"))
+              (rec gamestate (negate player) depth alpha beta false)))))
 
 (def-search cls-ab-transp-search
   "So what if I indent five times?"
@@ -161,20 +161,20 @@
              (if (equals level depth)
                (rank-func gamestate player)
                (ab-n-m buffer gamestate owner max? alpha beta [ngs]
-                        (if (less-equals level 3)
-                          (let [key (compress-sgs buffer ngs owner)
-                                lrnk (dtab-get mtable key (negate level))]
-                            (if lrnk lrnk
-                                (let [r (rec ngs (negate owner) (inc-1 level)
-                                             alpha
-                                             beta
-                                             (not max?))]
-                                  (dtab-add! mtable key (negate level) r)
-                                  r)))
-                          (rec ngs (negate owner) (inc-1 level)
-                               alpha
-                               beta
-                               (not max?))))))]
+                       (if (less-equals level 3)
+                         (let [key (compress-sgs buffer ngs owner)
+                               lrnk (dtab-get mtable key (negate level))]
+                           (if lrnk lrnk
+                               (let [r (rec ngs (negate owner) (inc-1 level)
+                                            alpha
+                                            beta
+                                            (not max?))]
+                                 (dtab-add! mtable key (negate level) r)
+                                 r)))
+                         (rec ngs (negate owner) (inc-1 level)
+                              alpha
+                              beta
+                              (not max?))))))]
      (when (<= beta alpha)
        (println "What's up with the window??"))
      (rec gamestate (negate player) 0 alpha beta false))))
@@ -287,64 +287,64 @@
   [buffer good-player rank-func mxdepth endtime hist transp]
   [node depth trange max? alpha beta]
   (longify [depth trange alpha beta]
-   (if (and (greater-equals trange 3) (past-time? endtime))
-     node
-     (let [gamestate (idr-node-gamestate node)
-           owner (idr-node-player node)
-           antiowner (negate owner)
-           ^java.util.Iterator ochildren (idr-node-children node)
-           nchildren (clist-make)
-           orank (idr-node-rank node)
-           nrank
-           ;;
-           ;; Children:
-           ;; {} empty - terminal
-           ;; nil - expandme!
-           ;; {bob, jones, frank} - update!!
-           ;;
-           (if (and (not (nil? ochildren)) (not (.hasNext ochildren)))
-             orank
-             (if (nil? ochildren)
-               (ab-h-m buffer gamestate owner max? alpha beta hist depth
-                       [ngs]
-                       (let [key (compress-sgs buffer ngs antiowner)
-                             next (if (equals depth 0)
-                                    (make-idr-node
-                                     ngs antiowner                
-                                     (rank-func ngs good-player))
-                                    (let [nork (dtab-get transp key depth)]
-                                      (if (nil? nork)
-                                        (itr (make-idr-node ngs antiowner 0)
-                                             (dec-1 depth) (dec-1 trange) (not max?) alpha beta)
-                                        (make-idr-node ngs antiowner nork))))
-                             rank (idr-node-rank next)]
-                         (dtab-add! transp key depth rank)
-                         (clist-add nchildren next rank)
-                         rank))
-               (ab-h-m-s ochildren node-move do-nothing max? alpha beta hist depth [onodule]
-                         (let [okey (compress-sgs buffer (idr-node-gamestate onodule)
-                                                  (idr-node-player onodule))
-                               nodule (let [ttr (dtab-get transp okey depth)]
-                                        (if (nil? ttr)
-                                          (let [nog (itr onodule (dec-1 depth)
-                                                         (dec-1 trange) (not max?) alpha beta)
-                                                nkey (compress-sgs buffer
-                                                      (idr-node-gamestate nog)
-                                                      (idr-node-player nog))]
-                                            (dtab-change! transp nkey
-                                                          depth (idr-node-rank nog))
-                                            nog)                                       
-                                          ;; note that the children are
-                                          ;; not updated - would the table
-                                          ;; entry ever dissappear, we would
-                                          ;; have to go through the entire
-                                          ;; tree again.
-                                          (idr-node-update onodule ttr
-                                                           (idr-node-children onodule))))
-                               rank (idr-node-rank nodule)]
-                           (clist-add nchildren nodule rank)
-                           rank))))]
-       (idr-node-update node nrank (clist-pack nchildren max?))))))
+           (if (and (greater-equals trange 3) (past-time? endtime))
+             node
+             (let [gamestate (idr-node-gamestate node)
+                   owner (idr-node-player node)
+                   antiowner (negate owner)
+                   ^java.util.Iterator ochildren (idr-node-children node)
+                   nchildren (clist-make)
+                   orank (idr-node-rank node)
+                   nrank
+                   ;;
+                   ;; Children:
+                   ;; {} empty - terminal
+                   ;; nil - expandme!
+                   ;; {bob, jones, frank} - update!!
+                   ;;
+                   (if (and (not (nil? ochildren)) (not (.hasNext ochildren)))
+                     orank
+                     (if (nil? ochildren)
+                       (ab-h-m buffer gamestate owner max? alpha beta hist depth
+                               [ngs]
+                               (let [key (compress-sgs buffer ngs antiowner)
+                                     next (if (equals depth 0)
+                                            (make-idr-node
+                                             ngs antiowner                
+                                             (rank-func ngs good-player))
+                                            (let [nork (dtab-get transp key depth)]
+                                              (if (nil? nork)
+                                                (itr (make-idr-node ngs antiowner 0)
+                                                     (dec-1 depth) (dec-1 trange) (not max?) alpha beta)
+                                                (make-idr-node ngs antiowner nork))))
+                                     rank (idr-node-rank next)]
+                                 (dtab-add! transp key depth rank)
+                                 (clist-add nchildren next rank)
+                                 rank))
+                       (ab-h-m-s ochildren node-move do-nothing max? alpha beta hist depth [onodule]
+                                 (let [okey (compress-sgs buffer (idr-node-gamestate onodule)
+                                                          (idr-node-player onodule))
+                                       nodule (let [ttr (dtab-get transp okey depth)]
+                                                (if (nil? ttr)
+                                                  (let [nog (itr onodule (dec-1 depth)
+                                                                 (dec-1 trange) (not max?) alpha beta)
+                                                        nkey (compress-sgs buffer
+                                                                           (idr-node-gamestate nog)
+                                                                           (idr-node-player nog))]
+                                                    (dtab-change! transp nkey
+                                                                  depth (idr-node-rank nog))
+                                                    nog)                                       
+                                                  ;; note that the children are
+                                                  ;; not updated - would the table
+                                                  ;; entry ever dissappear, we would
+                                                  ;; have to go through the entire
+                                                  ;; tree again.
+                                                  (idr-node-update onodule ttr
+                                                                   (idr-node-children onodule))))
+                                       rank (idr-node-rank nodule)]
+                                   (clist-add nchildren nodule rank)
+                                   rank))))]
+               (idr-node-update node nrank (clist-pack nchildren max?))))))
 
 (def-search idrn-ab-h
   "Godlike."
@@ -438,14 +438,14 @@
          (recur nxt# (negate owner#) (inc-1 count#))
          (do
            ;;(println count#) ;; This shows that most of these are failure by exhaustion (no takes)
-         (multiply ~good-player owner#))))))
+           (multiply ~good-player owner#))))))
 
 (def monte-carlo-difficulties {0 [10]
-   1 [200]
-   2 [5000]
-   3 [100000]
-   4 [2000000]
-   5 [50000000]})
+                               1 [200]
+                               2 [5000]
+                               3 [100000]
+                               4 [2000000]
+                               5 [50000000]})
 
 (def-search foolish-monte-carlo
   "Magic"
@@ -463,11 +463,11 @@
 
 (definline mcr
   [buf good gs actor count]
- `(loop [i# 0 rnk# 0]
-    (if (greater-equals i# ~count)
-      rnk#
-      (recur (inc-1 i#)
-             (add rnk# (play-game ~buf ~good ~gs ~actor))))))
+  `(loop [i# 0 rnk# 0]
+     (if (greater-equals i# ~count)
+       rnk#
+       (recur (inc-1 i#)
+              (add rnk# (play-game ~buf ~good ~gs ~actor))))))
 
 (def-search tree-monte-carlo
   "Uses transp, hist, & plain alpha beta. Evaluation is monte-carlo style."
@@ -496,10 +496,10 @@
                           (let [key (compress-sgs buffer ngs opp)
                                 llrk (dtab-get transp key depth)]
                             (if llrk llrk
-                              (let [ww (tmc ngs opp dd
-                                            alpha beta (not max?))]
-                                (dtab-add! transp key depth ww)
-                                ww)))))))]
+                                (let [ww (tmc ngs opp dd
+                                              alpha beta (not max?))]
+                                  (dtab-add! transp key depth ww)
+                                  ww)))))))]
       (tmc gamestate (negate good-player) depth alpha beta false)))))
 
 (def-search evaluate
@@ -507,13 +507,46 @@
   {0 [] 1 [] 2 [] 3 [] 4 []}
   []
   (:eval [buffer gamestate good-player rank-func]
-        (rank-func gamestate good-player)))
+         (rank-func gamestate good-player)))
 
 (def-search uct-search
   "Almost direct copy from a go website."
   monte-carlo-difficulties
   []
-  (:eval [buffer gamestate good-player _ iterations]
-    
-    ))
+  (:eval
+   [buffer gamestate good-player _ iterations]
+   (letfn [(uk [node owner]
+             ;; notice the three-fold repetition. definline!
+             (if (uctn-untried node)
+               (let [gs (uctn-gs node)
+                     res (play-game buffer good-player gs owner)]
+                 (uctn-post! node good-player res)
+                 res)
+               (if (uctn-children? node)
+                 (let [next (uctn-select node)
+                       res (uk next (negate owner))]
+                   (uctn-post! node good-player res)
+                   res)
+                 (let [desc (random-move-generator buffer
+                                                   (uctn-gs node) owner)]
+                   (if (.hasNext desc)
+                     (do (loop []
+                           (uctn-grow! node (make-uctn (.next desc)))
+                           (when (.hasNext desc)
+                             (recur)))
+                         (let [next (uctn-select node)
+                               res (uk next (negate owner))]
+                           (uctn-post! node good-player res)
+                           res))
+                     (do
+                       (uctn-terminate! node good-player owner)
+                       (negate owner)))))))]
+     (let [parent (make-uctn gamestate)
+           antiplayer (negate good-player)]
+       (loop [i 0]
+         (if (greater i iterations)
+           (uctn-rank parent)
+           (do
+             (uk parent anti-player)
+             (recur (inc i)))))))))
   
