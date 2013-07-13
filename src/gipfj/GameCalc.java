@@ -516,6 +516,12 @@ public class GameCalc {
             return;
         }
 
+        // QUESTION: What about the 4-gipf case?? Do we never keep it?
+
+        if (g.minus_lines != null || g.plus_lines != null) {
+            System.out.println("RETAINED");
+        }
+
         // buffers
         int[] pbuf = buf.pbuf;
         int pc = 0;

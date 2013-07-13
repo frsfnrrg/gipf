@@ -242,7 +242,7 @@
 (defn move-piece!
   [loc shove shovevalue changeres]
   (let [[newgs updated]
-        (do-move (pack-gamestate board* reserve-pieces* adv-phase*)
+        (do-move (pack-gamestate board* (if changeres reserve-pieces* uncrashable-reserves) adv-phase*)
                  shovevalue loc shove)]
     (def board* (game-state-board newgs))
     (when changeres

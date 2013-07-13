@@ -16,3 +16,5 @@
   `(Reserves/equiv ~r ~p))
 (definline was-taken? [r p]
   `(Reserves/wasTaken ~r ~p))
+
+(def uncrashable-reserves (->Reserves 5 5 5))
