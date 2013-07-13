@@ -531,9 +531,7 @@
   (let [q (atom nil)
         t (doto (java.lang.Thread.
                  (fn []
-                   (println "calc started:" (.. java.lang.Thread currentThread getId))
-                   (reset! q (thunk))
-                   (println "calc ended" (.. java.lang.Thread currentThread getId))))
+                   (reset! q (thunk))))
             (.start))]
     (fn []
       (.join t)

@@ -432,11 +432,13 @@
 ;; inline it?? nah... Large func vs. small func..
 (definline play-game
   [buffer good-player gs owner]
-  `(loop [gs# ~gs owner# ~owner]
+  `(loop [gs# ~gs owner# ~owner count# 0]
      (let [nxt# (get-random-progression ~buffer gs# owner#)]
        (if nxt#
-         (recur nxt# (negate owner#))
-         (multiply ~good-player owner#)))))
+         (recur nxt# (negate owner#) (inc-1 count#))
+         (do
+           ;;(println count#) ;; This shows that most of these are failure by exhaustion (no takes)
+         (multiply ~good-player owner#))))))
 
 (def-search foolish-monte-carlo
   "Magic"

@@ -80,7 +80,6 @@
                                   (println "Rank:" rank))
                              
                              (ond :screen-display
-                                  (println (second move) (- rank current-rank))
                                   (direct-visualize-ai-ranking
                                    (second move) (- rank current-rank)))
 

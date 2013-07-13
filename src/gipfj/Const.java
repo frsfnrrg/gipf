@@ -1,5 +1,6 @@
 package gipfj;
 
+
 /**
  * 
  */
@@ -47,6 +48,8 @@ public class Const {
     public static final int[][] listOfPushPoints = doubleAndMirror(listOfLinePoints);
     public static final int MOVES = 42;
 
+    public static final int[][][] listOfSplitLinePoints = splitk(listOfLinePoints);
+
     private static Line[] getLoL() {
         Line[] lol = new Line[21];
 
@@ -73,6 +76,28 @@ public class Const {
         lol[1] = Line.makeSignedLine(1, 25, 5);
 
         return lol;
+    }
+
+    private static int[][][] splitk(int[][] in) {
+        int[][][] r = new int[in.length][][];
+        for (int i = 0; i < in.length; i++) {
+            int[] f = in[i];
+            int fl = f.length / 2;
+            int fr = f.length - fl;
+            int[][] b = new int[2][];
+            b[0] = new int[fl];
+            b[1] = new int[fr];
+            for (int k = 0; k < fl; k++) {
+                b[0][k] = f[fl - k - 1];
+            }
+            for (int k = fl; k < f.length; k++) {
+                b[1][k - fl] = f[k];
+            }
+
+            r[i] = b;
+        }
+
+        return r;
     }
 
     private static int[][] getLolP(Line[] lol) {

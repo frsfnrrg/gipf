@@ -68,6 +68,7 @@ public class GameCalc {
      * @return
      */
     public static Line[] getBoardLines(Board b, long player) {
+        // WARNING: STILL BUG-GY
         int[] ls = getFilteredBoardLines(ThreadBuffer.DEFAULT, b, (int) player);
         if (ls == null) {
             return new Line[0];
@@ -189,7 +190,7 @@ public class GameCalc {
     }
 
     /**
-     * WARNING: does not take lines into account
+     * Requires priming beforehand
      * 
      * @param buf
      * @param g
@@ -307,13 +308,9 @@ public class GameCalc {
         System.arraycopy(curr.b.data, 0, cdata, 0, Board.SIZE);
         int hc = curr.b.hashCode;
         int[] res = curr.r.toArray();
-        for (int q : Const.listOfLinePoints[found]) {
-            int v = player * cdata[q];
-            // System.out.format("v: %d p:%d d:%d d:%d q:%d %s\n", v, player,
-            // cdata[q], d, q, rr.toString());
 
-            // / System.out.format("%d %d, %d %d, %d %d\n", rr.p1, rr.p2, rr.o1,
-            // rr.o2, rr.g1, rr.g2);
+        for (int q : Const.listOfSplitLinePoints[found][0]) {
+            int v = player * cdata[q];
 
             if (v < 0) {
                 cdata[q] = 0;
@@ -327,10 +324,31 @@ public class GameCalc {
                 hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][3];
                 cdata[q] = 0;
                 Reserves.mutateArray(res, player, 1, -1, 0);
+            } else if (v == 0) {
+                break;
             }
         }
 
-        // .change preserves superclass metadata
+        for (int q : Const.listOfSplitLinePoints[found][1]) {
+            int v = player * cdata[q];
+
+            if (v < 0) {
+                cdata[q] = 0;
+                hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][v + 2];
+                if (v == -2) {
+                    Reserves.mutateArray(res, -player, 0, 0, -1);
+                } else {
+                    Reserves.mutateArray(res, -player, 0, -1, 0);
+                }
+            } else if (v == 1) {
+                hc ^= Board.hashArray[q][2] ^ Board.hashArray[q][3];
+                cdata[q] = 0;
+                Reserves.mutateArray(res, player, 1, -1, 0);
+            } else if (v == 0) {
+                break;
+            }
+        }
+
         return curr.change(new Board(cdata, hc), new Reserves(res),
                 curr.gphase1, curr.gphase2, curr.move);
     }
@@ -522,7 +540,7 @@ public class GameCalc {
             System.out.println("RETAINED");
         }
 
-        // buffers
+        // buffers ;; TODO: retain 4 in rows.
         int[] pbuf = buf.pbuf;
         int pc = 0;
         int[] mbuf = buf.mbuf;
@@ -583,15 +601,17 @@ public class GameCalc {
         byte pb = (byte) player;
         int selfrow = 1;
         // 1st one is already pb. Inefficient?
-        for (Butterfly fu : wings) {
-            selfrow++;
-            if (data[fu.v] * pb <= 0) {
+        int[] llp = Const.listOfPushPoints[g.move];
+        for (int i = 1; i < llp.length; i++) {
+            if (data[llp[i]] * pb <= 0) {
                 break;
+            } else {
+                selfrow++;
             }
         }
 
         if (selfrow >= 4) {
-            // System.out.format("Selfer %d %d\n", player,g.move);
+            // System.out.format("Selfer %d %d\n", player, g.move);
             if (player > 0) {
                 pbuf[pc] = Const.pushToLine(g.move);
                 pc++;
