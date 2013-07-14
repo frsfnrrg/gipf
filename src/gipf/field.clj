@@ -188,54 +188,6 @@
 
 (def list-of-split-lines (mapv #(mapv vec (vec %)) (vec Const/listOfSplitLinePoints)))
 
-(defn do-linemoves-proper
-  "Used in game, to easily and simply effect a line move"
-  [gs player move]
-  (println "TODO")
-  gs)
-
-(defn do-linemoves
-  ;; WARNING: line removal pattern is incorrect: see the rules. 
-  [gs player move]
-  (let [prot (ffirst move)]
-    (loop [lleft (rest move) gamestate gs]
-      (if (empty? lleft)
-        gamestate
-        (recur
-         (rest lleft)
-         (let [line (first lleft)
-               delta (line-delta line)]
-           (loop [pos (line-start line)
-                  board (game-state-board gamestate)
-                  reserves (game-state-reserves gamestate)]
-             (if (= (pt-radius pos) 4)
-               (->GameState board reserves false false);; TODO
-               (let [val (get-hex-array board pos)]
-                 (cond (some #(pt= pos %) prot)
-                       (recur (pt+ pos delta) board reserves)
-                       
-                       (same-sign? val player)
-                       (if (equals 2 (abs val))
-                         (recur (pt+ pos delta)
-                                (change-hex-array board pos 0)
-                                (reserve-delta reserves player 2 0 -1))
-                         (recur (pt+ pos delta)
-                                (change-hex-array board pos 0)
-                                (reserve-delta reserves player 1 -1 0)))
-
-                       (not (equals val 0))
-                       (if (equals 2 (abs val))
-                         (recur (pt+ pos delta)
-                                (change-hex-array board pos 0)
-                                (reserve-delta reserves (negate player) 0 0 -1))
-                         (recur (pt+ pos delta)
-                                (change-hex-array board pos 0)
-                                (reserve-delta reserves (negate player) 0 -1 0)))
-                       
-                       :else
-                       (recur (pt+ pos delta) board reserves)))))))))))
-
-
 (defn reduce-portion
   "Returns [protect newboard newreserves]"
   [points protect board reserves player]
@@ -272,7 +224,25 @@
                    (conj bpr loc)
                    board brr)))))))
 
-(defn get-line-taking-orderings;;-proper
+
+(defn do-linemoves
+  "Used in game, to easily and simply effect a line move"
+  [gs player move]
+  (let [prot (ffirst move)]
+    (loop [lleft (rest move) gamestate gs]
+      (if (empty? lleft)
+        gamestate
+        (recur
+         (rest lleft)
+         (let [line (line-to-lint (first lleft))
+               points (get list-of-split-lines line)
+               board (game-state-board gs)
+               reserves (game-state-reserves gs)
+               [_ board reserves] (reduce-portion (get points 0) [] board reserves player)
+               [_ board reserves] (reduce-portion (get points 1) [] board reserves player)]
+           (->GameState board reserves false false)))))))
+
+(defn get-line-taking-orderings
   [gamestate player]
   (list
    (loop [board (game-state-board gamestate)
@@ -283,70 +253,15 @@
                     (not (some (fn [k] (equals k l)) taken)))
                   (get-player-lints-of-four board player))]
        (if (empty? found)
-         [(concat [protected] (map lint-to-line taken))
+         ;; for some odd reason, lint-to-line fails, even though definline
+         ;; should create a function as well...
+         [(concat [protected] (map (fn [k] (lint-to-line k)) taken))
           (game-state-changebr gamestate board reserves)]
          ;; this seems to work...
          (let [chosen (first found)
                points (get list-of-split-lines chosen)
                [prot nb nr] (reduce-portion (get points 0) [] board reserves player)
                [prot nb nr] (reduce-portion (get points 1) prot nb nr player)]
-           
-           (recur nb nr (conj taken chosen) (conj protected prot))))))))
-
-(defn get-line-taking-orderings-old
-  "Returns a list of [[[prot] take1 take2] gamestate]
-   for all possible line
-   orderings"
-  [gamestate player]
-  ;; we go dumb, take only the first ones...
-  ;; if we really want to, we can make a slower, more complete
-  ;; version.
-  ;; We protect ourselves..
-  (list
-   (loop [cb (game-state-board gamestate)
-          rr (game-state-reserves gamestate)
-          taken [] protected []]
-     (let [found (filter
-                  (fn [l]
-                    (not (some (fn [k] (line= k l)) taken)))
-                  (get-player-lines-of-four cb player))]
-       (if (empty? found)
-         [(concat [protected] taken) (game-state-changebr gamestate cb rr)]
-
-         ;; this seems to work...
-         (let [chosen (first found)
-               delta (line-delta chosen)
-               [prot nb nr]
-               (loop [cur (line-start chosen) bpr [] bb cb brr rr]
-                 (if (= 4 (pt-radius cur))
-                   [bpr bb brr]
-                   
-                   (case (int (multiply (get-hex-array bb cur) player))
-                     -2
-                     (recur (pt+ cur delta)
-                            bpr
-                            (change-hex-array bb cur 0)
-                            (reserve-delta brr (negate player)
-                                           0 0 -1))
-                     -1 ;; opponent
-                     (recur (pt+ cur delta)
-                            bpr
-                            (change-hex-array bb cur 0)
-                            (reserve-delta brr (negate player)
-                                           0 -1 0))
-                     0
-                     (recur (pt+ cur delta)
-                            bpr bb brr)
-                     1
-                     (recur (pt+ cur delta)
-                            bpr
-                            (change-hex-array bb cur 0)
-                            (reserve-delta brr player 1 -1 0))
-                     2 ;; save own gipfs
-                     (do
-                       (recur (pt+ cur delta)
-                              (conj bpr cur)
-                              bb brr)))))]
            
            (recur nb nr (conj taken chosen) (conj protected prot))))))))
 
