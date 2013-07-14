@@ -202,23 +202,27 @@
     (clear-line! e1p e2p)
     (redraw-loc! e1p)
     (redraw-loc! e2p)
-    (loop [cur (line-start line)]
-      (let [val (get-hex-array board* cur)]
-        (when-not (or (= val 0) (protected? cur))
-          (if (same-sign? val current-player*)
-            (if (= 2 (abs val))
-                (change-reserves! current-player* 2 0 -1)
-                (change-reserves! current-player* 1 -1 0))
-            (if (= 2 (abs val))
-              (change-reserves! (- current-player*) 0 0 -1)
-              (change-reserves! (- current-player*) 0 -1 0)))
-          
-          (def board* (change-hex-array board* cur 0)))
-        (redraw-loc! cur)
-        (when (and (not (nil? hovered*)) (pt= cur hovered*))
-          (draw-highlight! cur))
-        (when-not (pt= cur llp)
-          (recur (pt+ cur (line-delta line))))))))
+
+    (doseq [ray (get list-of-split-lines (line-to-lint line))]
+      (println ray)
+      (loop [ray ray over false]
+        (when-not (empty? ray)
+          (let [loc (first ray)
+                val (get-hex-array board* loc)]
+            (when-not (or over (= val 0) (protected? loc))
+              (if (same-sign? val current-player*)
+                (if (= 2 (abs val))
+                  (change-reserves! current-player* 2 0 -1)
+                  (change-reserves! current-player* 1 -1 0))
+                (if (= 2 (abs val))
+                  (change-reserves! (- current-player*) 0 0 -1)
+                  (change-reserves! (- current-player*) 0 -1 0)))
+              
+              (def board* (change-hex-array board* loc 0)))
+            (redraw-loc! loc)
+            (when (and (not (nil? hovered*)) (pt= loc hovered*))
+              (draw-highlight! loc))
+            (recur (rest ray) (or over (= val 0)))))))))
 
 (defn undraw-line!
   [line]
