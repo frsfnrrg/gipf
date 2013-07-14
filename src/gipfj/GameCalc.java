@@ -89,7 +89,7 @@ public class GameCalc {
      * @param player
      * @return
      */
-    private static int[] getFilteredBoardLines(ThreadBuffer buf, Board b,
+    public static int[] getFilteredBoardLines(ThreadBuffer buf, Board b,
             int player) {
         byte pb = (byte) player;
         byte[] data = b.data;

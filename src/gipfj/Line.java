@@ -81,4 +81,26 @@ public class Line {
             return false;
         }
     }
+
+    /**
+     * Warning: expensive.
+     * 
+     * Convert a line to its (faster, simpler) integral representation.
+     * 
+     * @param l
+     * @return
+     */
+    public static int lineToLint(Line l) {
+        for (int i = 0; i < Const.listOfLines.length; i++) {
+            if (l.equiv(Const.listOfLines[i])) {
+                return i;
+            }
+        }
+        System.out.format("lnf %s\n", l.toString());
+        return -9999;
+    }
+
+    public static Line lintToLine(int l) {
+        return Const.listOfLines[l];
+    }
 }

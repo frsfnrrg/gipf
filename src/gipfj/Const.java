@@ -1,6 +1,5 @@
 package gipfj;
 
-
 /**
  * 
  */
@@ -191,10 +190,9 @@ public class Const {
             Butterfly[] mptl = new Butterfly[pts.length];
             bfl[i] = mptl;
             for (int k = 0; k < pts.length; k++) {
-                Butterfly juju = new Butterfly(pts[k],
-                        identifyLine(Line.makeLine(pts[k], dlts[0])),
-                        identifyLine(Line.makeLine(pts[k], dlts[2])), null,
-                        null, null, null);
+                Butterfly juju = new Butterfly(pts[k], Line.lineToLint(Line
+                        .makeLine(pts[k], dlts[0])), Line.lineToLint(Line
+                        .makeLine(pts[k], dlts[2])), null, null, null, null);
                 mptl[k] = juju;
                 for (int j = 0; j < 4; j++) {
                     int d = dlts[j];
@@ -225,21 +223,5 @@ public class Const {
         // System.out.println(Arrays.deepToString(bfl));
 
         return bfl;
-    }
-
-    /**
-     * Given a line , return its identifying number.
-     * 
-     * @param l
-     * @return
-     */
-    private static int identifyLine(Line l) {
-        for (int i = 0; i < listOfLines.length; i++) {
-            if (l.equiv(listOfLines[i])) {
-                return i;
-            }
-        }
-        System.out.format("lnf %s\n", l.toString());
-        return -9999;
     }
 }

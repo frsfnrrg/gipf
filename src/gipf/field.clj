@@ -3,7 +3,7 @@
                   IDRNode GameCalc GeneralizedPointWeighting
                   Ranking HistoryTable MoveSignedIGC
                   Counter Compression Ident ChildList STable ThreadBuffer
-                  UCTNode)))
+                  UCTNode Const)))
 
 (definline place-and-shove [a b c] `(GameCalc/placeAndShove ~a ~b ~c))
 (definline ->GameState [a b c1 c2] `(GameState/makeGameState ~a ~b ~c1 ~c2))
@@ -134,6 +134,14 @@
 (definline apply-move [buf gs p m]
   `(GameCalc/applyMove ~buf ~gs ~p ~m))
 
+(definline get-player-lints-of-four [board player]
+  `(vec (GameCalc/getFilteredBoardLines default-buffer ~board ~player)))
+
+(definline lint-to-line [lint]
+  `(Line/lintToLine ~lint))
+(definline line-to-lint [line]
+  `(Line/lineToLint ~line))
+
 ;; predicates/extraction
 
 (def list-of-move-lines
@@ -178,6 +186,14 @@
   [ (place-and-shove gamestate value (->Line loc shove))
     (impacted-cells (game-state-board gamestate) loc shove)])
 
+(def list-of-split-lines (mapv #(mapv vec (vec %)) (vec Const/listOfSplitLinePoints)))
+
+(defn do-linemoves-proper
+  "Used in game, to easily and simply effect a line move"
+  [gs player move]
+  (println "TODO")
+  gs)
+
 (defn do-linemoves
   ;; WARNING: line removal pattern is incorrect: see the rules. 
   [gs player move]
@@ -219,7 +235,65 @@
                        :else
                        (recur (pt+ pos delta) board reserves)))))))))))
 
-(defn get-line-taking-orderings
+
+(defn reduce-portion
+  "Returns [protect newboard newreserves]"
+  [points protect board reserves player]
+  (loop [points points bpr protect board board brr reserves]
+    (if (empty? points)
+      [bpr board brr]
+      (let [loc (first points)
+            val (int (multiply
+                       (get-hex-array board loc)
+                       player))]
+        (case val
+          -2
+          (recur (rest points)
+                 bpr
+                 (change-hex-array board loc 0)
+                 (reserve-delta brr (negate player)
+                                0 0 -1))
+          -1 ;; opponent
+          (recur (rest points)
+                 bpr
+                 (change-hex-array board loc 0)
+                 (reserve-delta brr (negate player)
+                                0 -1 0))
+          0 ;; stop - can't take past an empty square
+          [bpr board brr]
+          1
+          (recur (rest points)
+                 bpr
+                 (change-hex-array board loc 0)
+                 (reserve-delta brr player 1 -1 0))
+          2 ;; save own gipfs
+          (do
+            (recur (rest points)
+                   (conj bpr loc)
+                   board brr)))))))
+
+(defn get-line-taking-orderings;;-proper
+  [gamestate player]
+  (list
+   (loop [board (game-state-board gamestate)
+          reserves (game-state-reserves gamestate)
+          taken [] protected []]
+     (let [found (filter
+                  (fn [l]
+                    (not (some (fn [k] (equals k l)) taken)))
+                  (get-player-lints-of-four board player))]
+       (if (empty? found)
+         [(concat [protected] (map lint-to-line taken))
+          (game-state-changebr gamestate board reserves)]
+         ;; this seems to work...
+         (let [chosen (first found)
+               points (get list-of-split-lines chosen)
+               [prot nb nr] (reduce-portion (get points 0) [] board reserves player)
+               [prot nb nr] (reduce-portion (get points 1) prot nb nr player)]
+           
+           (recur nb nr (conj taken chosen) (conj protected prot))))))))
+
+(defn get-line-taking-orderings-old
   "Returns a list of [[[prot] take1 take2] gamestate]
    for all possible line
    orderings"
@@ -228,7 +302,6 @@
   ;; if we really want to, we can make a slower, more complete
   ;; version.
   ;; We protect ourselves..
-
   (list
    (loop [cb (game-state-board gamestate)
           rr (game-state-reserves gamestate)
