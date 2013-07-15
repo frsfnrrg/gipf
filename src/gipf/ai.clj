@@ -516,12 +516,21 @@
      (uctn-post! ~node ~good-player res#)
      res#))
 
+(def uctsc 0.10)
+
 (def-search uct-search
   "Almost direct copy from a go website."
-  monte-carlo-difficulties
+  {0 [10 uctsc]
+   1 [200 uctsc]
+   2 [5000 uctsc]
+   3 [100000 uctsc]
+   4 [2000000 uctsc]}
   []
+  (:pre [it_ selectivity-constant]
+    (set-uct-constant! selectivity-constant))
+  (:post [& _])
   (:eval
-   [buffer gamestate good-player _ iterations]
+   [buffer gamestate good-player rf_ iterations selc_]
    (letfn [(uk [node gamestate owner]
              ;; notice the three-fold repetition. definline!
              (if (uctn-untried node)

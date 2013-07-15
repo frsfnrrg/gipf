@@ -131,6 +131,9 @@
 (definline uctn-untried [u] `(UCTNode/uctunvisited ~u))
 (definline uctn-children? [u] `(UCTNode/uctchilded ~u))
 
+(definline set-uct-constant! [flotty]
+  `(UCTNode/setUCTLevel ~flotty))
+
 (definline apply-move [buf gs p m]
   `(GameCalc/applyMove ~buf ~gs ~p ~m))
 

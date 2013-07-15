@@ -1,7 +1,11 @@
 package gipfj;
 
 public class UCTNode {
-    public static final float UCT_CONST = 1.0f;
+    public static float UCT_CONST = 1.0f;
+
+    public static void setUCTLevel(double f) {
+        UCT_CONST = (float) f;
+    }
 
     public final byte move;
     private int good_wins;
