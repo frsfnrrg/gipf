@@ -557,4 +557,27 @@
            (do
              (uk parent gamestate antiplayer)
              (recur (inc i)))))))))
-  
+
+(def-search uct-ab-search
+  "Not high level optimized, but whatever"
+  {0 [1 10 uctsc]
+   1 [1 70 uctsc]
+   2 [2 100 uctsc]
+   3 [2 1000 uctsc]
+   4 [3 2000 uctsc]}
+  [evf
+   uckf]
+  (:pre [dp_ it_ selconst]
+        ((:pre uct-search) it_ selconst)
+        ((:pre cab-transp-hist) dp_)
+        (export evf (:eval cab-transp-hist))
+        (export uckf (:eval uct-search)))
+  (:post [dp_ it_ selconst]
+         ((:post cab-transp-hist) it_ selconst)
+         ((:post uct-search) dp_))
+  (:eval
+   [buffer gamestate good-player rf_ depth iterations selc_]
+   (evf buffer gamestate good-player
+        (fn [gamestate player]
+          (uckf buffer gamestate player nil iterations nil))
+        depth negative-infinity positive-infinity)))
